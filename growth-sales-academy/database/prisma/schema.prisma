@@ -1,0 +1,112 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  last_name     String
+  username      String    @unique
+  phone         String?
+  email         String    @unique
+  password      String    // Hashed with bcrypt
+  profile_image String?
+  role          Role      @default(STUDENT)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  enrollments   Enrollment[]
+  progress      LessonProgress[]
+  notes         LessonNote[]
+}
+
+model Course {
+  id          String    @id @default(cuid())
+  title       String
+  description String    @db.Text
+  thumbnail   String?
+  hero_image  String?
+  price       Float?
+  published   Boolean   @default(false)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  modules     Module[]
+  enrollments Enrollment[]
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  course_id   String
+  title       String
+  order       Int
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  course      Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  module_id   String
+  title       String
+  description String?  @db.Text
+  video_url   String
+  thumbnail   String?
+  order       Int
+  duration    Int?     // In seconds
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  module      Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  progress    LessonProgress[]
+  notes       LessonNote[]
+}
+
+model Enrollment {
+  id          String   @id @default(cuid())
+  user_id     String
+  course_id   String
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course      Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  
+  @@unique([user_id, course_id])
+}
+
+model LessonProgress {
+  id           String    @id @default(cuid())
+  user_id      String
+  lesson_id    String
+  completed    Boolean   @default(false)
+  completed_at DateTime?
+
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  lesson       Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, lesson_id])
+}
+
+model LessonNote {
+  id          String   @id @default(cuid())
+  user_id     String
+  lesson_id   String
+  content     String   @db.Text
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  lesson      Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+}
