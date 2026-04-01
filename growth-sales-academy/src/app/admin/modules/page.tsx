@@ -1,15 +1,31 @@
-export default function AdminModulesPage() {
+import { prisma } from '@/lib/prisma'
+import { AdminModulesClient } from './AdminModulesClient'
+
+interface Props {
+    searchParams: Promise<{ courseId?: string }>
+}
+
+export default async function AdminModulesPage({ searchParams }: Props) {
+    const { courseId } = await searchParams
+
+    const courses = await prisma.course.findMany({
+        select: { id: true, title: true },
+        orderBy: { created_at: 'desc' },
+    })
+
+    const modules = courseId
+        ? await prisma.module.findMany({
+              where: { course_id: courseId },
+              include: { _count: { select: { lessons: true } } },
+              orderBy: { order: 'asc' },
+          })
+        : []
+
     return (
-        <div className="p-10 space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Manage Modules</h1>
-                    <p className="text-zinc-400 mt-2">Create and map modules to existing courses.</p>
-                </div>
-            </div>
-            <div className="p-6 border border-zinc-800 rounded-xl bg-zinc-950">
-                <p className="text-zinc-400">Select a course to edit its modules or create a new module directly.</p>
-            </div>
-        </div>
-    );
+        <AdminModulesClient
+            courses={courses}
+            selectedCourseId={courseId ?? null}
+            modules={modules}
+        />
+    )
 }

@@ -1,15 +1,40 @@
-export default function AdminLessonsPage() {
+import { prisma } from '@/lib/prisma'
+import { AdminLessonsClient } from './AdminLessonsClient'
+
+interface Props {
+    searchParams: Promise<{ courseId?: string; moduleId?: string }>
+}
+
+export default async function AdminLessonsPage({ searchParams }: Props) {
+    const { courseId, moduleId } = await searchParams
+
+    const courses = await prisma.course.findMany({
+        select: { id: true, title: true },
+        orderBy: { created_at: 'desc' },
+    })
+
+    const modules = courseId
+        ? await prisma.module.findMany({
+              where: { course_id: courseId },
+              select: { id: true, title: true, order: true },
+              orderBy: { order: 'asc' },
+          })
+        : []
+
+    const lessons = moduleId
+        ? await prisma.lesson.findMany({
+              where: { module_id: moduleId },
+              orderBy: { order: 'asc' },
+          })
+        : []
+
     return (
-        <div className="p-10 space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Manage Lessons</h1>
-                    <p className="text-zinc-400 mt-2">Upload lesson videos and set order in modules.</p>
-                </div>
-            </div>
-            <div className="p-6 border border-zinc-800 rounded-xl bg-zinc-950">
-                <p className="text-zinc-400">Lesson asset management system...</p>
-            </div>
-        </div>
-    );
+        <AdminLessonsClient
+            courses={courses}
+            modules={modules}
+            lessons={lessons}
+            selectedCourseId={courseId ?? null}
+            selectedModuleId={moduleId ?? null}
+        />
+    )
 }

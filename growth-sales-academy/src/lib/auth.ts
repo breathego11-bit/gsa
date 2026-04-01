@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
-import bcrypt from "bcrypt";
+import bcryptjs from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
     session: {
@@ -30,7 +30,7 @@ export const authOptions: NextAuthOptions = {
                     throw new Error("Invalid credentials");
                 }
 
-                const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+                const isPasswordValid = await bcryptjs.compare(credentials.password, user.password);
 
                 if (!isPasswordValid) {
                     throw new Error("Invalid credentials");
@@ -40,6 +40,8 @@ export const authOptions: NextAuthOptions = {
                     id: user.id,
                     email: user.email,
                     name: user.name,
+                    last_name: user.last_name,
+                    profile_image: user.profile_image,
                     role: user.role
                 };
             }
@@ -50,6 +52,8 @@ export const authOptions: NextAuthOptions = {
             if (token && session.user) {
                 session.user.id = token.id as string;
                 session.user.role = token.role as string;
+                session.user.last_name = token.last_name as string | null;
+                session.user.profile_image = token.profile_image as string | null;
             }
             return session;
         },
@@ -57,6 +61,8 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 token.role = user.role;
+                token.last_name = (user as any).last_name ?? null;
+                token.profile_image = (user as any).profile_image ?? null;
             }
             return token;
         }

@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  app-dev:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.dev
+    container_name: gsa-app-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://gsa_user:gsa_password@db:5432/gsa_db?schema=public
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=mi_secreto_local_12345
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npm run dev"
+
   app:
     build:
       context: ../
@@ -27,7 +48,7 @@ services:
       - POSTGRES_PASSWORD=gsa_password
       - POSTGRES_DB=gsa_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - gsa_pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -1,67 +1,176 @@
-import Link from "next/link";
+'use client'
+
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { UserPlus } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 export default function RegisterPage() {
+    const router = useRouter()
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
+
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+        setError('')
+        setLoading(true)
+
+        const form = e.currentTarget
+        const password = (form.elements.namedItem('password') as HTMLInputElement).value
+        const confirm = (form.elements.namedItem('confirm') as HTMLInputElement).value
+
+        if (password !== confirm) {
+            setError('Las contraseñas no coinciden')
+            setLoading(false)
+            return
+        }
+
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: (form.elements.namedItem('name') as HTMLInputElement).value,
+                last_name: (form.elements.namedItem('last_name') as HTMLInputElement).value,
+                username: (form.elements.namedItem('username') as HTMLInputElement).value,
+                email: (form.elements.namedItem('email') as HTMLInputElement).value,
+                phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
+                password,
+            }),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+            setError(data.error || 'Algo salió mal. Intenta de nuevo.')
+            setLoading(false)
+            return
+        }
+
+        router.push('/login?registered=1')
+    }
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-950 px-4 py-12">
-            <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-white">Join the Academy</h2>
-                    <p className="text-zinc-400 text-sm mt-2">Create your account to start learning</p>
+        <div
+            className="min-h-screen flex items-center justify-center px-4 py-12"
+            style={{ background: 'var(--bg-base)' }}
+        >
+            <div className="w-full max-w-lg">
+                {/* Logo */}
+                <div className="flex flex-col items-center mb-8">
+                    <img
+                        src="/logo_dark.png"
+                        alt="Growth Sales Academy"
+                        className="h-16 w-auto mb-4"
+                    />
+                    <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                        GSA
+                    </h1>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                        Growth Sales Academy
+                    </p>
                 </div>
 
-                <form className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">First Name</label>
-                            <input type="text" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
+                {/* Card */}
+                <div
+                    className="rounded-2xl border p-8 shadow-2xl"
+                    style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+                >
+                    <div className="mb-7">
+                        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                            Únete a la Academia
+                        </h2>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                            Crea tu cuenta gratuita y empieza a aprender
+                        </p>
+                    </div>
+
+                    <form className="space-y-4" onSubmit={handleSubmit}>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="Nombre" name="name" type="text" required placeholder="Juan" />
+                            <Input label="Apellido" name="last_name" type="text" required placeholder="Pérez" />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">Last Name</label>
-                            <input type="text" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
+
+                        <Input
+                            label="Usuario"
+                            name="username"
+                            type="text"
+                            required
+                            placeholder="juanperez"
+                            autoComplete="username"
+                        />
+
+                        <Input
+                            label="Email"
+                            name="email"
+                            type="email"
+                            required
+                            placeholder="juan@email.com"
+                            autoComplete="email"
+                        />
+
+                        <Input
+                            label="Teléfono"
+                            name="phone"
+                            type="tel"
+                            placeholder="+1 234 567 8900"
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input
+                                label="Contraseña"
+                                name="password"
+                                type="password"
+                                required
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                            />
+                            <Input
+                                label="Confirmar"
+                                name="confirm"
+                                type="password"
+                                required
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                            />
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Username</label>
-                        <input type="text" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
-                    </div>
+                        {error && (
+                            <p className="text-sm text-center rounded-xl p-3"
+                                style={{ color: 'var(--error)', background: 'rgba(239,68,68,0.08)' }}>
+                                {error}
+                            </p>
+                        )}
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Email</label>
-                        <input type="email" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
-                    </div>
+                        <Button
+                            type="submit"
+                            loading={loading}
+                            className="w-full justify-center mt-2"
+                            icon={!loading ? <UserPlus size={16} /> : undefined}
+                        >
+                            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+                        </Button>
+                    </form>
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Phone Number</label>
-                        <input type="tel" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
-                    </div>
+                    <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        ¿Ya tienes cuenta?{' '}
+                        <Link
+                            href="/login"
+                            className="font-semibold transition-colors"
+                            style={{ color: 'var(--blue-accent)' }}
+                        >
+                            Ingresar
+                        </Link>
+                    </p>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">Password</label>
-                            <input type="password" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">Confirm Password</label>
-                            <input type="password" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        className="w-full mt-6 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
-                    >
-                        Create Account
-                    </button>
-                </form>
-
-                <p className="mt-6 text-center text-sm text-zinc-400">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-blue-400 hover:text-blue-300 font-semibold">
-                        Login
+                <p className="mt-6 text-center text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <Link href="/" style={{ color: 'var(--text-secondary)' }} className="hover:underline">
+                        ← Volver al inicio
                     </Link>
                 </p>
             </div>
         </div>
-    );
+    )
 }

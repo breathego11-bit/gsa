@@ -35,5 +35,17 @@ _agents/
 
 # Misc
 build/
+.next/
 .eslintcache
 *.code-workspace
+
+# Sales OS (excluded from this repo)
+sales-os/
+
+# Design references (not production code)
+growth-sales-academy/redesign/
+growth-sales-academy/home-reference
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
