@@ -43,4 +43,4 @@ jobs:
             git pull origin main
             cd docker
             docker compose up -d --build app
-            docker compose exec -T app ./node_modules/.bin/prisma migrate deploy
+            docker compose exec -T app node ./node_modules/prisma/build/index.js migrate deploy
