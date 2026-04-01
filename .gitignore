@@ -40,8 +40,8 @@ build/
 *.code-workspace
 
 # Design references (not production code)
-growth-sales-academy/redesign/
-growth-sales-academy/home-reference
+redesign/
+home-reference
 
 # TypeScript build cache
 tsconfig.tsbuildinfo

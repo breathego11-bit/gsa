@@ -9,7 +9,7 @@ Self-hosted Learning Management System (LMS) built with Next.js, PostgreSQL (Pri
 ## Repository Structure
 
 ```
-growth-sales-academy/
+gsa/
 ├── src/
 │   ├── app/                     # Next.js App Router (routes + API)
 │   ├── components/              # UI, layout, admin, courses, lesson components
@@ -82,7 +82,6 @@ growth-sales-academy/
 ## Running Locally
 
 ```bash
-cd growth-sales-academy
 cp .env.example .env
 # fill in secrets, then:
 cd docker
@@ -98,7 +97,7 @@ docker compose exec app npx prisma migrate deploy
 
 ## Environment Files
 
-- `growth-sales-academy/.env.example` — PostgreSQL + NextAuth + Cloudinary
+- `.env.example` — PostgreSQL + NextAuth + Cloudinary
 
 See the file for required values and descriptions.
 
@@ -120,7 +119,7 @@ See the file for required values and descriptions.
 # On VPS
 cd /opt
 git clone https://github.com/breathego11-bit/gsa.git
-cd gsa/growth-sales-academy
+cd gsa
 
 # Configure Caddyfile with real domain
 # Configure docker-compose.yml environment variables (NEXTAUTH_URL, NEXTAUTH_SECRET, DB password)

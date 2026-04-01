@@ -34,8 +34,6 @@ Plataforma de cursos (LMS) self-hosted para Growth Sales Academy. Profesores (ad
 ## Arranque
 
 ```bash
-cd growth-sales-academy
-
 # Variables de entorno
 cp .env.example .env
 # Editar .env si es necesario
@@ -66,7 +64,7 @@ App en `http://localhost:3000`
 | Contraseña | `Admin@GSA2024!` |
 | Rol | `ADMIN` |
 
-Los admins **solo se crean vía seed** — no hay registro público de administradores. Para agregar más (máx. 3), editar `growth-sales-academy/prisma/seed.ts`.
+Los admins **solo se crean vía seed** — no hay registro público de administradores. Para agregar más (máx. 3), editar `prisma/seed.ts`.
 
 ### Rutas del LMS
 
@@ -85,7 +83,7 @@ Los admins **solo se crean vía seed** — no hay registro público de administr
 | `/admin/lessons` | Admin | CRUD de lecciones |
 | `/admin/students` | Admin | Lista de estudiantes |
 
-### Variables de entorno (`growth-sales-academy/.env`)
+### Variables de entorno (`.env`)
 
 | Variable | Descripción |
 |---|---|
@@ -99,7 +97,7 @@ Los admins **solo se crean vía seed** — no hay registro público de administr
 ## Estructura del repositorio
 
 ```
-growth-sales-academy/
+gsa/
 ├── src/
 │   ├── app/                     # App Router (páginas + API routes)
 │   │   ├── (auth)/              # Login, Register
