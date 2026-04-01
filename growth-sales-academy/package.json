@@ -1,14 +1,30 @@
 {
-    "name": "growth-sales-academy",
+    "name": "gsa-frontend",
     "version": "1.0.0",
-    "private": true,
-    "workspaces": [
-        "frontend",
-        "backend",
-        "database"
-    ],
     "scripts": {
-        "dev": "npm run dev --workspace=frontend",
-        "build": "npm run build --workspace=frontend"
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint"
+    },
+    "dependencies": {
+        "next": "latest",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "next-auth": "^4.24.5",
+        "@prisma/client": "latest",
+        "lucide-react": "latest",
+        "tailwindcss": "latest",
+        "bcrypt": "^5.1.1"
+    },
+    "devDependencies": {
+        "typescript": "latest",
+        "@types/node": "latest",
+        "@types/react": "latest",
+        "@types/react-dom": "latest",
+        "@types/bcrypt": "^5.0.2",
+        "autoprefixer": "latest",
+        "postcss": "latest",
+        "prisma": "latest"
     }
 }
