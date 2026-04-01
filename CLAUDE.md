@@ -1,63 +1,36 @@
-# GSA — Growth Sales Academy
+# GSA — Growth Sales Academy LMS
 
 ## Project Overview
 
-This repo contains **two applications** that share the same repository:
-
-1. **Sales OS** (root level) — Vite + React dashboard for sales operations. Integrates with Airtable (CRM) and Supabase.
-2. **Growth Sales Academy LMS** (`growth-sales-academy/`) — Self-hosted Learning Management System built with Next.js, PostgreSQL (Prisma), and Docker.
+Self-hosted Learning Management System (LMS) built with Next.js, PostgreSQL (Prisma), and Docker.
 
 ---
 
 ## Repository Structure
 
 ```
-gsa/
-├── sales-os/                        # Sales OS — Vite/React app
-│   ├── src/
-│   │   ├── components/              # Reusable UI components
-│   │   ├── pages/                   # Page-level views
-│   │   ├── services/
-│   │   │   ├── airtableService.js   # Airtable CRM integration (leads, closers, payments)
-│   │   │   └── supabaseClient.js    # Supabase client init
-│   │   └── context/
-│   └── .env.example
-├── growth-sales-academy/            # LMS application
-│   ├── src/
-│   │   ├── app/                     # Next.js App Router (routes + API)
-│   │   ├── components/              # UI, layout, admin, courses, lesson components
-│   │   ├── lib/                     # Auth (NextAuth) + Prisma client
-│   │   ├── hooks/                   # useToast, useDebounce
-│   │   └── types/                   # Shared TypeScript types
-│   ├── prisma/
-│   │   ├── schema.prisma            # PostgreSQL schema
-│   │   ├── seed.ts                  # Admin user seed
-│   │   └── migrations/
-│   └── docker/
-│       ├── Dockerfile               # Multi-stage Node 20 Alpine build
-│       ├── Dockerfile.dev           # Development image
-│       ├── docker-compose.yml       # PostgreSQL + Next.js + Caddy
-│       └── caddy/Caddyfile          # Reverse proxy (auto-HTTPS)
-├── package.json                     # Root: Vite, React 19, Airtable, Supabase
-├── vite.config.js
-├── .env                             # NOT committed — see .env.example
-├── GSA_Architecture.md              # Full architecture reference
-└── CLAUDE.md                        # This file
+growth-sales-academy/
+├── src/
+│   ├── app/                     # Next.js App Router (routes + API)
+│   ├── components/              # UI, layout, admin, courses, lesson components
+│   ├── lib/                     # Auth (NextAuth) + Prisma client
+│   ├── hooks/                   # useToast, useDebounce
+│   └── types/                   # Shared TypeScript types
+├── prisma/
+│   ├── schema.prisma            # PostgreSQL schema
+│   ├── seed.ts                  # Admin user seed
+│   └── migrations/
+└── docker/
+    ├── Dockerfile               # Multi-stage Node 20 Alpine build
+    ├── Dockerfile.dev           # Development image
+    ├── docker-compose.yml       # PostgreSQL + Next.js + Caddy
+    └── caddy/Caddyfile          # Reverse proxy (auto-HTTPS)
 ```
 
 ---
 
 ## Tech Stack
 
-### Sales OS (Vite/React — root)
-- **Framework:** React 19 + Vite 7
-- **Routing:** React Router 7
-- **Styling:** TailwindCSS 4
-- **External APIs:** Airtable (CRM), Supabase (BaaS)
-- **Charts:** Recharts
-- **Utilities:** xlsx, canvas-confetti
-
-### LMS (Next.js — `growth-sales-academy/`)
 - **Framework:** Next.js 15 (App Router, standalone output)
 - **Auth:** NextAuth.js 4 — JWT sessions, custom credentials provider, bcrypt
 - **Database:** PostgreSQL 15 via Prisma ORM
@@ -67,7 +40,7 @@ gsa/
 
 ---
 
-## Database Schema (LMS)
+## Database Schema
 
 | Model | Purpose |
 |---|---|
@@ -83,7 +56,7 @@ gsa/
 
 ---
 
-## Authentication (LMS)
+## Authentication
 
 - Provider: NextAuth Credentials (email + password)
 - Passwords: bcrypt hashed
@@ -92,21 +65,7 @@ gsa/
 
 ---
 
-## Airtable Integration (Sales OS)
-
-Tables used:
-- `CLOSERS` — certification status, commissions
-- `LEADS` — lead pipeline
-- `PAGOS` — payment records
-- `LLAMADAS` — call logs
-
-Commission tiers: 9% (<60K), 11% (<75K), 13% (≥75K)
-
-Falls back to **mock data** when `VITE_AIRTABLE_API_KEY` is missing — safe for local dev without credentials.
-
----
-
-## LMS Routes
+## Routes
 
 | Type | Routes |
 |---|---|
@@ -122,18 +81,11 @@ Falls back to **mock data** when `VITE_AIRTABLE_API_KEY` is missing — safe for
 
 ## Running Locally
 
-### Sales OS
 ```bash
-cp .env.example .env          # fill in Airtable + Supabase keys
-npm install
-npm run dev
-```
-
-### LMS (Docker)
-```bash
-cp growth-sales-academy/.env.example growth-sales-academy/.env
+cd growth-sales-academy
+cp .env.example .env
 # fill in secrets, then:
-cd growth-sales-academy/docker
+cd docker
 docker compose up -d
 ```
 
@@ -146,10 +98,9 @@ docker compose exec app npx prisma migrate deploy
 
 ## Environment Files
 
-- `.env.example` — Sales OS (Airtable + Supabase keys)
-- `growth-sales-academy/.env.example` — LMS (PostgreSQL + NextAuth + Cloudinary)
+- `growth-sales-academy/.env.example` — PostgreSQL + NextAuth + Cloudinary
 
-See each file for required values and descriptions.
+See the file for required values and descriptions.
 
 ---
 
