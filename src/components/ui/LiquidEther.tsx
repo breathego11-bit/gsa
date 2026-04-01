@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react';
+// @ts-ignore
 import * as THREE from 'three';
 import './LiquidEther.css';
 
@@ -569,7 +570,7 @@ export default function LiquidEther({
         this.line = new THREE.LineSegments(boundaryG, boundaryM);
         this.scene!.add(this.line);
       }
-      update(opts: any) {
+      update(opts?: any) {
         this.uniforms.dt.value = opts.dt;
         this.line!.visible = opts.isBounce;
         this.uniforms.isBFECC.value = opts.BFECC;
@@ -601,7 +602,7 @@ export default function LiquidEther({
         this.mouse = new THREE.Mesh(mouseG, mouseM);
         this.scene!.add(this.mouse);
       }
-      update(props: any) {
+      update(props?: any) {
         const forceX = (Mouse.diff.x / 2) * props.mouse_force;
         const forceY = (Mouse.diff.y / 2) * props.mouse_force;
         const csx = props.cursor_size * props.cellScale.x;
@@ -637,7 +638,7 @@ export default function LiquidEther({
         });
         this.init();
       }
-      update(opts: any) {
+      update(opts?: any) {
         let fbo_out: any;
         this.uniforms.v.value = opts.viscous;
         for (let i = 0; i < opts.iterations; i++) {
@@ -669,7 +670,7 @@ export default function LiquidEther({
         });
         this.init();
       }
-      update(opts: any) {
+      update(opts?: any) {
         this.uniforms.velocity.value = opts.vel.texture;
         super.update();
       }
@@ -694,7 +695,7 @@ export default function LiquidEther({
         });
         this.init();
       }
-      update(opts: any) {
+      update(opts?: any) {
         let p_out: any;
         for (let i = 0; i < opts.iterations; i++) {
           const p_in = i % 2 === 0 ? this.props.output0 : this.props.output1;
@@ -725,7 +726,7 @@ export default function LiquidEther({
         });
         this.init();
       }
-      update(opts: any) {
+      update(opts?: any) {
         this.uniforms.velocity.value = opts.vel.texture;
         this.uniforms.pressure.value = opts.pressure.texture;
         super.update();

@@ -15,7 +15,7 @@ interface LessonData {
     video_url: string | null; thumbnail: string | null; content: string | null
     form_schema: any; exam_schema: any; passing_score: number | null
     max_attempts: number | null; is_final_exam: boolean; order: number; duration: number | null
-    resources: LessonResource[] | null
+    resources?: LessonResource[] | null
 }
 
 interface ModuleData { id: string; title: string; order: number; lessons: LessonData[] }

@@ -149,7 +149,7 @@ export function ExamContent({
 
     // ── Taking exam ──
     if (state === 'taking') {
-        async function handleSubmit() {
+        const handleSubmit = async () => {
             setError(null)
             setLoading(true)
 

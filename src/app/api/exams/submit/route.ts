@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Grade the exam using weighted points
-        const questions = lesson.exam_schema as ExamQuestion[]
+        const questions = lesson.exam_schema as unknown as ExamQuestion[]
         let correctCount = 0
         let earnedPoints = 0
         const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0)

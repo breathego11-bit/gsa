@@ -160,14 +160,14 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                         {lesson.type === 'FORM' && (
                             <FormContent
                                 lessonId={lessonId}
-                                schema={(lesson.form_schema as FormField[]) || []}
+                                schema={(lesson.form_schema as unknown as FormField[]) || []}
                                 existingSubmission={formSubmission}
                             />
                         )}
                         {lesson.type === 'EXAM' && (
                             <ExamContent
                                 lessonId={lessonId}
-                                questions={((lesson.exam_schema as ExamQuestion[]) || []).map(({ id, text, options }) => ({ id, text, options }))}
+                                questions={((lesson.exam_schema as unknown as ExamQuestion[]) || []).map(({ id, text, options }) => ({ id, text, options }))}
                                 passingScore={lesson.passing_score ?? 70}
                                 maxAttempts={lesson.max_attempts}
                                 attemptCount={examAttemptCount}
