@@ -1,11 +1,3 @@
-# Caddy reverse proxy config
-# Change yourdomain.com to your actual domain name
-
-:80 {
+growthsalessacademy.com {
     reverse_proxy app:3000
 }
-
-# When ready for production with domain:
-# yourdomain.com {
-#     reverse_proxy app:3000
-# }
