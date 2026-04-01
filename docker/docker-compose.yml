@@ -30,6 +30,8 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - gsa_uploads:/app/public/uploads
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://gsa_user:gsa_password@db:5432/gsa_db?schema=public
@@ -80,10 +82,12 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - gsa_caddy_data:/data
       - gsa_caddy_config:/config
+      - gsa_uploads:/srv/uploads:ro
     depends_on:
       - app
 
 volumes:
   gsa_pgdata:
+  gsa_uploads:
   gsa_caddy_data:
   gsa_caddy_config:

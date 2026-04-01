@@ -34,6 +34,10 @@ RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 
+# Create uploads directories with correct permissions
+RUN mkdir -p /app/public/uploads/avatars /app/public/uploads/courses && \
+    chown -R nextjs:nodejs /app/public/uploads
+
 # Leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

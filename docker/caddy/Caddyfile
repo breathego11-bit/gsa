@@ -1,3 +1,10 @@
 growthsalessacademy.com {
-    reverse_proxy app:3000
+    handle /uploads/* {
+        root * /srv
+        file_server
+    }
+
+    handle {
+        reverse_proxy app:3000
+    }
 }
