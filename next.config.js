@@ -2,7 +2,12 @@
 const nextConfig = {
     output: "standalone",
     images: {
-        domains: ["res.cloudinary.com", "localhost"], // For future image upload storage domains
+        domains: ["res.cloudinary.com", "localhost"],
+    },
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '500mb',
+        },
     },
 };
 

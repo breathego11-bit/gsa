@@ -6,6 +6,7 @@ import path from 'path'
 import crypto from 'crypto'
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
 const ALLOWED_DOC_TYPES = [
     'application/pdf',
     'application/msword',
@@ -15,8 +16,16 @@ const ALLOWED_DOC_TYPES = [
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ]
-const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES]
-const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_DOC_TYPES]
+const MAX_SIZE_DEFAULT = 10 * 1024 * 1024 // 10 MB
+const MAX_SIZE_VIDEO = 500 * 1024 * 1024 // 500 MB
+
+export const config = {
+    api: { bodyParser: false },
+}
+
+// Allow large uploads (videos up to 500MB)
+export const maxDuration = 300 // 5 minutes timeout
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
@@ -33,14 +42,17 @@ export async function POST(req: NextRequest) {
 
         if (!ALLOWED_TYPES.includes(file.type)) {
             return NextResponse.json(
-                { error: 'Tipo de archivo no permitido. Usa imágenes (JPG, PNG, WebP, GIF) o documentos (PDF, DOC, XLS, PPT).' },
+                { error: 'Tipo de archivo no permitido. Usa imágenes (JPG, PNG, WebP, GIF), videos (MP4, WebM, MOV) o documentos (PDF, DOC, XLS, PPT).' },
                 { status: 400 },
             )
         }
 
-        if (file.size > MAX_SIZE) {
+        const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type)
+        const maxSize = isVideo ? MAX_SIZE_VIDEO : MAX_SIZE_DEFAULT
+
+        if (file.size > maxSize) {
             return NextResponse.json(
-                { error: 'El archivo es muy grande. Máximo 10 MB.' },
+                { error: isVideo ? 'El video es muy grande. Máximo 500 MB.' : 'El archivo es muy grande. Máximo 10 MB.' },
                 { status: 400 },
             )
         }
@@ -48,13 +60,14 @@ export async function POST(req: NextRequest) {
         const ext = file.name.split('.').pop() || 'jpg'
         const uniqueName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`
 
-        const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'courses')
+        const subDir = isVideo ? 'videos' : 'courses'
+        const uploadsDir = path.join(process.cwd(), 'public', 'uploads', subDir)
         await mkdir(uploadsDir, { recursive: true })
 
         const buffer = Buffer.from(await file.arrayBuffer())
         await writeFile(path.join(uploadsDir, uniqueName), buffer)
 
-        const url = `/uploads/courses/${uniqueName}`
+        const url = `/uploads/${subDir}/${uniqueName}`
         return NextResponse.json({ url })
     } catch {
         return NextResponse.json({ error: 'Error al subir archivo' }, { status: 500 })

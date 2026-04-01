@@ -62,6 +62,9 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
     const [maxAttempts, setMaxAttempts] = useState(String(initial?.max_attempts ?? ''))
     const [isFinalExam, setIsFinalExam] = useState(initial?.is_final_exam || false)
     const [resources, setResources] = useState<LessonResource[]>(initial?.resources || [])
+    const [uploadingVideo, setUploadingVideo] = useState(false)
+    const [videoProgress, setVideoProgress] = useState(0)
+    const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
     const [uploadingResource, setUploadingResource] = useState(false)
     const [newLinkName, setNewLinkName] = useState('')
     const [newLinkUrl, setNewLinkUrl] = useState('')
@@ -173,23 +176,112 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                 {/* VIDEO fields */}
                 {type === 'VIDEO' && (
                     <>
-                        <Input
-                            label="URL del video"
-                            name="video_url"
-                            type="url"
-                            value={videoUrl}
-                            onChange={(e) => setVideoUrl(e.target.value)}
-                            placeholder="https://... (próximamente)"
-                            helpText="Se configurará cuando el servicio de video esté disponible"
-                        />
-                        <Input
-                            label="URL de thumbnail"
-                            name="thumbnail"
-                            type="url"
-                            value={thumbnail}
-                            onChange={(e) => setThumbnail(e.target.value)}
-                            placeholder="https://..."
-                        />
+                        <div className="flex flex-col gap-1.5">
+                            <label className="form-label">Video</label>
+                            {videoUrl ? (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
+                                    <MaterialIcon name="videocam" size="text-sm" className="text-green-400 shrink-0" />
+                                    <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                                        {videoUrl.split('/').pop()}
+                                    </span>
+                                    <button type="button" onClick={() => setVideoUrl('')} className="text-red-400 hover:text-red-300 shrink-0">
+                                        <MaterialIcon name="close" size="text-sm" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <label className="flex items-center gap-2 px-3 py-3 rounded-lg cursor-pointer text-xs font-medium transition-colors border border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 justify-center"
+                                    style={{ color: 'var(--text-secondary)' }}
+                                >
+                                    <MaterialIcon name={uploadingVideo ? 'hourglass_empty' : 'upload'} size="text-base" />
+                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video (MP4, WebM, MOV — máx. 500 MB)'}
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                                        disabled={uploadingVideo}
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            setUploadingVideo(true)
+                                            setVideoProgress(0)
+                                            try {
+                                                const xhr = new XMLHttpRequest()
+                                                const fd = new FormData()
+                                                fd.append('file', file)
+                                                const result = await new Promise<{ url: string }>((resolve, reject) => {
+                                                    xhr.upload.onprogress = (ev) => {
+                                                        if (ev.lengthComputable) setVideoProgress(Math.round((ev.loaded / ev.total) * 100))
+                                                    }
+                                                    xhr.onload = () => {
+                                                        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText))
+                                                        else reject(new Error(JSON.parse(xhr.responseText).error || 'Error al subir'))
+                                                    }
+                                                    xhr.onerror = () => reject(new Error('Error de red'))
+                                                    xhr.open('POST', '/api/upload')
+                                                    xhr.send(fd)
+                                                })
+                                                setVideoUrl(result.url)
+                                            } catch (err: any) {
+                                                setError(err.message || 'Error al subir video')
+                                            } finally {
+                                                setUploadingVideo(false)
+                                                setVideoProgress(0)
+                                                e.target.value = ''
+                                            }
+                                        }}
+                                    />
+                                </label>
+                            )}
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="form-label">Thumbnail</label>
+                            {thumbnail ? (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
+                                    <MaterialIcon name="image" size="text-sm" className="text-blue-400 shrink-0" />
+                                    <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                                        {thumbnail.split('/').pop()}
+                                    </span>
+                                    <button type="button" onClick={() => setThumbnail('')} className="text-red-400 hover:text-red-300 shrink-0">
+                                        <MaterialIcon name="close" size="text-sm" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-medium transition-colors hover:bg-white/5"
+                                    style={{ color: 'var(--text-secondary)' }}
+                                >
+                                    <MaterialIcon name={uploadingThumbnail ? 'hourglass_empty' : 'image'} size="text-sm" />
+                                    {uploadingThumbnail ? 'Subiendo...' : 'Subir thumbnail (opcional)'}
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        disabled={uploadingThumbnail}
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            setUploadingThumbnail(true)
+                                            try {
+                                                const fd = new FormData()
+                                                fd.append('file', file)
+                                                const res = await fetch('/api/upload', { method: 'POST', body: fd })
+                                                if (res.ok) {
+                                                    const { url } = await res.json()
+                                                    setThumbnail(url)
+                                                } else {
+                                                    const data = await res.json()
+                                                    setError(data.error || 'Error al subir thumbnail')
+                                                }
+                                            } catch {
+                                                setError('Error al subir thumbnail')
+                                            } finally {
+                                                setUploadingThumbnail(false)
+                                                e.target.value = ''
+                                            }
+                                        }}
+                                    />
+                                </label>
+                            )}
+                        </div>
                     </>
                 )}
 
