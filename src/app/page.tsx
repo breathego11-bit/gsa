@@ -51,7 +51,7 @@ export default async function LandingPage() {
         <>
             {/* ── Nav ─────────────────────────────────────── */}
             <nav className="fixed top-0 w-full z-50 bg-[#0e131e]/60 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                <div className="flex justify-between items-center px-8 h-20 w-full max-w-[1440px] mx-auto">
+                <div className="flex justify-between items-center px-4 sm:px-8 h-20 w-full max-w-[1440px] mx-auto">
                     <div className="flex items-center gap-3">
                         <img src="/logo_dark.png" alt="GSA" className="w-auto" style={{ height: '4.25rem' }} />
                         <span className="text-xl font-bold tracking-tighter text-slate-100">
@@ -110,7 +110,7 @@ export default async function LandingPage() {
 
             <main className="relative z-10 pt-20">
                 {/* ── Hero ────────────────────────────────────── */}
-                <section className="relative h-[calc(100vh-80px)] flex items-center justify-center px-8 overflow-hidden">
+                <section className="relative h-[calc(100vh-80px)] flex items-center justify-center px-4 sm:px-8 overflow-hidden">
 
                     {/* Content */}
                     <div className="z-10 text-center max-w-4xl">
@@ -149,7 +149,7 @@ export default async function LandingPage() {
                 </section>
 
                 {/* ── Features ────────────────────────────────── */}
-                <section id="features" className="relative py-24 px-8 max-w-7xl mx-auto">
+                <section id="features" className="relative py-24 px-4 sm:px-8 max-w-7xl mx-auto">
                     <div className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface">
                             Los 4 pilares del método{' '}
@@ -187,7 +187,7 @@ export default async function LandingPage() {
                 </section>
 
                 {/* ── Featured Courses ────────────────────────── */}
-                <section className="relative py-24 px-8 bg-surface-container-low/40 backdrop-blur-sm">
+                <section className="relative py-24 px-4 sm:px-8 bg-surface-container-low/40 backdrop-blur-sm">
                     <div className="max-w-7xl mx-auto">
                         <div className="flex justify-between items-end mb-16">
                             <div>
@@ -234,7 +234,7 @@ export default async function LandingPage() {
                 </section>
 
                 {/* ── Social Proof Stats ──────────────────────── */}
-                <section className="relative py-32 px-8 max-w-7xl mx-auto">
+                <section className="relative py-32 px-4 sm:px-8 max-w-7xl mx-auto">
                     <div className="grid grid-cols-2 md:flex md:flex-nowrap justify-center gap-8 md:gap-16">
                         {[
                             { value: '+100', label: 'Estudiantes certificados' },
@@ -255,7 +255,7 @@ export default async function LandingPage() {
                 </section>
 
                 {/* ── Testimonials ────────────────────────────── */}
-                <section id="testimonials" className="relative py-24 px-8 bg-surface-container-low/40 backdrop-blur-sm overflow-hidden">
+                <section id="testimonials" className="relative py-24 px-4 sm:px-8 bg-surface-container-low/40 backdrop-blur-sm overflow-hidden">
                     <div className="max-w-7xl mx-auto">
                         <h2 className="text-4xl font-black text-center mb-16 text-on-surface">
                             TESTIMONIOS ALUMNOS
@@ -268,7 +268,7 @@ export default async function LandingPage() {
                             ].map((video) => (
                                 <div
                                     key={video.src}
-                                    className="w-[300px] aspect-[9/16] rounded-2xl overflow-hidden border border-outline-variant/10 bg-surface-container"
+                                    className="w-full max-w-[300px] aspect-[9/16] rounded-2xl overflow-hidden border border-outline-variant/10 bg-surface-container"
                                 >
                                     <video
                                         controls
@@ -285,9 +285,9 @@ export default async function LandingPage() {
                 </section>
 
                 {/* ── Final CTA ──────────────────────────────── */}
-                <section className="relative py-32 px-8">
-                    <div className="max-w-5xl mx-auto glass p-16 rounded-xl text-center border border-secondary-container/20">
-                        <h2 className="text-5xl font-black text-on-surface mb-6">
+                <section className="relative py-16 sm:py-32 px-4 sm:px-8">
+                    <div className="max-w-5xl mx-auto glass p-8 sm:p-16 rounded-xl text-center border border-secondary-container/20">
+                        <h2 className="text-3xl sm:text-5xl font-black text-on-surface mb-6">
                             ¿Listo para Escalar Tu Carrera?
                         </h2>
                         <p className="text-xl text-on-surface-variant mb-10 max-w-2xl mx-auto">
@@ -315,7 +315,7 @@ export default async function LandingPage() {
             </main>
 
             {/* ── Footer ─────────────────────────────────── */}
-            <footer className="relative z-10 bg-[#0e131e]/80 backdrop-blur-sm border-t border-white/5 py-16 px-8">
+            <footer className="relative z-10 bg-[#0e131e]/80 backdrop-blur-sm border-t border-white/5 py-16 px-4 sm:px-8">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-12 max-w-7xl mx-auto">
                     <div className="space-y-6">
                         <div className="text-md font-bold text-slate-300">Growth Sales Academy</div>

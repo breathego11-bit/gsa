@@ -108,7 +108,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
         <div className="min-h-screen bg-surface flex flex-col">
             {/* ── Top Nav ─────────────────────────────────── */}
             <nav className="fixed top-0 w-full z-50 glass-header shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                <div className="flex justify-between items-center px-8 h-16 w-full max-w-[1440px] mx-auto">
+                <div className="flex justify-between items-center px-4 sm:px-8 h-16 w-full max-w-[1440px] mx-auto">
                     <div className="flex items-center gap-6">
                         <Link href="/" className="flex items-center gap-3">
                             <img src="/logo_dark.png" alt="GSA" className="h-8 w-auto" />
@@ -145,7 +145,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
             <div className="pt-16 flex flex-1 overflow-hidden">
                 {/* Left: Video + Info + Notes */}
                 <div className="flex-1 overflow-y-auto pb-24">
-                    <div className="p-8 max-w-5xl mx-auto space-y-8">
+                    <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
                         {/* Lesson Content by Type */}
                         {lesson.type === 'VIDEO' && (
                             <VideoPlaceholder
@@ -201,7 +201,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
 
                         {/* Resources */}
                         {Array.isArray(lesson.resources) && lesson.resources.length > 0 && (
-                            <div className="bg-surface-container-low rounded-3xl p-8 border border-white/5">
+                            <div className="bg-surface-container-low rounded-3xl p-4 sm:p-8 border border-white/5">
                                 <div className="flex items-center gap-3 mb-6">
                                     <MaterialIcon name="folder_open" size="text-2xl" className="text-tertiary" />
                                     <div>
@@ -238,7 +238,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                         )}
 
                         {/* Private Notes */}
-                        <div className="bg-surface-container-low rounded-3xl p-8 border border-white/5">
+                        <div className="bg-surface-container-low rounded-3xl p-4 sm:p-8 border border-white/5">
                             <div className="flex items-center gap-3 mb-6">
                                 <MaterialIcon name="edit_note" size="text-2xl" className="text-secondary" />
                                 <div>
@@ -248,6 +248,55 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                             </div>
                             <PrivateNotes lessonId={lessonId} initialContent={note?.content ?? ''} />
                         </div>
+                        {/* Mobile Course Outline */}
+                        <details className="lg:hidden bg-surface-container-low rounded-3xl border border-white/5 overflow-hidden">
+                            <summary className="flex items-center gap-3 p-4 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                                <MaterialIcon name="menu_book" size="text-2xl" className="text-primary" />
+                                <div className="flex-1">
+                                    <h3 className="font-bold text-on-surface text-sm">Contenido del curso</h3>
+                                    <p className="text-xs text-on-surface-variant">{coursePercent}% completado • {completedLessons}/{totalLessons} lecciones</p>
+                                </div>
+                                <MaterialIcon name="expand_more" size="text-xl" className="text-on-surface-variant transition-transform [[open]>&]:rotate-180" />
+                            </summary>
+                            <div className="p-4 pt-0 space-y-2 border-t border-white/5">
+                                {courseModules.map((mod) => (
+                                    <div key={mod.id}>
+                                        <div className="px-3 py-2">
+                                            <p className="text-[10px] uppercase tracking-[0.15em] font-bold text-on-surface-variant">
+                                                Módulo {String(mod.order).padStart(2, '0')}: {mod.title}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            {mod.lessons.map((l) => {
+                                                const isCurrent = l.id === lessonId
+                                                const isDone = progressMap.get(l.id) ?? false
+                                                return (
+                                                    <Link
+                                                        key={l.id}
+                                                        href={`/lesson/${l.id}`}
+                                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
+                                                            isCurrent ? 'border-l-2 border-primary bg-primary-container/5' : 'hover:bg-white/5'
+                                                        }`}
+                                                    >
+                                                        {isDone ? (
+                                                            <span className="material-symbols-outlined text-blue-500 text-lg shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                                        ) : isCurrent ? (
+                                                            <MaterialIcon name="play_circle" size="text-lg" className="text-primary shrink-0" />
+                                                        ) : (
+                                                            <MaterialIcon name="radio_button_unchecked" size="text-lg" className="text-on-surface-variant/40 shrink-0" />
+                                                        )}
+                                                        <span className={`flex-1 truncate ${isCurrent ? 'text-on-surface font-semibold' : isDone ? 'text-on-surface-variant' : 'text-on-surface-variant/70'}`}>
+                                                            {l.title}
+                                                        </span>
+                                                        {l.duration && <span className="text-[10px] text-on-surface-variant/50 shrink-0">{l.duration}m</span>}
+                                                    </Link>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </details>
                     </div>
                 </div>
 
@@ -362,7 +411,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
 
             {/* ── Footer Nav ─────────────────────────────── */}
             <footer className="fixed bottom-0 left-0 right-0 z-40 bg-surface-container/80 backdrop-blur-xl border-t border-white/5">
-                <div className="max-w-5xl mx-auto px-8 h-20 flex items-center justify-between">
+                <div className="max-w-5xl mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
                     {prev ? (
                         <Link
                             href={`/lesson/${prev.id}`}

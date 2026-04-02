@@ -100,7 +100,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
         <div className="min-h-screen bg-surface">
             {/* ── Nav ─────────────────────────────────────── */}
             <nav className="fixed top-0 w-full z-50 glass-header shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                <div className="flex justify-between items-center px-8 h-20 w-full max-w-[1440px] mx-auto">
+                <div className="flex justify-between items-center px-4 sm:px-8 h-20 w-full max-w-[1440px] mx-auto">
                     <Link href="/" className="flex items-center gap-3">
                         <img src="/logo_dark.png" alt="GSA" className="h-9 w-auto" />
                         <span className="text-xl font-bold tracking-tighter text-slate-100">
@@ -146,7 +146,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
 
             <main className="pt-20 min-h-screen">
                 {/* ── Hero ────────────────────────────────────── */}
-                <header className="relative w-full h-[450px] overflow-hidden">
+                <header className="relative w-full h-[300px] sm:h-[450px] overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         {course.hero_image ? (
                             <img
@@ -160,7 +160,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                         <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent" />
                     </div>
 
-                    <div className="relative z-10 max-w-7xl mx-auto px-8 h-full flex flex-col justify-end pb-12">
+                    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 h-full flex flex-col justify-end pb-8 sm:pb-12">
                         {/* Back button */}
                         <Link
                             href={session?.user.role === 'ADMIN' ? '/admin/courses' : session ? '/dashboard' : '/'}
@@ -180,7 +180,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                         Borrador
                                     </span>
                                 )}
-                                <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-on-surface max-w-3xl">
+                                <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter text-on-surface max-w-3xl">
                                     {course.title}
                                 </h1>
                                 <p className="text-on-surface-variant text-lg leading-relaxed max-w-2xl">
@@ -210,7 +210,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                 </header>
 
                 {/* ── Content Layout ──────────────────────────── */}
-                <div className="max-w-7xl mx-auto px-8 py-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 sm:py-16">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                         {/* Main: Curriculum */}
                         <div className="lg:col-span-8 space-y-12">
@@ -371,7 +371,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
             </main>
 
             {/* ── Footer ─────────────────────────────────── */}
-            <footer className="bg-surface border-t border-white/5 py-12 px-8">
+            <footer className="bg-surface border-t border-white/5 py-12 px-4 sm:px-8">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
                     <div className="flex flex-col gap-2">
                         <span className="text-md font-bold text-slate-300">Growth Sales Academy</span>

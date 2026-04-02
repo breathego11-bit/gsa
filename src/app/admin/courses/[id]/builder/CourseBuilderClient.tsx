@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { FormSchemaBuilder } from '@/components/admin/FormSchemaBuilder'
 import { ExamSchemaBuilder } from '@/components/admin/ExamSchemaBuilder'
@@ -76,9 +76,14 @@ export function CourseBuilderClient({ course: initial }: Props) {
 
     const toggleExpand = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
+    const editPanelRef = useRef<HTMLDivElement>(null)
+
     const selectLesson = (lesson: LessonData) => {
         setSelectedLessonId(lesson.id)
         setEditLesson({ ...lesson })
+        setTimeout(() => {
+            editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 100)
     }
 
     const deselectLesson = () => { setSelectedLessonId(null); setEditLesson(null) }
@@ -210,45 +215,51 @@ export function CourseBuilderClient({ course: initial }: Props) {
     return (
         <div className="flex flex-col min-h-screen">
             {/* ── Top Bar ──────────────────────────────────── */}
-            <header className="sticky top-0 z-40 h-14 flex items-center justify-between px-8 border-b border-white/5"
+            <header className="sticky top-0 z-40 h-14 flex items-center justify-between px-4 sm:px-8 border-b border-white/5"
                 style={{ background: 'rgba(14,19,30,0.6)', backdropFilter: 'blur(16px)' }}>
-                <div className="flex items-center gap-6">
-                    <Link href="/admin/courses" className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface transition-colors text-sm">
-                        <span className="material-symbols-outlined text-lg">arrow_back</span>
-                        Cursos
+                <div className="flex items-center gap-4">
+                    <Link href="/admin/courses" className="text-on-surface-variant hover:text-on-surface transition-colors active:scale-95 p-2 rounded-full">
+                        <span className="material-symbols-outlined lg:hidden">close</span>
+                        <span className="material-symbols-outlined hidden lg:inline text-lg">arrow_back</span>
                     </Link>
-                    <span className="text-lg font-bold text-on-surface">Course Builder</span>
+                    <span className="hidden lg:inline text-sm text-on-surface-variant">Cursos</span>
+                    <span className="text-lg font-bold tracking-tight text-on-surface">Course Builder</span>
                 </div>
                 <div className="flex items-center gap-3">
                     {saveMsg && (
-                        <span className="text-xs text-emerald-400 flex items-center gap-1">
+                        <span className="hidden sm:flex text-xs text-emerald-400 items-center gap-1">
                             <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                             {saveMsg}
                         </span>
                     )}
                     <Link href={`/course/${initial.id}`} target="_blank"
-                        className="px-4 py-1.5 rounded-lg border border-outline-variant text-on-surface text-sm hover:bg-surface-container-high transition-colors">
+                        className="hidden sm:inline-flex px-4 py-1.5 rounded-lg border border-outline-variant text-on-surface text-sm hover:bg-surface-container-high transition-colors">
                         Vista previa
                     </Link>
+                    {/* Mobile: text save button / Desktop: full button */}
                     <button onClick={saveCourse} disabled={saving}
-                        className="px-4 py-1.5 rounded-lg bg-primary-container text-on-primary-container font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                        className="lg:hidden text-blue-400 font-bold px-3 py-2 hover:bg-white/5 rounded-lg transition-colors active:scale-95 text-sm disabled:opacity-50">
+                        {saving ? 'Guardando...' : 'Guardar'}
+                    </button>
+                    <button onClick={saveCourse} disabled={saving}
+                        className="hidden lg:inline-flex px-4 py-1.5 rounded-lg bg-primary-container text-on-primary-container font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
                         {saving ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
                 </div>
             </header>
 
             {/* ── Main Workspace ───────────────────────────── */}
-            <div className="flex-1 flex gap-8 p-8 pb-24">
+            <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 p-4 sm:p-8 pb-24">
 
                 {/* Left Column: Course Tree */}
                 <div className="flex-1 space-y-8 min-w-0">
 
                     {/* Course Header */}
-                    <section className="bg-surface-container-low p-8 rounded-3xl space-y-4">
+                    <section className="bg-surface-container-low p-5 lg:p-8 rounded-xl lg:rounded-3xl space-y-4">
                         <div className="flex justify-between items-start">
                             <div className="flex-1 mr-4">
                                 <input type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={saveCourse}
-                                    className="bg-transparent border-none text-3xl font-bold text-on-surface p-0 focus:ring-0 w-full mb-2" />
+                                    className="bg-transparent border-none text-xl sm:text-3xl font-bold text-on-surface p-0 focus:ring-0 w-full mb-2" />
                                 <div className="flex items-center gap-6 text-sm text-on-surface-variant">
                                     {initial.instructor && (
                                         <span className="flex items-center gap-1">
@@ -264,17 +275,18 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                 </div>
                             </div>
                             {/* Publish toggle */}
-                            <button onClick={togglePublish} className="flex items-center gap-2 bg-surface-container-high p-1 rounded-full px-3">
-                                <span className={`text-xs font-semibold px-1 ${!published ? 'text-on-surface' : 'text-on-surface-variant'}`}>Borrador</span>
-                                <div className={`w-10 h-5 rounded-full relative transition-colors ${published ? 'bg-secondary-container' : 'bg-surface-container-highest'}`}>
-                                    <div className={`absolute top-0.5 w-4 h-4 bg-on-primary-container rounded-full shadow-sm transition-all ${published ? 'right-0.5' : 'left-0.5'}`} />
+                            <div className="flex items-center gap-3">
+                                <div className="relative inline-flex items-center cursor-pointer" onClick={togglePublish}>
+                                    <div className={`w-11 h-6 rounded-full transition-colors ${published ? 'bg-secondary-container' : 'bg-surface-container-highest'}`}>
+                                        <div className={`absolute top-[2px] w-5 h-5 bg-white rounded-full shadow-sm transition-all ${published ? 'right-[2px]' : 'left-[2px]'}`} />
+                                    </div>
                                 </div>
-                                <span className={`text-xs font-semibold px-1 ${published ? 'text-blue-400' : 'text-on-surface-variant'}`}>Publicado</span>
-                            </button>
+                                <span className="text-sm font-medium text-on-surface-variant">{published ? 'Publicado' : 'Borrador'}</span>
+                            </div>
                         </div>
                         <textarea value={description} onChange={e => setDescription(e.target.value)} onBlur={saveCourse}
                             placeholder="Descripción del curso..."
-                            className="bg-transparent border-none text-on-surface-variant p-0 focus:ring-0 w-full resize-none h-12 leading-relaxed text-sm" />
+                            className="hidden lg:block bg-transparent border-none text-on-surface-variant p-0 focus:ring-0 w-full resize-none h-12 leading-relaxed text-sm" />
                     </section>
 
                     {/* Modules Tree */}
@@ -285,11 +297,11 @@ export function CourseBuilderClient({ course: initial }: Props) {
                             const modDuration = modLessons.reduce((s, l) => s + (l.duration || 0), 0)
 
                             return (
-                                <div key={mod.id} className="bg-surface-container-low rounded-3xl overflow-hidden">
+                                <div key={mod.id} className="bg-surface-container-low rounded-xl lg:rounded-3xl overflow-hidden">
                                     {/* Module header */}
-                                    <div className="p-6 flex items-center justify-between border-b border-white/5">
-                                        <div className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(mod.id)}>
-                                            <span className="material-symbols-outlined text-on-surface-variant">drag_indicator</span>
+                                    <div className="p-4 lg:p-6 flex items-center justify-between border-b border-white/5">
+                                        <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(mod.id)}>
+                                            <span className="material-symbols-outlined text-on-surface-variant hidden lg:inline">drag_indicator</span>
                                             <span className="material-symbols-outlined text-on-surface-variant transition-transform"
                                                 style={{ transform: isOpen ? 'rotate(0)' : 'rotate(-90deg)' }}>
                                                 expand_more
@@ -337,32 +349,35 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                 return (
                                                     <div key={lesson.id}
                                                         onClick={() => selectLesson(lesson)}
-                                                        className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all group ${
+                                                        className={`flex items-center justify-between p-3 lg:p-4 rounded-lg lg:rounded-2xl cursor-pointer transition-all group ${
                                                             isSelected
-                                                                ? 'bg-surface-container-high border-l-4 border-blue-500 shadow-xl'
-                                                                : 'bg-surface-container hover:bg-surface-container-high'
+                                                                ? 'bg-blue-600/10 border-l-4 border-secondary-container lg:shadow-xl'
+                                                                : 'hover:bg-surface-container-high'
                                                         }`}>
-                                                        <div className="flex items-center gap-4 min-w-0">
-                                                            <span className="material-symbols-outlined text-on-surface-variant/40 group-hover:text-on-surface-variant transition-colors">drag_indicator</span>
-                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                                                isSelected ? 'bg-primary-container/20 text-blue-400' : 'bg-surface-container-highest text-on-surface-variant'
+                                                        <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+                                                            <span className="material-symbols-outlined text-on-surface-variant/40 group-hover:text-on-surface-variant transition-colors hidden lg:inline">drag_indicator</span>
+                                                            <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                                                                isSelected ? 'bg-secondary-container/20 text-secondary' : 'bg-surface-variant text-on-surface-variant'
                                                             }`}>
-                                                                <span className="material-symbols-outlined">{TYPE_ICON[lesson.type] || 'videocam'}</span>
+                                                                <span className="material-symbols-outlined text-lg"
+                                                                    style={lesson.type === 'VIDEO' ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                                                                >{TYPE_ICON[lesson.type] || 'videocam'}</span>
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <h4 className={`font-medium truncate ${isSelected ? 'text-blue-400' : 'text-on-surface'}`}>
+                                                                <h4 className={`text-sm font-medium lg:font-medium truncate ${isSelected ? 'font-bold text-on-surface' : 'text-on-surface'}`}>
                                                                     {lesson.title}
                                                                 </h4>
                                                                 <p className="text-xs text-on-surface-variant">
+                                                                    {lesson.duration ? `${fmtDuration(lesson.duration)} • ` : ''}
                                                                     {TYPE_LABEL[lesson.type] || 'Video'}
-                                                                    {lesson.duration ? ` • ${fmtDuration(lesson.duration)}` : ''}
                                                                     {lesson.is_final_exam ? ' • Examen Final' : ''}
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                        <div className="flex items-center gap-2 lg:gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity shrink-0">
+                                                            <span className="material-symbols-outlined text-sm text-secondary lg:hidden" onClick={e => { e.stopPropagation(); selectLesson(lesson) }}>edit</span>
                                                             <button onClick={e => { e.stopPropagation(); deleteLesson(mod.id, lesson.id) }}
-                                                                className="p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:!text-red-400 transition-colors">
+                                                                className="p-1 lg:p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:!text-red-400 transition-colors">
                                                                 <span className="material-symbols-outlined text-sm">delete</span>
                                                             </button>
                                                         </div>
@@ -386,13 +401,13 @@ export function CourseBuilderClient({ course: initial }: Props) {
 
                 {/* Right Column: Edit Lesson Panel */}
                 {editLesson && (
-                    <aside className={`shrink-0 transition-all ${editLesson.type === 'FORM' || editLesson.type === 'EXAM' ? 'w-[540px]' : 'w-96'}`}>
-                        <div className="glass-panel sticky top-20 rounded-3xl p-6 border border-white/5 space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-on-surface">Editar Lección</h2>
+                    <aside ref={editPanelRef} className={`shrink-0 transition-all w-full ${editLesson.type === 'FORM' || editLesson.type === 'EXAM' ? 'lg:w-[540px]' : 'lg:w-96'}`}>
+                        <div className="bg-surface-container-high rounded-t-3xl lg:rounded-3xl -mx-4 lg:mx-0 p-6 pt-8 lg:p-6 shadow-[0_-20px_40px_rgba(0,0,0,0.5)] lg:shadow-none border-t border-outline-variant/10 lg:border lg:border-white/5 space-y-6 lg:sticky lg:top-20 lg:glass-panel">
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-lg font-bold text-on-surface">Editar Lección</h2>
                                 <button onClick={deselectLesson}
-                                    className="p-2 bg-surface-container-high rounded-xl text-on-surface-variant hover:text-on-surface transition-colors">
-                                    <span className="material-symbols-outlined">close</span>
+                                    className="text-on-surface-variant hover:text-on-surface transition-colors">
+                                    <span className="material-symbols-outlined">expand_more</span>
                                 </button>
                             </div>
 
@@ -674,35 +689,59 @@ export function CourseBuilderClient({ course: initial }: Props) {
             </div>
 
             {/* ── Footer Status Bar ────────────────────────── */}
-            <footer className="sticky bottom-0 z-40 h-16 border-t border-white/5 flex items-center justify-between px-8"
+            <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/5 px-4 sm:px-8 lg:sticky lg:left-auto lg:right-auto"
                 style={{ background: '#0e131e' }}>
-                <div className="flex items-center gap-8">
-                    <div>
-                        <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block">Progreso del curso</span>
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-on-surface">
-                                {modules.length} {modules.length === 1 ? 'Módulo' : 'Módulos'}, {totalLessons} {totalLessons === 1 ? 'Lección' : 'Lecciones'}
-                            </span>
-                            <span className="w-1 h-1 bg-on-surface-variant rounded-full" />
-                            <span className="text-sm font-semibold text-on-surface">{fmtDuration(totalDuration)} Total</span>
+                {/* Mobile footer */}
+                <div className="lg:hidden py-4 flex items-center justify-between gap-4">
+                    <div className="flex gap-4">
+                        <div className="text-center">
+                            <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant/60">Módulos</p>
+                            <p className="font-bold text-on-surface text-sm">{modules.length}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant/60">Lecciones</p>
+                            <p className="font-bold text-on-surface text-sm">{totalLessons}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant/60">Min</p>
+                            <p className="font-bold text-on-surface text-sm">{totalDuration}</p>
                         </div>
                     </div>
-                    {hasFinalExam ? (
-                        <div className="flex items-center gap-2 text-emerald-400">
-                            <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            <span className="text-xs font-bold uppercase tracking-widest">Listo para publicar</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 text-amber-400">
-                            <span className="material-symbols-outlined text-lg">warning</span>
-                            <span className="text-xs font-bold uppercase tracking-widest">Falta examen final</span>
-                        </div>
-                    )}
+                    <button onClick={togglePublish}
+                        className="flex-1 max-w-[200px] bg-gradient-to-r from-secondary-container to-primary-container text-white text-xs uppercase tracking-widest font-extrabold py-3.5 px-6 rounded-2xl active:scale-95 transition-transform shadow-lg shadow-blue-900/40">
+                        {published ? 'Despublicar' : 'Publicar'}
+                    </button>
                 </div>
-                <button onClick={togglePublish}
-                    className="px-8 py-2.5 rounded-full bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-container font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-blue-900/20">
-                    {published ? 'Despublicar Curso' : 'Publicar Curso'}
-                </button>
+                {/* Desktop footer */}
+                <div className="hidden lg:flex h-16 items-center justify-between">
+                    <div className="flex items-center gap-8">
+                        <div>
+                            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block">Progreso del curso</span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-semibold text-on-surface">
+                                    {modules.length} {modules.length === 1 ? 'Módulo' : 'Módulos'}, {totalLessons} {totalLessons === 1 ? 'Lección' : 'Lecciones'}
+                                </span>
+                                <span className="w-1 h-1 bg-on-surface-variant rounded-full" />
+                                <span className="text-sm font-semibold text-on-surface">{fmtDuration(totalDuration)} Total</span>
+                            </div>
+                        </div>
+                        {hasFinalExam ? (
+                            <div className="flex items-center gap-2 text-emerald-400">
+                                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                <span className="text-xs font-bold uppercase tracking-widest">Listo para publicar</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-amber-400">
+                                <span className="material-symbols-outlined text-lg">warning</span>
+                                <span className="text-xs font-bold uppercase tracking-widest">Falta examen final</span>
+                            </div>
+                        )}
+                    </div>
+                    <button onClick={togglePublish}
+                        className="px-8 py-2.5 rounded-full bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-container font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-blue-900/20">
+                        {published ? 'Despublicar Curso' : 'Publicar Curso'}
+                    </button>
+                </div>
             </footer>
         </div>
     )

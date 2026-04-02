@@ -151,17 +151,17 @@ export function AdminLessonsClient({ courses, modules, lessons: initialLessons, 
                         <table className="w-full text-sm">
                             <thead>
                                 <tr style={{ background: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-12" style={{ color: 'var(--text-secondary)' }}>#</th>
+                                    <th className="hidden sm:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-12" style={{ color: 'var(--text-secondary)' }}>#</th>
                                     <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Lección</th>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Tipo</th>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Duración</th>
+                                    <th className="hidden md:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Tipo</th>
+                                    <th className="hidden sm:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Duración</th>
                                     <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {lessons.map((lesson) => (
                                     <tr key={lesson.id} className="table-row-base">
-                                        <td className="px-5 py-4 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                        <td className="hidden sm:table-cell px-5 py-4 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
                                             {lesson.order}
                                         </td>
                                         <td className="px-5 py-4">
@@ -174,13 +174,13 @@ export function AdminLessonsClient({ courses, modules, lessons: initialLessons, 
                                                 </p>
                                             )}
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="hidden md:table-cell px-5 py-4">
                                             <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                 <MaterialIcon name={typeConfig[lesson.type]?.icon || 'play_circle'} size="text-sm" />
                                                 {typeConfig[lesson.type]?.label || 'Video'}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="hidden sm:table-cell px-5 py-4">
                                             <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                 <Clock size={13} />
                                                 {fmtDuration(lesson.duration)}

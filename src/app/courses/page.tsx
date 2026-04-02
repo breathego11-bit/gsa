@@ -37,7 +37,7 @@ export default async function CoursesPage() {
         <div className="min-h-screen bg-surface">
             {/* ── Nav ─────────────────────────────────────── */}
             <nav className="fixed top-0 w-full z-50 bg-[#0e131e]/60 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                <div className="flex justify-between items-center px-8 h-20 w-full max-w-[1440px] mx-auto">
+                <div className="flex justify-between items-center px-4 sm:px-8 h-20 w-full max-w-[1440px] mx-auto">
                     <div className="flex items-center gap-8">
                         <Link href="/" className="flex items-center gap-3">
                             <img src="/logo_dark.png" alt="GSA" className="h-9 w-auto" />
@@ -94,7 +94,7 @@ export default async function CoursesPage() {
                 </div>
             </nav>
 
-            <main className="pt-32 pb-20 px-8 max-w-[1440px] mx-auto">
+            <main className="pt-32 pb-20 px-4 sm:px-8 max-w-[1440px] mx-auto">
                 {/* ── Header ──────────────────────────────────── */}
                 <header className="mb-16">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
@@ -102,7 +102,7 @@ export default async function CoursesPage() {
                             <span className="uppercase tracking-[0.1em] text-[12px] font-bold text-secondary mb-4 block">
                                 Catálogo de la Academia
                             </span>
-                            <h1 className="text-5xl font-extrabold tracking-tight text-on-surface mb-6">
+                            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-on-surface mb-6">
                                 Domina el arte de las{' '}
                                 <span className="bg-gradient-to-r from-secondary to-tertiary bg-clip-text text-transparent">
                                     ventas de alto ticket.
@@ -196,7 +196,7 @@ export default async function CoursesPage() {
             </main>
 
             {/* ── Footer ─────────────────────────────────── */}
-            <footer className="bg-[#0e131e] w-full py-12 px-8 border-t border-white/5">
+            <footer className="bg-[#0e131e] w-full py-12 px-4 sm:px-8 border-t border-white/5">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
                     <div className="flex flex-col gap-2">
                         <span className="text-md font-bold text-slate-300">Growth Sales Academy</span>

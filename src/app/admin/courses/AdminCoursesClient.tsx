@@ -88,13 +88,13 @@ export function AdminCoursesClient({ courses: initialCourses }: { courses: Cours
                                     <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                                         Título
                                     </th>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    <th className="hidden sm:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                                         Módulos
                                     </th>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    <th className="hidden sm:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                                         Inscritos
                                     </th>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    <th className="hidden md:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                                         Estado
                                     </th>
                                     <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -113,19 +113,19 @@ export function AdminCoursesClient({ courses: initialCourses }: { courses: Cours
                                                 {course.description}
                                             </p>
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="hidden sm:table-cell px-5 py-4">
                                             <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                 <Layers size={13} />
                                                 {course._count.modules}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="hidden sm:table-cell px-5 py-4">
                                             <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                 <Users size={13} />
                                                 {course._count.enrollments}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="hidden md:table-cell px-5 py-4">
                                             <Badge variant={course.published ? 'published' : 'draft'}>
                                                 {course.published ? 'Publicado' : 'Borrador'}
                                             </Badge>

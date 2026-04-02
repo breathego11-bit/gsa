@@ -96,22 +96,22 @@ export function AdminModulesClient({ courses, selectedCourseId, modules: initial
                         <table className="w-full text-sm">
                             <thead>
                                 <tr style={{ background: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-16" style={{ color: 'var(--text-secondary)' }}>#</th>
+                                    <th className="hidden sm:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-16" style={{ color: 'var(--text-secondary)' }}>#</th>
                                     <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Módulo</th>
-                                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Lecciones</th>
+                                    <th className="hidden sm:table-cell px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Lecciones</th>
                                     <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {modules.map((mod) => (
                                     <tr key={mod.id} className="table-row-base">
-                                        <td className="px-5 py-4 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                        <td className="hidden sm:table-cell px-5 py-4 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
                                             {mod.order}
                                         </td>
                                         <td className="px-5 py-4 font-medium" style={{ color: 'var(--text-primary)' }}>
                                             {mod.title}
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="hidden sm:table-cell px-5 py-4">
                                             <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                 <PlaySquare size={13} />
                                                 {mod._count.lessons}

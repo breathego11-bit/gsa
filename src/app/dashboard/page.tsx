@@ -131,10 +131,10 @@ export default async function DashboardPage() {
             {/* ── Hero Bento Grid ─────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Greeting Card */}
-                <div className="lg:col-span-2 relative overflow-hidden rounded-xl bg-surface-container-low p-8 flex flex-col justify-between min-h-[280px]">
+                <div className="lg:col-span-2 relative overflow-hidden rounded-xl bg-surface-container-low p-5 sm:p-8 flex flex-col justify-between min-h-[220px] sm:min-h-[280px]">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] -mr-32 -mt-32" />
                     <div className="relative z-10">
-                        <h2 className="text-4xl font-bold tracking-tight text-on-surface mb-2">
+                        <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-on-surface mb-2">
                             Bienvenido, {session!.user.name}.
                         </h2>
                         <p className="text-on-surface-variant max-w-md">
@@ -143,18 +143,18 @@ export default async function DashboardPage() {
                                 : 'Empieza tu camino de aprendizaje inscribiéndote en un curso.'}
                         </p>
                     </div>
-                    <div className="relative z-10 flex gap-12 mt-8">
+                    <div className="relative z-10 flex gap-6 sm:gap-12 mt-8">
                         <div>
                             <p className="text-[10px] uppercase tracking-[0.15em] font-bold text-blue-500 mb-1">Inscripciones</p>
-                            <p className="text-3xl font-black text-on-surface">{coursesWithProgress.length}</p>
+                            <p className="text-2xl sm:text-3xl font-black text-on-surface">{coursesWithProgress.length}</p>
                         </div>
                         <div>
                             <p className="text-[10px] uppercase tracking-[0.15em] font-bold text-blue-500 mb-1">Completación</p>
-                            <p className="text-3xl font-black text-on-surface">{overallPercent}%</p>
+                            <p className="text-2xl sm:text-3xl font-black text-on-surface">{overallPercent}%</p>
                         </div>
                         <div>
                             <p className="text-[10px] uppercase tracking-[0.15em] font-bold text-blue-500 mb-1">Lecciones</p>
-                            <p className="text-3xl font-black text-on-surface">{totalCompleted}</p>
+                            <p className="text-2xl sm:text-3xl font-black text-on-surface">{totalCompleted}</p>
                         </div>
                     </div>
                 </div>
