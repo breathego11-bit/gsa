@@ -261,18 +261,22 @@ export default async function LandingPage() {
                             TESTIMONIOS ALUMNOS
                         </h2>
                         <div className="flex justify-center gap-6 flex-wrap">
-                            {['/testimonio-1-p1-opt.mp4', '/testimonio-1-p2-opt.mp4'].map((src) => (
+                            {[
+                                { src: '/testimonio-1-p1-opt.mp4', type: 'video/mp4' },
+                                { src: '/testimonio-1-p2-opt.mp4', type: 'video/mp4' },
+                                { src: '/testi3-opt.mp4', type: 'video/mp4' },
+                            ].map((video) => (
                                 <div
-                                    key={src}
+                                    key={video.src}
                                     className="w-[300px] aspect-[9/16] rounded-2xl overflow-hidden border border-outline-variant/10 bg-surface-container"
                                 >
                                     <video
                                         controls
-                                        preload="auto"
+                                        preload="metadata"
                                         playsInline
                                         className="w-full h-full object-cover"
                                     >
-                                        <source src={src} type="video/mp4" />
+                                        <source src={video.src} type={video.type} />
                                     </video>
                                 </div>
                             ))}
