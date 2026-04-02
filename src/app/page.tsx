@@ -243,7 +243,7 @@ export default async function LandingPage() {
                             { value: '+450.000€', label: 'Generados por los cursos' },
                         ].map((stat) => (
                             <div key={stat.label} className="text-center">
-                                <div className="text-5xl md:text-7xl font-black text-secondary mb-2">
+                                <div className="text-3xl sm:text-5xl md:text-7xl font-black text-secondary mb-2 whitespace-nowrap">
                                     {stat.value}
                                 </div>
                                 <div className="uppercase tracking-widest text-on-surface-variant text-sm">
