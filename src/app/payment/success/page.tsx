@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import Link from 'next/link'
 
 export default async function PaymentSuccessPage({
@@ -18,6 +18,7 @@ export default async function PaymentSuccessPage({
     // Verify payment with Stripe and activate user if webhook hasn't processed yet
     if (session_id) {
         try {
+            const stripe = getStripe()
             const checkoutSession = await stripe.checkout.sessions.retrieve(session_id)
 
             if (checkoutSession.payment_status === 'paid' || checkoutSession.status === 'complete') {
