@@ -16,11 +16,24 @@ interface StudentInfo {
     phone: string | null
     profile_image: string | null
     created_at: string
+    payment_status: string
+}
+
+interface PaymentInfo {
+    id: string
+    payment_type: string
+    amount_total: number
+    currency: string
+    status: string
+    installments_paid: number
+    installments_total: number
+    created_at: string
 }
 
 interface Props {
     student: StudentInfo
     courses: CourseEnrollmentProgress[]
+    payments: PaymentInfo[]
 }
 
 function formatDate(iso: string) {
@@ -31,7 +44,23 @@ function formatDate(iso: string) {
     })
 }
 
-export function StudentDetailClient({ student, courses }: Props) {
+function formatAmount(cents: number, currency: string) {
+    return (cents / 100).toLocaleString('es-ES', { style: 'currency', currency: currency.toUpperCase() })
+}
+
+const paymentStatusLabels: Record<string, { label: string; color: string }> = {
+    none: { label: 'Sin pago', color: 'bg-surface-variant text-on-surface-variant' },
+    active: { label: 'Activo', color: 'bg-emerald-500/20 text-emerald-400' },
+    past_due: { label: 'Pago pendiente', color: 'bg-amber-500/20 text-amber-400' },
+    cancelled: { label: 'Cancelado', color: 'bg-red-500/20 text-red-400' },
+}
+
+const paymentTypeLabels: Record<string, string> = {
+    one_time: 'Pago Completo',
+    installment: 'Plan de Cuotas',
+}
+
+export function StudentDetailClient({ student, courses, payments }: Props) {
     return (
         <div className="space-y-8">
             {/* Back link */}
@@ -91,6 +120,101 @@ export function StudentDetailClient({ student, courses }: Props) {
                     </div>
                 </div>
             </Card>
+
+            {/* Payment info */}
+            <div>
+                <h2 className="section-title mb-1">Información de Pago</h2>
+                <p className="section-subtitle mb-6">Estado de la suscripción y pagos realizados</p>
+
+                <Card>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--bg-raised)' }}>
+                                <MaterialIcon name="payments" size="text-xl" className="text-secondary" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Estado de acceso</p>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${paymentStatusLabels[student.payment_status]?.color || paymentStatusLabels.none.color}`}>
+                                    {paymentStatusLabels[student.payment_status]?.label || 'Sin pago'}
+                                </span>
+                            </div>
+                        </div>
+                        {payments.length > 0 && (() => {
+                            const totalPaid = payments.reduce((sum, p) => {
+                                if (p.status === 'failed') return sum
+                                if (p.payment_type === 'one_time' && p.status === 'completed') return sum + p.amount_total
+                                if (p.payment_type === 'installment') return sum + (p.installments_paid * Math.round(p.amount_total / p.installments_total))
+                                return sum
+                            }, 0)
+                            return (
+                                <div className="text-right">
+                                    <p className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
+                                        {formatAmount(totalPaid, payments[0].currency)}
+                                    </p>
+                                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Total pagado</p>
+                                </div>
+                            )
+                        })()}
+                    </div>
+
+                    {payments.length === 0 ? (
+                        <p className="text-sm py-4 text-center" style={{ color: 'var(--text-secondary)' }}>
+                            Este estudiante no ha realizado pagos.
+                        </p>
+                    ) : (
+                        <div className="space-y-3">
+                            {payments.map((p) => {
+                                const perInstallment = Math.round(p.amount_total / p.installments_total)
+                                const amountPaid = p.payment_type === 'installment'
+                                    ? p.installments_paid * perInstallment
+                                    : (p.status === 'completed' ? p.amount_total : 0)
+
+                                return (
+                                    <div
+                                        key={p.id}
+                                        className="flex items-center justify-between p-4 rounded-xl"
+                                        style={{ background: 'var(--bg-raised)' }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <MaterialIcon
+                                                name={p.payment_type === 'one_time' ? 'credit_card' : 'event_repeat'}
+                                                size="text-lg"
+                                                className={p.status === 'completed' ? 'text-emerald-400' : p.status === 'failed' ? 'text-red-400' : 'text-blue-400'}
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                                    {paymentTypeLabels[p.payment_type] || p.payment_type}
+                                                </p>
+                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                    {formatDate(p.created_at)}
+                                                    {p.payment_type === 'installment' && ` • Cuota ${p.installments_paid}/${p.installments_total}`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                                {formatAmount(amountPaid, p.currency)}
+                                                {p.payment_type === 'installment' && (
+                                                    <span className="text-xs font-normal" style={{ color: 'var(--text-secondary)' }}>
+                                                        {' '}/ {formatAmount(p.amount_total, p.currency)}
+                                                    </span>
+                                                )}
+                                            </p>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                                p.status === 'completed' ? 'text-emerald-400'
+                                                    : p.status === 'failed' ? 'text-red-400'
+                                                        : 'text-blue-400'
+                                            }`}>
+                                                {p.status === 'completed' ? 'Completado' : p.status === 'failed' ? 'Fallido' : p.payment_type === 'installment' ? `${p.installments_paid} de ${p.installments_total} cuotas` : 'Pendiente'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </Card>
+            </div>
 
             {/* Course progress table */}
             <div>

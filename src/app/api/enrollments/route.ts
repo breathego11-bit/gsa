@@ -11,6 +11,17 @@ export async function POST(req: NextRequest) {
         const { course_id } = await req.json()
         if (!course_id) return NextResponse.json({ error: 'course_id is required' }, { status: 400 })
 
+        // Check payment status (admins bypass)
+        if (session.user.role !== 'ADMIN') {
+            const user = await prisma.user.findUnique({
+                where: { id: session.user.id },
+                select: { payment_status: true },
+            })
+            if (user?.payment_status !== 'active') {
+                return NextResponse.json({ error: 'Payment required' }, { status: 402 })
+            }
+        }
+
         const enrollment = await prisma.enrollment.create({
             data: { user_id: session.user.id, course_id },
         })

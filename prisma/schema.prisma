@@ -35,12 +35,16 @@ model User {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
+  payment_status     String    @default("none")   // none | active | past_due | cancelled
+  stripe_customer_id String?   @unique
+
   enrollments        Enrollment[]
   progress           LessonProgress[]
   notes              LessonNote[]
   instructed_courses Course[]          @relation("CourseInstructor")
   form_submissions   FormSubmission[]
   exam_attempts      ExamAttempt[]
+  payments           Payment[]
 }
 
 model Course {
@@ -168,4 +172,23 @@ model ExamAttempt {
   lesson      Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, lesson_id])
+}
+
+model Payment {
+  id                     String   @id @default(cuid())
+  user_id                String
+  stripe_checkout_id     String?  @unique
+  stripe_subscription_id String?
+  payment_type           String   // one_time | installment
+  amount_total           Int      // Total in cents (188800 or 222201)
+  currency               String   @default("eur")
+  status                 String   @default("pending") // pending | completed | failed
+  installments_paid      Int      @default(0)
+  installments_total     Int      @default(1)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  user                   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }

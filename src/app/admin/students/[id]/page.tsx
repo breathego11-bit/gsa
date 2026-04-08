@@ -11,7 +11,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     const { id } = await params
 
-    const [student, enrollments, progressRecords] = await Promise.all([
+    const [student, enrollments, progressRecords, payments] = await Promise.all([
         prisma.user.findUnique({
             where: { id, role: 'STUDENT' },
             select: {
@@ -23,6 +23,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 phone: true,
                 profile_image: true,
                 created_at: true,
+                payment_status: true,
             },
         }),
         prisma.enrollment.findMany({
@@ -48,6 +49,20 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         prisma.lessonProgress.findMany({
             where: { user_id: id },
             select: { lesson_id: true, completed: true, score: true, passed: true },
+        }),
+        prisma.payment.findMany({
+            where: { user_id: id },
+            select: {
+                id: true,
+                payment_type: true,
+                amount_total: true,
+                currency: true,
+                status: true,
+                installments_paid: true,
+                installments_total: true,
+                created_at: true,
+            },
+            orderBy: { created_at: 'desc' },
         }),
     ])
 
@@ -83,6 +98,17 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         }
     })
 
+    const paymentData = payments.map((p) => ({
+        id: p.id,
+        payment_type: p.payment_type,
+        amount_total: p.amount_total,
+        currency: p.currency,
+        status: p.status,
+        installments_paid: p.installments_paid,
+        installments_total: p.installments_total,
+        created_at: p.created_at.toISOString(),
+    }))
+
     return (
         <StudentDetailClient
             student={{
@@ -94,8 +120,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 phone: student.phone,
                 profile_image: student.profile_image,
                 created_at: student.created_at.toISOString(),
+                payment_status: student.payment_status,
             }}
             courses={courses}
+            payments={paymentData}
         />
     )
 }

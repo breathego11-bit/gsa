@@ -20,11 +20,18 @@ export default async function DashboardCoursesPage() {
         orderBy: { created_at: 'desc' },
     })
 
-    const enrollments = await prisma.enrollment.findMany({
-        where: { user_id: session!.user.id },
-        select: { course_id: true },
-    })
+    const [enrollments, user] = await Promise.all([
+        prisma.enrollment.findMany({
+            where: { user_id: session!.user.id },
+            select: { course_id: true },
+        }),
+        prisma.user.findUnique({
+            where: { id: session!.user.id },
+            select: { payment_status: true },
+        }),
+    ])
     const enrolledCourseIds = enrollments.map((e) => e.course_id)
+    const hasPaid = user?.payment_status === 'active'
 
     const coursesData = courses.map((course) => {
         const lessonCount = course.modules.reduce(
@@ -42,12 +49,11 @@ export default async function DashboardCoursesPage() {
             title: course.title,
             description: course.description,
             thumbnail: course.thumbnail,
-            price: course.price,
             lessonCount,
             totalDurationMinutes,
             isEnrolled: enrolledCourseIds.includes(course.id),
         }
     })
 
-    return <DashboardCoursesClient courses={coursesData} />
+    return <DashboardCoursesClient courses={coursesData} hasPaid={hasPaid} />
 }

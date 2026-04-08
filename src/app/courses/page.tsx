@@ -23,14 +23,22 @@ export default async function CoursesPage() {
         orderBy: { created_at: 'desc' },
     })
 
-    // Get user's enrollments if logged in
+    // Get user's enrollments and payment status if logged in
     let enrolledCourseIds: string[] = []
+    let hasPaid = false
     if (session) {
-        const enrollments = await prisma.enrollment.findMany({
-            where: { user_id: session.user.id },
-            select: { course_id: true },
-        })
+        const [enrollments, user] = await Promise.all([
+            prisma.enrollment.findMany({
+                where: { user_id: session.user.id },
+                select: { course_id: true },
+            }),
+            prisma.user.findUnique({
+                where: { id: session.user.id },
+                select: { payment_status: true, role: true },
+            }),
+        ])
         enrolledCourseIds = enrollments.map((e) => e.course_id)
+        hasPaid = user?.role === 'ADMIN' || user?.payment_status === 'active'
     }
 
     return (
@@ -161,12 +169,12 @@ export default async function CoursesPage() {
                                     title={course.title}
                                     description={course.description}
                                     thumbnail={course.thumbnail}
-                                    price={course.price}
                                     published={course.published}
                                     lessonCount={lessonCount}
                                     totalDurationMinutes={totalDurationMinutes}
                                     isEnrolled={enrolledCourseIds.includes(course.id)}
                                     isAuthenticated={!!session}
+                                    hasPaid={hasPaid}
                                 />
                             )
                         })}

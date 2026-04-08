@@ -10,6 +10,7 @@ declare module "next-auth" {
             image?: string | null;
             profile_image?: string | null;
             role: string;
+            payment_status: string;
         };
     }
 
@@ -17,6 +18,7 @@ declare module "next-auth" {
         role: string;
         last_name?: string | null;
         profile_image?: string | null;
+        payment_status?: string;
     }
 }
 
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
         role: string;
         last_name?: string | null;
         profile_image?: string | null;
+        payment_status?: string;
     }
 }

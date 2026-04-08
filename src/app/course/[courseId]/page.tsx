@@ -63,16 +63,25 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
     }
 
     let isEnrolled = false
+    let hasPaid = false
     if (session) {
         if (session.user.role === 'ADMIN') {
             isEnrolled = true
+            hasPaid = true
         } else {
-            const enrollment = await prisma.enrollment.findUnique({
-                where: {
-                    user_id_course_id: { user_id: session.user.id, course_id: courseId },
-                },
-            })
+            const [enrollment, user] = await Promise.all([
+                prisma.enrollment.findUnique({
+                    where: {
+                        user_id_course_id: { user_id: session.user.id, course_id: courseId },
+                    },
+                }),
+                prisma.user.findUnique({
+                    where: { id: session.user.id },
+                    select: { payment_status: true },
+                }),
+            ])
             isEnrolled = !!enrollment
+            hasPaid = user?.payment_status === 'active'
         }
     }
 
@@ -292,10 +301,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                     <p className="text-sm text-on-surface-variant">
                                         Inscríbete para desbloquear todas las lecciones y seguir tu progreso.
                                     </p>
-                                    {course.price != null && (
-                                        <p className="text-3xl font-black text-on-surface">${course.price.toLocaleString()}</p>
-                                    )}
-                                    <EnrollButton courseId={course.id} isAuthenticated={!!session} />
+                                    <EnrollButton courseId={course.id} isAuthenticated={!!session} hasPaid={hasPaid} />
                                 </div>
                             )}
 

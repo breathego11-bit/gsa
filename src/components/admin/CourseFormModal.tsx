@@ -85,9 +85,6 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
             description: (form.elements.namedItem('description') as HTMLTextAreaElement).value,
             thumbnail: thumbnailUrl,
             hero_image: heroImageUrl,
-            price: (form.elements.namedItem('price') as HTMLInputElement).value
-                ? Number((form.elements.namedItem('price') as HTMLInputElement).value)
-                : null,
             instructor_id: instructorId,
         }
 
@@ -181,15 +178,6 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
                         ))}
                     </select>
                 </div>
-
-                <Input
-                    label="Precio (opcional)"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    defaultValue={initial?.price?.toString() ?? ''}
-                    placeholder="0.00"
-                />
 
                 {error && (
                     <p className="text-sm rounded-xl p-3" style={{ color: 'var(--error)', background: 'rgba(239,68,68,0.08)' }}>

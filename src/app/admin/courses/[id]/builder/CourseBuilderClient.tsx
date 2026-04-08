@@ -49,7 +49,6 @@ export function CourseBuilderClient({ course: initial }: Props) {
     // Course state
     const [title, setTitle] = useState(initial.title)
     const [description, setDescription] = useState(initial.description)
-    const [price, setPrice] = useState(initial.price != null ? String(initial.price) : '')
     const [published, setPublished] = useState(initial.published)
     const [modules, setModules] = useState<ModuleData[]>(initial.modules)
     const [saving, setSaving] = useState(false)
@@ -95,12 +94,12 @@ export function CourseBuilderClient({ course: initial }: Props) {
         try {
             const res = await fetch(`/api/courses/${initial.id}`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description, price: price ? Number(price) : null }),
+                body: JSON.stringify({ title, description }),
             })
             setSaveMsg(res.ok ? 'Guardado' : 'Error al guardar')
             setTimeout(() => setSaveMsg(null), 2000)
         } finally { setSaving(false) }
-    }, [initial.id, title, description, price])
+    }, [initial.id, title, description])
 
     // ── Publish toggle ──
 
@@ -267,11 +266,6 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                             {initial.instructor.name} {initial.instructor.last_name}
                                         </span>
                                     )}
-                                    <span className="flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-sm">payments</span>
-                                        <input type="number" value={price} onChange={e => setPrice(e.target.value)} onBlur={saveCourse}
-                                            placeholder="Gratis" className="bg-transparent border-none p-0 w-20 text-sm font-bold text-secondary focus:ring-0" />
-                                    </span>
                                 </div>
                             </div>
                             {/* Publish toggle */}

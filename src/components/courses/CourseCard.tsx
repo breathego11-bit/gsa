@@ -7,12 +7,12 @@ interface CourseCardProps {
     title: string
     description: string
     thumbnail: string | null
-    price: number | null
     published: boolean
     lessonCount: number
     totalDurationMinutes: number
     isEnrolled: boolean
     isAuthenticated: boolean
+    hasPaid?: boolean
 }
 
 function formatDuration(minutes: number): string {
@@ -36,12 +36,12 @@ export function CourseCard({
     title,
     description,
     thumbnail,
-    price,
     published,
     lessonCount,
     totalDurationMinutes,
     isEnrolled,
     isAuthenticated,
+    hasPaid = false,
 }: CourseCardProps) {
     // Deterministic gradient based on id hash
     const gradientIndex = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % fallbackGradients.length
@@ -111,13 +111,6 @@ export function CourseCard({
                             </div>
                         )}
                     </div>
-                    {price != null ? (
-                        <span className="text-lg font-black text-on-surface">
-                            ${price.toLocaleString()}
-                        </span>
-                    ) : (
-                        <span className="text-lg font-black text-on-surface">Gratis</span>
-                    )}
                 </div>
 
                 {/* CTA */}
@@ -131,7 +124,7 @@ export function CourseCard({
                     </Link>
                 ) : (
                     <div className="mt-6">
-                        <EnrollButton courseId={id} isAuthenticated={isAuthenticated} />
+                        <EnrollButton courseId={id} isAuthenticated={isAuthenticated} hasPaid={hasPaid} />
                     </div>
                 )}
             </div>

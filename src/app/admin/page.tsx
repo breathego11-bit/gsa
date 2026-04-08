@@ -3,26 +3,47 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import { GrowthCharts } from '@/components/charts/GrowthCharts'
 
 export const dynamic = 'force-dynamic'
+
+function calcRevenue(payments: { amount_total: number; payment_type: string; installments_paid: number; installments_total: number; status: string }[]) {
+    return payments.reduce((sum, p) => {
+        if (p.status === 'failed') return sum
+        if (p.payment_type === 'one_time' && p.status === 'completed') return sum + p.amount_total
+        if (p.payment_type === 'installment') return sum + (p.installments_paid * Math.round(p.amount_total / p.installments_total))
+        return sum
+    }, 0)
+}
 
 export default async function AdminDashboard() {
     await getServerSession(authOptions)
 
-    const oneMonthAgo = new Date()
+    const now = new Date()
+    const oneMonthAgo = new Date(now)
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    const oneYearAgo = new Date(now)
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
     const [
         totalStudents,
-        monthlyEnrollments,
+        monthlyPayments,
+        yearlyPayments,
         totalProgress,
         completedProgress,
         courses,
+        // Data for growth chart: students and payments per month (last 6 months)
+        allStudents,
+        allPayments,
     ] = await Promise.all([
         prisma.user.count({ where: { role: 'STUDENT' } }),
-        prisma.enrollment.findMany({
+        prisma.payment.findMany({
             where: { created_at: { gte: oneMonthAgo } },
-            include: { course: { select: { price: true } } },
+            select: { amount_total: true, payment_type: true, installments_paid: true, installments_total: true, status: true },
+        }),
+        prisma.payment.findMany({
+            where: { created_at: { gte: oneYearAgo } },
+            select: { amount_total: true, payment_type: true, installments_paid: true, installments_total: true, status: true },
         }),
         prisma.lessonProgress.count(),
         prisma.lessonProgress.count({ where: { completed: true } }),
@@ -34,11 +55,50 @@ export default async function AdminDashboard() {
             },
             orderBy: { created_at: 'desc' },
         }),
+        // For growth chart
+        prisma.user.findMany({
+            where: { role: 'STUDENT' },
+            select: { created_at: true },
+            orderBy: { created_at: 'asc' },
+        }),
+        prisma.payment.findMany({
+            where: { status: { not: 'failed' } },
+            select: { amount_total: true, payment_type: true, installments_paid: true, installments_total: true, status: true, created_at: true },
+        }),
     ])
 
-    const monthlyRevenue = monthlyEnrollments.reduce((sum, e) => sum + (e.course.price || 0), 0)
+    const monthlyRevenue = Math.round(calcRevenue(monthlyPayments) / 100)
+    const yearlyRevenue = Math.round(calcRevenue(yearlyPayments) / 100)
     const avgCompletion = totalProgress > 0 ? Math.round((completedProgress / totalProgress) * 100) : 0
-    const maxEnrollments = Math.max(...courses.map((c) => c._count.enrollments), 1)
+    const maxEnrollments = Math.max(...courses.map((c: any) => c._count.enrollments), 1)
+
+    // Build chart data: last 6 months
+    const chartMonths: { label: string; students: number; revenue: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now)
+        d.setMonth(d.getMonth() - i)
+        const year = d.getFullYear()
+        const month = d.getMonth()
+        const label = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')
+
+        const studentsInMonth = allStudents.filter((s: any) => {
+            const c = new Date(s.created_at)
+            return c.getFullYear() === year && c.getMonth() === month
+        }).length
+
+        const revenueInMonth = Math.round(allPayments.filter((p: any) => {
+            const c = new Date(p.created_at)
+            return c.getFullYear() === year && c.getMonth() === month
+        }).reduce((sum: number, p: any) => {
+            if (p.status === 'failed') return sum
+            if (p.payment_type === 'one_time' && p.status === 'completed') return sum + p.amount_total
+            if (p.payment_type === 'installment') return sum + (p.installments_paid * Math.round(p.amount_total / p.installments_total))
+            return sum
+        }, 0) / 100)
+
+        chartMonths.push({ label, students: studentsInMonth, revenue: revenueInMonth })
+    }
+
 
     return (
         <div className="space-y-8 lg:space-y-12">
@@ -62,66 +122,65 @@ export default async function AdminDashboard() {
             </div>
 
             {/* ── KPI Cards ───────────────────────────────── */}
-            {/* Mobile: horizontal scroll / Desktop: grid */}
-            <div className="flex overflow-x-auto gap-4 no-scrollbar -mx-6 px-6 py-2 lg:mx-0 lg:px-0 lg:py-0 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible">
+            <div className="flex overflow-x-auto gap-4 no-scrollbar -mx-6 px-6 py-2 lg:mx-0 lg:px-0 lg:py-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
                 {/* Total Students */}
-                <div className="min-w-[220px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
+                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
                     <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">groups</span>
-                    <div className="flex justify-between items-start lg:items-center lg:gap-3 lg:mb-4 relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Total Estudiantes</span>
+                    <div className="flex justify-between items-start relative z-10">
+                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Estudiantes</span>
                         <span className="material-symbols-outlined text-secondary lg:hidden">group</span>
                         <div className="hidden lg:flex w-10 h-10 rounded-xl bg-blue-500/10 items-center justify-center">
                             <MaterialIcon name="groups" size="text-xl" className="text-blue-400" />
                         </div>
-                        <span className="hidden lg:inline text-emerald-400 bg-emerald-500/10 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                            +{monthlyEnrollments.length} este mes
-                        </span>
                     </div>
                     <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-5xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
+                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
                             {totalStudents.toLocaleString()}
                         </div>
-                        <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1 lg:hidden">
-                            <span className="material-symbols-outlined text-sm">trending_up</span>
-                            +{monthlyEnrollments.length}
-                        </div>
-                        <p className="hidden lg:block text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-2">Total Estudiantes</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Total Estudiantes</p>
                     </div>
                 </div>
 
                 {/* Monthly Revenue */}
-                <div className="min-w-[220px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
+                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
                     <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">payments</span>
-                    <div className="flex justify-between items-start lg:items-center lg:gap-3 lg:mb-4 relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Ingresos Mensuales</span>
+                    <div className="flex justify-between items-start relative z-10">
+                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Mensual</span>
                         <span className="material-symbols-outlined text-secondary lg:hidden">payments</span>
                         <div className="hidden lg:flex w-10 h-10 rounded-xl bg-emerald-500/10 items-center justify-center">
                             <MaterialIcon name="payments" size="text-xl" className="text-emerald-400" />
                         </div>
-                        {monthlyRevenue > 0 && (
-                            <span className="hidden lg:inline text-emerald-400 bg-emerald-500/10 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                +{monthlyEnrollments.length} inscripciones
-                            </span>
-                        )}
                     </div>
                     <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-5xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
-                            ${monthlyRevenue.toLocaleString()}
+                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
+                            {monthlyRevenue.toLocaleString('es-ES')}€
                         </div>
-                        {monthlyRevenue > 0 && (
-                            <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1 lg:hidden">
-                                <span className="material-symbols-outlined text-sm">trending_up</span>
-                                +{monthlyEnrollments.length}
-                            </div>
-                        )}
-                        <p className="hidden lg:block text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-2">Ingresos Mensuales</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Ingresos Mensuales</p>
+                    </div>
+                </div>
+
+                {/* Yearly Revenue */}
+                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
+                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">account_balance</span>
+                    <div className="flex justify-between items-start relative z-10">
+                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Anual</span>
+                        <span className="material-symbols-outlined text-secondary lg:hidden">account_balance</span>
+                        <div className="hidden lg:flex w-10 h-10 rounded-xl bg-purple-500/10 items-center justify-center">
+                            <MaterialIcon name="account_balance" size="text-xl" className="text-purple-400" />
+                        </div>
+                    </div>
+                    <div className="space-y-1 relative z-10">
+                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
+                            {yearlyRevenue.toLocaleString('es-ES')}€
+                        </div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Ingresos Anuales</p>
                     </div>
                 </div>
 
                 {/* Avg Completion */}
-                <div className="min-w-[220px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 lg:border-primary/30 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
+                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 lg:border-primary/30 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
                     <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">verified</span>
-                    <div className="flex justify-between items-start lg:items-center lg:gap-3 lg:mb-4 relative z-10">
+                    <div className="flex justify-between items-start relative z-10">
                         <span className="text-on-surface-variant font-medium text-sm lg:hidden">Completación</span>
                         <span className="material-symbols-outlined text-secondary lg:hidden">analytics</span>
                         <div className="hidden lg:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
@@ -129,17 +188,23 @@ export default async function AdminDashboard() {
                         </div>
                     </div>
                     <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-5xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
+                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
                             {avgCompletion}%
                         </div>
                         <div className="w-full bg-surface-container-highest h-1.5 rounded-full mt-2 overflow-hidden lg:hidden">
                             <div className="bg-primary-container h-full rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ width: `${avgCompletion}%` }} />
                         </div>
-                        <p className="hidden lg:block text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-2">Completación Promedio</p>
-                        <p className="hidden lg:block text-[10px] text-on-surface-variant/60 mt-1">Promedio industria: 44%</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Completación</p>
                     </div>
                 </div>
             </div>
+
+            {/* ── Growth Charts ───────────────────────────── */}
+            <GrowthCharts
+                data={chartMonths}
+                totalStudents={chartMonths.reduce((s, m) => s + m.students, 0)}
+                totalRevenue={chartMonths.reduce((s, m) => s + m.revenue, 0)}
+            />
 
             {/* ── Course Section ──────────────────────────── */}
             {/* Mobile: card list / Desktop: table */}

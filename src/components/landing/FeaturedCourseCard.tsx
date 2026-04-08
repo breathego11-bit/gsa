@@ -4,7 +4,6 @@ interface FeaturedCourseCardProps {
     id: string
     title: string
     thumbnail: string | null
-    price: number | null
     published: boolean
     moduleCount: number
 }
@@ -13,7 +12,6 @@ export function FeaturedCourseCard({
     id,
     title,
     thumbnail,
-    price,
     published,
     moduleCount,
 }: FeaturedCourseCardProps) {
@@ -49,14 +47,7 @@ export function FeaturedCourseCard({
                     <div className="bg-secondary h-1.5 rounded-full" style={{ width: '0%' }} />
                 </div>
 
-                <div className="flex justify-between items-center">
-                    {price != null ? (
-                        <span className="text-2xl font-black text-on-surface">
-                            ${price.toLocaleString()}
-                        </span>
-                    ) : (
-                        <span className="text-2xl font-black text-on-surface">Gratis</span>
-                    )}
+                <div className="flex justify-end items-center">
                     <Link
                         href={`/course/${id}`}
                         className="bg-white/5 hover:bg-white/10 text-on-surface px-4 py-2 rounded-lg font-bold transition-all text-sm"

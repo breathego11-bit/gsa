@@ -11,7 +11,6 @@ interface CourseData {
     title: string
     description: string
     thumbnail: string | null
-    price: number | null
     lessonCount: number
     totalDurationMinutes: number
     isEnrolled: boolean
@@ -19,6 +18,7 @@ interface CourseData {
 
 interface Props {
     courses: CourseData[]
+    hasPaid: boolean
 }
 
 const filters = [
@@ -27,7 +27,7 @@ const filters = [
     { key: 'Disponibles', label: 'Disponibles' },
 ]
 
-export function DashboardCoursesClient({ courses }: Props) {
+export function DashboardCoursesClient({ courses, hasPaid }: Props) {
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState('Todos')
     const debouncedSearch = useDebounce(searchQuery, 300)
@@ -127,12 +127,12 @@ export function DashboardCoursesClient({ courses }: Props) {
                             title={course.title}
                             description={course.description}
                             thumbnail={course.thumbnail}
-                            price={course.price}
                             published={true}
                             lessonCount={course.lessonCount}
                             totalDurationMinutes={course.totalDurationMinutes}
                             isEnrolled={course.isEnrolled}
                             isAuthenticated={true}
+                            hasPaid={hasPaid}
                         />
                     ))}
 

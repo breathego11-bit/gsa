@@ -7,9 +7,10 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 interface EnrollButtonProps {
     courseId: string
     isAuthenticated: boolean
+    hasPaid?: boolean
 }
 
-export function EnrollButton({ courseId, isAuthenticated }: EnrollButtonProps) {
+export function EnrollButton({ courseId, isAuthenticated, hasPaid = false }: EnrollButtonProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [enrolled, setEnrolled] = useState(false)
@@ -17,6 +18,11 @@ export function EnrollButton({ courseId, isAuthenticated }: EnrollButtonProps) {
     async function handleEnroll() {
         if (!isAuthenticated) {
             router.push('/register')
+            return
+        }
+
+        if (!hasPaid) {
+            router.push('/payment')
             return
         }
 
@@ -29,6 +35,7 @@ export function EnrollButton({ courseId, isAuthenticated }: EnrollButtonProps) {
             })
             if (res.ok) {
                 setEnrolled(true)
+                router.refresh()
                 router.push(`/course/${courseId}`)
             }
         } finally {
@@ -48,6 +55,30 @@ export function EnrollButton({ courseId, isAuthenticated }: EnrollButtonProps) {
         )
     }
 
+    if (!isAuthenticated) {
+        return (
+            <button
+                onClick={handleEnroll}
+                className="w-full bg-gradient-to-br from-primary-container to-secondary-container text-on-primary-container px-6 py-3 rounded-full font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg active:scale-95 transition-all"
+            >
+                <MaterialIcon name="school" size="text-sm" />
+                Regístrate para inscribirte
+            </button>
+        )
+    }
+
+    if (!hasPaid) {
+        return (
+            <button
+                onClick={handleEnroll}
+                className="w-full bg-gradient-to-br from-primary-container to-secondary-container text-on-primary-container px-6 py-3 rounded-full font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg active:scale-95 transition-all"
+            >
+                <MaterialIcon name="lock_open" size="text-sm" />
+                Obtener Acceso
+            </button>
+        )
+    }
+
     return (
         <button
             onClick={handleEnroll}
@@ -59,7 +90,7 @@ export function EnrollButton({ courseId, isAuthenticated }: EnrollButtonProps) {
             ) : (
                 <MaterialIcon name="school" size="text-sm" />
             )}
-            {isAuthenticated ? 'Inscribirme' : 'Regístrate para inscribirte'}
+            Inscribirme
         </button>
     )
 }

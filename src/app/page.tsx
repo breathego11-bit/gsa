@@ -215,7 +215,6 @@ export default async function LandingPage() {
                                         id={course.id}
                                         title={course.title}
                                         thumbnail={course.thumbnail}
-                                        price={course.price}
                                         published={course.published}
                                         moduleCount={course._count.modules}
                                     />
