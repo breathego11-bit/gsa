@@ -1,10 +1,12 @@
 import './globals.css'
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from '@/components/layout/Providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata = {
+export const metadata: Metadata = {
+    metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
     title: 'GSA — Growth Sales Academy',
     description: 'Plataforma de formación en ventas de alto rendimiento.',
 }
