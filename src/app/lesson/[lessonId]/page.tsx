@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getBunnyVideoStatus } from '@/lib/bunny'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
@@ -26,6 +27,20 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
     })
 
     if (!lesson) notFound()
+
+    // Check Bunny video status if still processing
+    if (lesson.bunny_video_id && lesson.bunny_status === 'processing') {
+        try {
+            const { status } = await getBunnyVideoStatus(lesson.bunny_video_id)
+            if (status !== 'processing') {
+                lesson.bunny_status = status
+                await prisma.lesson.update({
+                    where: { id: lessonId },
+                    data: { bunny_status: status },
+                })
+            }
+        } catch { /* keep current status if Bunny API fails */ }
+    }
 
     // Check payment and enrollment
     if (session.user.role !== 'ADMIN') {
@@ -156,8 +171,11 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                         {lesson.type === 'VIDEO' && (
                             <VideoPlaceholder
                                 videoUrl={lesson.video_url}
+                                bunnyVideoId={lesson.bunny_video_id}
+                                bunnyStatus={lesson.bunny_status}
                                 thumbnail={lesson.thumbnail}
                                 title={lesson.title}
+                                libraryId={process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || process.env.BUNNY_LIBRARY_ID}
                             />
                         )}
                         {lesson.type === 'TEXT' && lesson.content && (
@@ -401,7 +419,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                     </div>
 
                     {/* Help CTA */}
-                    <div className="p-4 border-t border-white/5">
+                    <div className="p-4 pb-24 border-t border-white/5">
                         <div className="bg-gradient-to-br from-primary-container/20 to-secondary-container/20 rounded-xl p-5 border border-white/5">
                             <p className="font-bold text-on-surface text-sm mb-1">¿Necesitas ayuda?</p>
                             <p className="text-xs text-on-surface-variant mb-3">

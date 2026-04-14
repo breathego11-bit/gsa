@@ -16,6 +16,8 @@ interface LessonData {
     type?: LessonType
     video_url?: string | null
     thumbnail?: string | null
+    bunny_video_id?: string | null
+    bunny_status?: string | null
     content?: string | null
     form_schema?: FormField[] | null
     exam_schema?: ExamQuestion[] | null
@@ -53,6 +55,8 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
     const [description, setDescription] = useState(initial?.description || '')
     const [videoUrl, setVideoUrl] = useState(initial?.video_url || '')
     const [thumbnail, setThumbnail] = useState(initial?.thumbnail || '')
+    const [bunnyVideoId, setBunnyVideoId] = useState(initial?.bunny_video_id || '')
+    const [bunnyStatus, setBunnyStatus] = useState(initial?.bunny_status || '')
     const [order, setOrder] = useState(String(initial?.order ?? nextOrder))
     const [duration, setDuration] = useState(String(initial?.duration ?? ''))
     const [content, setContent] = useState(initial?.content || '')
@@ -89,6 +93,8 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
         if (type === 'VIDEO') {
             body.video_url = videoUrl || null
             body.thumbnail = thumbnail || null
+            body.bunny_video_id = bunnyVideoId || null
+            body.bunny_status = bunnyStatus || null
         } else if (type === 'TEXT') {
             body.content = content || null
         } else if (type === 'FORM') {
@@ -178,11 +184,21 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                     <>
                         <div className="flex flex-col gap-1.5">
                             <label className="form-label">Video</label>
-                            {videoUrl ? (
+                            {bunnyVideoId ? (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
+                                    <MaterialIcon name="cloud_done" size="text-sm" className="text-green-400 shrink-0" />
+                                    <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                                        Video en Bunny Stream {bunnyStatus === 'processing' ? '(procesando...)' : bunnyStatus === 'failed' ? '(error)' : '(listo)'}
+                                    </span>
+                                    <button type="button" onClick={() => { setBunnyVideoId(''); setBunnyStatus(''); setThumbnail('') }} className="text-red-400 hover:text-red-300 shrink-0">
+                                        <MaterialIcon name="close" size="text-sm" />
+                                    </button>
+                                </div>
+                            ) : videoUrl ? (
                                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
                                     <MaterialIcon name="videocam" size="text-sm" className="text-green-400 shrink-0" />
                                     <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
-                                        {videoUrl.split('/').pop()}
+                                        {videoUrl.split('/').pop()} (local)
                                     </span>
                                     <button type="button" onClick={() => setVideoUrl('')} className="text-red-400 hover:text-red-300 shrink-0">
                                         <MaterialIcon name="close" size="text-sm" />
@@ -192,8 +208,8 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                                 <label className="flex items-center gap-2 px-3 py-3 rounded-lg cursor-pointer text-xs font-medium transition-colors border border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 justify-center"
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
-                                    <MaterialIcon name={uploadingVideo ? 'hourglass_empty' : 'upload'} size="text-base" />
-                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video (MP4, WebM, MOV — máx. 500 MB)'}
+                                    <MaterialIcon name={uploadingVideo ? 'hourglass_empty' : 'cloud_upload'} size="text-base" />
+                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 500 MB)'}
                                     <input
                                         type="file"
                                         className="hidden"
@@ -208,7 +224,8 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                                                 const xhr = new XMLHttpRequest()
                                                 const fd = new FormData()
                                                 fd.append('file', file)
-                                                const result = await new Promise<{ url: string }>((resolve, reject) => {
+                                                fd.append('title', title || file.name)
+                                                const result = await new Promise<{ bunny_video_id: string; thumbnail_url: string }>((resolve, reject) => {
                                                     xhr.upload.onprogress = (ev) => {
                                                         if (ev.lengthComputable) setVideoProgress(Math.round((ev.loaded / ev.total) * 100))
                                                     }
@@ -217,10 +234,13 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                                                         else reject(new Error(JSON.parse(xhr.responseText).error || 'Error al subir'))
                                                     }
                                                     xhr.onerror = () => reject(new Error('Error de red'))
-                                                    xhr.open('POST', '/api/upload')
+                                                    xhr.open('POST', '/api/upload-video')
                                                     xhr.send(fd)
                                                 })
-                                                setVideoUrl(result.url)
+                                                setBunnyVideoId(result.bunny_video_id)
+                                                setBunnyStatus('processing')
+                                                setThumbnail(result.thumbnail_url)
+                                                setVideoUrl('')
                                             } catch (err: any) {
                                                 setError(err.message || 'Error al subir video')
                                             } finally {
@@ -233,55 +253,57 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                                 </label>
                             )}
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <label className="form-label">Thumbnail</label>
-                            {thumbnail ? (
-                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
-                                    <MaterialIcon name="image" size="text-sm" className="text-blue-400 shrink-0" />
-                                    <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
-                                        {thumbnail.split('/').pop()}
-                                    </span>
-                                    <button type="button" onClick={() => setThumbnail('')} className="text-red-400 hover:text-red-300 shrink-0">
-                                        <MaterialIcon name="close" size="text-sm" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-medium transition-colors hover:bg-white/5"
-                                    style={{ color: 'var(--text-secondary)' }}
-                                >
-                                    <MaterialIcon name={uploadingThumbnail ? 'hourglass_empty' : 'image'} size="text-sm" />
-                                    {uploadingThumbnail ? 'Subiendo...' : 'Subir thumbnail (opcional)'}
-                                    <input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/jpeg,image/png,image/webp,image/gif"
-                                        disabled={uploadingThumbnail}
-                                        onChange={async (e) => {
-                                            const file = e.target.files?.[0]
-                                            if (!file) return
-                                            setUploadingThumbnail(true)
-                                            try {
-                                                const fd = new FormData()
-                                                fd.append('file', file)
-                                                const res = await fetch('/api/upload', { method: 'POST', body: fd })
-                                                if (res.ok) {
-                                                    const { url } = await res.json()
-                                                    setThumbnail(url)
-                                                } else {
-                                                    const data = await res.json()
-                                                    setError(data.error || 'Error al subir thumbnail')
+                        {!bunnyVideoId && (
+                            <div className="flex flex-col gap-1.5">
+                                <label className="form-label">Thumbnail</label>
+                                {thumbnail ? (
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
+                                        <MaterialIcon name="image" size="text-sm" className="text-blue-400 shrink-0" />
+                                        <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                                            {thumbnail.split('/').pop()}
+                                        </span>
+                                        <button type="button" onClick={() => setThumbnail('')} className="text-red-400 hover:text-red-300 shrink-0">
+                                            <MaterialIcon name="close" size="text-sm" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-medium transition-colors hover:bg-white/5"
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                        <MaterialIcon name={uploadingThumbnail ? 'hourglass_empty' : 'image'} size="text-sm" />
+                                        {uploadingThumbnail ? 'Subiendo...' : 'Subir thumbnail (opcional)'}
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/jpeg,image/png,image/webp,image/gif"
+                                            disabled={uploadingThumbnail}
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0]
+                                                if (!file) return
+                                                setUploadingThumbnail(true)
+                                                try {
+                                                    const fd = new FormData()
+                                                    fd.append('file', file)
+                                                    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+                                                    if (res.ok) {
+                                                        const { url } = await res.json()
+                                                        setThumbnail(url)
+                                                    } else {
+                                                        const data = await res.json()
+                                                        setError(data.error || 'Error al subir thumbnail')
+                                                    }
+                                                } catch {
+                                                    setError('Error al subir thumbnail')
+                                                } finally {
+                                                    setUploadingThumbnail(false)
+                                                    e.target.value = ''
                                                 }
-                                            } catch {
-                                                setError('Error al subir thumbnail')
-                                            } finally {
-                                                setUploadingThumbnail(false)
-                                                e.target.value = ''
-                                            }
-                                        }}
-                                    />
-                                </label>
-                            )}
-                        </div>
+                                            }}
+                                        />
+                                    </label>
+                                )}
+                            </div>
+                        )}
                     </>
                 )}
 

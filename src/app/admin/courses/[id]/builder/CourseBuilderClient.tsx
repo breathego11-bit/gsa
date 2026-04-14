@@ -13,6 +13,7 @@ interface Instructor { id: string; name: string; last_name: string }
 interface LessonData {
     id: string; title: string; description: string | null; type: 'VIDEO' | 'TEXT' | 'FORM' | 'EXAM'
     video_url: string | null; thumbnail: string | null; content: string | null
+    bunny_video_id: string | null; bunny_status: string | null
     form_schema: any; exam_schema: any; passing_score: number | null
     max_attempts: number | null; is_final_exam: boolean; order: number; duration: number | null
     resources?: LessonResource[] | null
@@ -178,6 +179,9 @@ export function CourseBuilderClient({ course: initial }: Props) {
                 description: editLesson.description || null,
                 type: editLesson.type,
                 video_url: editLesson.video_url || null,
+                bunny_video_id: editLesson.bunny_video_id || null,
+                bunny_status: editLesson.bunny_status || null,
+                thumbnail: editLesson.thumbnail || null,
                 content: editLesson.content || null,
                 form_schema: editLesson.form_schema || null,
                 exam_schema: editLesson.exam_schema || null,
@@ -441,10 +445,21 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                     <>
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Video</label>
-                                            {editLesson.video_url ? (
+                                            {editLesson.bunny_video_id ? (
+                                                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">
+                                                    <span className="material-symbols-outlined text-sm text-green-400 shrink-0">cloud_done</span>
+                                                    <span className="flex-1 truncate text-on-surface">
+                                                        Video en Bunny Stream {editLesson.bunny_status === 'processing' ? '(procesando...)' : editLesson.bunny_status === 'failed' ? '(error)' : '(listo)'}
+                                                    </span>
+                                                    <button type="button" onClick={() => setEditLesson({ ...editLesson, bunny_video_id: null, bunny_status: null, thumbnail: null })}
+                                                        className="text-red-400 hover:text-red-300 shrink-0">
+                                                        <span className="material-symbols-outlined text-sm">close</span>
+                                                    </button>
+                                                </div>
+                                            ) : editLesson.video_url ? (
                                                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">
                                                     <span className="material-symbols-outlined text-sm text-green-400 shrink-0">videocam</span>
-                                                    <span className="flex-1 truncate text-on-surface">{editLesson.video_url.split('/').pop()}</span>
+                                                    <span className="flex-1 truncate text-on-surface">{editLesson.video_url.split('/').pop()} (local)</span>
                                                     <button type="button" onClick={() => setEditLesson({ ...editLesson, video_url: null })}
                                                         className="text-red-400 hover:text-red-300 shrink-0">
                                                         <span className="material-symbols-outlined text-sm">close</span>
@@ -452,8 +467,8 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                 </div>
                                             ) : (
                                                 <label className="flex items-center gap-2 px-3 py-3 rounded-xl cursor-pointer text-xs font-medium transition-colors border border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 justify-center text-on-surface-variant">
-                                                    <span className="material-symbols-outlined text-base">{uploadingVideo ? 'hourglass_empty' : 'upload'}</span>
-                                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video (MP4, WebM, MOV — máx. 500 MB)'}
+                                                    <span className="material-symbols-outlined text-base">{uploadingVideo ? 'hourglass_empty' : 'cloud_upload'}</span>
+                                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 500 MB)'}
                                                     <input type="file" className="hidden"
                                                         accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
                                                         disabled={uploadingVideo}
@@ -466,7 +481,8 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                                 const xhr = new XMLHttpRequest()
                                                                 const fd = new FormData()
                                                                 fd.append('file', file)
-                                                                const result = await new Promise<{ url: string }>((resolve, reject) => {
+                                                                fd.append('title', editLesson!.title || file.name)
+                                                                const result = await new Promise<{ bunny_video_id: string; thumbnail_url: string }>((resolve, reject) => {
                                                                     xhr.upload.onprogress = (ev) => {
                                                                         if (ev.lengthComputable) setVideoProgress(Math.round((ev.loaded / ev.total) * 100))
                                                                     }
@@ -475,10 +491,10 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                                         else reject(new Error(JSON.parse(xhr.responseText).error || 'Error al subir'))
                                                                     }
                                                                     xhr.onerror = () => reject(new Error('Error de red'))
-                                                                    xhr.open('POST', '/api/upload')
+                                                                    xhr.open('POST', '/api/upload-video')
                                                                     xhr.send(fd)
                                                                 })
-                                                                setEditLesson({ ...editLesson!, video_url: result.url })
+                                                                setEditLesson({ ...editLesson!, bunny_video_id: result.bunny_video_id, bunny_status: 'processing', thumbnail: result.thumbnail_url, video_url: null })
                                                             } catch (err: any) {
                                                                 setSaveMsg(err.message || 'Error al subir video')
                                                             } finally {
@@ -491,50 +507,52 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                 </label>
                                             )}
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Thumbnail</label>
-                                            {editLesson.thumbnail ? (
-                                                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">
-                                                    <span className="material-symbols-outlined text-sm text-blue-400 shrink-0">image</span>
-                                                    <span className="flex-1 truncate text-on-surface">{editLesson.thumbnail.split('/').pop()}</span>
-                                                    <button type="button" onClick={() => setEditLesson({ ...editLesson, thumbnail: null })}
-                                                        className="text-red-400 hover:text-red-300 shrink-0">
-                                                        <span className="material-symbols-outlined text-sm">close</span>
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <label className="flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer text-xs font-medium transition-colors hover:bg-white/5 text-on-surface-variant">
-                                                    <span className="material-symbols-outlined text-sm">{uploadingThumbnail ? 'hourglass_empty' : 'image'}</span>
-                                                    {uploadingThumbnail ? 'Subiendo...' : 'Subir thumbnail (opcional)'}
-                                                    <input type="file" className="hidden"
-                                                        accept="image/jpeg,image/png,image/webp,image/gif"
-                                                        disabled={uploadingThumbnail}
-                                                        onChange={async (e) => {
-                                                            const file = e.target.files?.[0]
-                                                            if (!file) return
-                                                            setUploadingThumbnail(true)
-                                                            try {
-                                                                const fd = new FormData()
-                                                                fd.append('file', file)
-                                                                const res = await fetch('/api/upload', { method: 'POST', body: fd })
-                                                                if (res.ok) {
-                                                                    const { url } = await res.json()
-                                                                    setEditLesson({ ...editLesson!, thumbnail: url })
-                                                                } else {
-                                                                    const data = await res.json()
-                                                                    setSaveMsg(data.error || 'Error al subir thumbnail')
+                                        {!editLesson.bunny_video_id && (
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Thumbnail</label>
+                                                {editLesson.thumbnail ? (
+                                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">
+                                                        <span className="material-symbols-outlined text-sm text-blue-400 shrink-0">image</span>
+                                                        <span className="flex-1 truncate text-on-surface">{editLesson.thumbnail.split('/').pop()}</span>
+                                                        <button type="button" onClick={() => setEditLesson({ ...editLesson, thumbnail: null })}
+                                                            className="text-red-400 hover:text-red-300 shrink-0">
+                                                            <span className="material-symbols-outlined text-sm">close</span>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <label className="flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer text-xs font-medium transition-colors hover:bg-white/5 text-on-surface-variant">
+                                                        <span className="material-symbols-outlined text-sm">{uploadingThumbnail ? 'hourglass_empty' : 'image'}</span>
+                                                        {uploadingThumbnail ? 'Subiendo...' : 'Subir thumbnail (opcional)'}
+                                                        <input type="file" className="hidden"
+                                                            accept="image/jpeg,image/png,image/webp,image/gif"
+                                                            disabled={uploadingThumbnail}
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0]
+                                                                if (!file) return
+                                                                setUploadingThumbnail(true)
+                                                                try {
+                                                                    const fd = new FormData()
+                                                                    fd.append('file', file)
+                                                                    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+                                                                    if (res.ok) {
+                                                                        const { url } = await res.json()
+                                                                        setEditLesson({ ...editLesson!, thumbnail: url })
+                                                                    } else {
+                                                                        const data = await res.json()
+                                                                        setSaveMsg(data.error || 'Error al subir thumbnail')
+                                                                    }
+                                                                } catch {
+                                                                    setSaveMsg('Error al subir thumbnail')
+                                                                } finally {
+                                                                    setUploadingThumbnail(false)
+                                                                    e.target.value = ''
                                                                 }
-                                                            } catch {
-                                                                setSaveMsg('Error al subir thumbnail')
-                                                            } finally {
-                                                                setUploadingThumbnail(false)
-                                                                e.target.value = ''
-                                                            }
-                                                        }}
-                                                    />
-                                                </label>
-                                            )}
-                                        </div>
+                                                            }}
+                                                        />
+                                                    </label>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Duración (minutos)</label>
                                             <input type="number" value={editLesson.duration || ''}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { deleteBunnyVideo } from '@/lib/bunny'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -69,6 +70,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
 
     try {
+        const lesson = await prisma.lesson.findUnique({ where: { id }, select: { bunny_video_id: true } })
+        if (lesson?.bunny_video_id) {
+            try { await deleteBunnyVideo(lesson.bunny_video_id) } catch { /* log but don't block deletion */ }
+        }
         await prisma.lesson.delete({ where: { id } })
         return NextResponse.json({ success: true })
     } catch {

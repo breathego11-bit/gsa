@@ -19,6 +19,10 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Accept build-time args for NEXT_PUBLIC_ vars
+ARG NEXT_PUBLIC_BUNNY_LIBRARY_ID
+ENV NEXT_PUBLIC_BUNNY_LIBRARY_ID=$NEXT_PUBLIC_BUNNY_LIBRARY_ID
+
 # Build Next.js
 RUN npm run build
 

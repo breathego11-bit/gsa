@@ -82,8 +82,10 @@ model Lesson {
   title         String
   description   String?    @db.Text
   type          LessonType @default(VIDEO)
-  video_url     String?
-  thumbnail     String?
+  video_url      String?
+  thumbnail      String?
+  bunny_video_id String?
+  bunny_status   String?   // 'processing' | 'ready' | 'failed'
   content       String?    @db.Text    // Rich text for TEXT lessons; intro text for FORM/EXAM
   form_schema   Json?                  // Form field definitions for FORM lessons
   exam_schema   Json?                  // Exam questions/options for EXAM lessons

@@ -70,6 +70,8 @@ export interface LessonBase {
     type: LessonType
     video_url: string | null
     thumbnail: string | null
+    bunny_video_id: string | null
+    bunny_status: string | null
     content: string | null
     form_schema: FormField[] | null
     exam_schema: ExamQuestion[] | null

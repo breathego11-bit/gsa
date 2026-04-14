@@ -4,11 +4,54 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 
 interface VideoPlaceholderProps {
     videoUrl?: string | null
+    bunnyVideoId?: string | null
+    bunnyStatus?: string | null
     thumbnail?: string | null
     title?: string
+    libraryId?: string
 }
 
-export function VideoPlaceholder({ videoUrl, thumbnail, title }: VideoPlaceholderProps) {
+export function VideoPlaceholder({ videoUrl, bunnyVideoId, bunnyStatus, thumbnail, title, libraryId }: VideoPlaceholderProps) {
+    // Bunny Stream iframe embed
+    if (bunnyVideoId && libraryId) {
+        if (bunnyStatus === 'processing') {
+            return (
+                <div
+                    className="relative w-full aspect-video rounded-3xl overflow-hidden flex items-center justify-center bg-surface-container-lowest"
+                    style={{
+                        background: thumbnail ? `url(${thumbnail}) center/cover` : undefined,
+                    }}
+                >
+                    {thumbnail && <div className="absolute inset-0 bg-black/60" />}
+                    <div className="relative flex flex-col items-center gap-4 text-center px-8">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10">
+                            <MaterialIcon name="hourglass_empty" size="text-4xl" className="text-white animate-spin" />
+                        </div>
+                        <p className="text-sm font-medium text-on-surface">
+                            Video procesándose
+                        </p>
+                        <p className="text-xs text-on-surface-variant">
+                            El video se está optimizando para la mejor experiencia de reproducción. Esto puede tardar unos minutos.
+                        </p>
+                    </div>
+                </div>
+            )
+        }
+
+        return (
+            <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black">
+                <iframe
+                    src={`https://iframe.mediadelivery.net/embed/${libraryId}/${bunnyVideoId}?autoplay=false&preload=true&responsive=true`}
+                    loading="lazy"
+                    className="w-full h-full border-0"
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allowFullScreen
+                />
+            </div>
+        )
+    }
+
+    // Legacy: local HTML5 video
     if (videoUrl) {
         return (
             <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black">
@@ -27,6 +70,7 @@ export function VideoPlaceholder({ videoUrl, thumbnail, title }: VideoPlaceholde
         )
     }
 
+    // No video placeholder
     return (
         <div
             className="relative w-full aspect-video rounded-3xl overflow-hidden flex items-center justify-center bg-surface-container-lowest group"

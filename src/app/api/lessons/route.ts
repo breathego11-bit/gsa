@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
         const {
             module_id, title, description, video_url, thumbnail, order, duration,
             type, content, form_schema, exam_schema, passing_score, max_attempts, is_final_exam,
+            bunny_video_id, bunny_status,
         } = await req.json()
         if (!module_id || !title) {
             return NextResponse.json({ error: 'module_id and title are required' }, { status: 400 })
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
                 type: type || 'VIDEO',
                 video_url: video_url || null,
                 thumbnail: thumbnail || null,
+                bunny_video_id: bunny_video_id || null,
+                bunny_status: bunny_status || null,
                 content: content || null,
                 form_schema: form_schema || undefined,
                 exam_schema: exam_schema || undefined,

@@ -36,6 +36,8 @@ export default async function CourseBuilderPage({ params }: { params: Promise<{ 
                             is_final_exam: true,
                             order: true,
                             duration: true,
+                            bunny_video_id: true,
+                            bunny_status: true,
                         },
                     },
                 },

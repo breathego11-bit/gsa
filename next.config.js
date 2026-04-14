@@ -2,7 +2,7 @@
 const nextConfig = {
     output: "standalone",
     images: {
-        domains: ["res.cloudinary.com", "localhost"],
+        domains: ["res.cloudinary.com", "localhost", "vz-2fecc26c-20b.b-cdn.net"],
     },
     experimental: {
         serverActions: {

@@ -17,6 +17,11 @@ services:
       - DATABASE_URL=postgresql://gsa_user:gsa_password@db:5432/gsa_db?schema=public
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=mi_secreto_local_12345
+      - BUNNY_API_KEY=${BUNNY_API_KEY}
+      - BUNNY_LIBRARY_ID=${BUNNY_LIBRARY_ID}
+      - BUNNY_LIBRARY_API_KEY=${BUNNY_LIBRARY_API_KEY}
+      - BUNNY_CDN_HOSTNAME=${BUNNY_CDN_HOSTNAME}
+      - NEXT_PUBLIC_BUNNY_LIBRARY_ID=${BUNNY_LIBRARY_ID}
     depends_on:
       db:
         condition: service_healthy
@@ -26,6 +31,8 @@ services:
     build:
       context: ../
       dockerfile: docker/Dockerfile
+      args:
+        - NEXT_PUBLIC_BUNNY_LIBRARY_ID=${BUNNY_LIBRARY_ID}
     container_name: gsa-app
     restart: always
     ports:
@@ -41,6 +48,11 @@ services:
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - NEXT_PUBLIC_APP_URL=https://growthsalessacademy.com
+      - BUNNY_API_KEY=${BUNNY_API_KEY}
+      - BUNNY_LIBRARY_ID=${BUNNY_LIBRARY_ID}
+      - BUNNY_LIBRARY_API_KEY=${BUNNY_LIBRARY_API_KEY}
+      - BUNNY_CDN_HOSTNAME=${BUNNY_CDN_HOSTNAME}
+      - NEXT_PUBLIC_BUNNY_LIBRARY_ID=${BUNNY_LIBRARY_ID}
     depends_on:
       db:
         condition: service_healthy
