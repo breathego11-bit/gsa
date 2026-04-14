@@ -42,6 +42,11 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
         } catch { /* keep current status if Bunny API fails */ }
     }
 
+    // Block students from accessing lessons with processing videos
+    if (session.user.role !== 'ADMIN' && lesson.bunny_video_id && lesson.bunny_status === 'processing') {
+        redirect(`/course/${lesson.module.course_id}`)
+    }
+
     // Check payment and enrollment
     if (session.user.role !== 'ADMIN') {
         const user = await prisma.user.findUnique({
@@ -98,7 +103,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
         include: {
             lessons: {
                 orderBy: { order: 'asc' },
-                select: { id: true, title: true, order: true, duration: true, type: true },
+                select: { id: true, title: true, order: true, duration: true, type: true, bunny_video_id: true, bunny_status: true },
             },
         },
     })
@@ -294,6 +299,18 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                                             {mod.lessons.map((l) => {
                                                 const isCurrent = l.id === lessonId
                                                 const isDone = progressMap.get(l.id) ?? false
+                                                const isProcessing = l.bunny_video_id && l.bunny_status === 'processing'
+
+                                                if (isProcessing && session.user.role !== 'ADMIN') {
+                                                    return (
+                                                        <div key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-50 cursor-default">
+                                                            <MaterialIcon name="hourglass_empty" size="text-lg" className="text-on-surface-variant/40 shrink-0" />
+                                                            <span className="flex-1 truncate text-on-surface-variant/50">{l.title}</span>
+                                                            <span className="text-[10px] text-on-surface-variant/40 shrink-0">Preparando</span>
+                                                        </div>
+                                                    )
+                                                }
+
                                                 return (
                                                     <Link
                                                         key={l.id}
@@ -370,6 +387,20 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                                             const isCurrent = l.id === lessonId
                                             const isDone = progressMap.get(l.id) ?? false
                                             const mins = l.duration ?? null
+                                            const isProcessing = l.bunny_video_id && l.bunny_status === 'processing'
+
+                                            if (isProcessing && session.user.role !== 'ADMIN') {
+                                                return (
+                                                    <div
+                                                        key={l.id}
+                                                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-50 cursor-default"
+                                                    >
+                                                        <MaterialIcon name="hourglass_empty" size="text-lg" className="text-on-surface-variant/40 shrink-0" />
+                                                        <span className="flex-1 truncate text-on-surface-variant/50">{l.title}</span>
+                                                        <span className="text-[10px] text-on-surface-variant/40 shrink-0">Preparando</span>
+                                                    </div>
+                                                )
+                                            }
 
                                             return (
                                                 <Link

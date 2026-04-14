@@ -201,6 +201,11 @@ export function CourseBuilderClient({ course: initial }: Props) {
                     ...m,
                     lessons: m.lessons.map(l => l.id === updated.id ? { ...l, ...updated } : l),
                 })))
+                setSaveMsg('Cambios guardados')
+                setTimeout(() => setSaveMsg(null), 3000)
+            } else {
+                setSaveMsg('Error al guardar cambios')
+                setTimeout(() => setSaveMsg(null), 3000)
             }
         } finally { setLessonSaving(false) }
     }
