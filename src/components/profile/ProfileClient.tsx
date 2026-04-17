@@ -131,8 +131,8 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
         }
     }
 
-    const inputClass = "w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-1 focus:ring-secondary/50 focus:border-secondary/50 text-on-surface px-4 py-3 text-sm transition-colors"
-    const labelClass = "text-[10px] font-bold uppercase tracking-wider text-on-surface-variant ml-1"
+    const inputClass = "w-full bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-secondary/50 text-on-surface px-4 py-3 text-sm"
+    const labelClass = "text-[12px] font-bold uppercase tracking-widest text-on-surface-variant px-1"
 
     return (
         <form onSubmit={handleSave} className="space-y-8 lg:space-y-12">
@@ -292,7 +292,7 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                 <div className="lg:col-span-2 space-y-8">
                     {/* Personal Information */}
-                    <section className="space-y-5">
+                    <section className="glass-panel rounded-[2rem] p-6 sm:p-8 border border-white/10 space-y-6">
                         {/* Mobile: flat sections / Desktop: glass panel */}
                         <div className="lg:hidden">
                             <div className="flex items-center justify-between border-b border-outline-variant/10 pb-2 mb-5">
@@ -303,8 +303,8 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
                             <h3 className="text-2xl font-bold mb-2 text-on-surface">Configuración de cuenta</h3>
                         </div>
 
-                        <div className="space-y-5">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className={labelClass}>Nombre</label>
                                     <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
@@ -322,7 +322,7 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
 
                         {/* Instructor fields (ADMIN only) */}
                         {user.role === 'ADMIN' && (
-                            <div className="pt-6 border-t border-white/5 space-y-5">
+                            <div className="pt-6 border-t border-white/5 space-y-6">
                                 <div className="lg:hidden flex items-center justify-between border-b border-outline-variant/10 pb-2">
                                     <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Perfil de Instructor</h3>
                                 </div>
@@ -340,29 +340,26 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
                                 </div>
                             </div>
                         )}
-                    </section>
-
-                    {/* Security */}
-                    <section className="space-y-5">
-                        <div className="lg:hidden flex items-center justify-between border-b border-outline-variant/10 pb-2">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Seguridad</h3>
-                        </div>
-                        <div className="hidden lg:block pt-8 border-t border-white/5">
-                            <h4 className="text-lg font-bold mb-2 text-on-surface">Seguridad</h4>
-                        </div>
-                        <div className="space-y-5">
-                            <div className="space-y-2">
-                                <label className={labelClass}>Contraseña actual</label>
-                                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                        {/* Security */}
+                        <div className="pt-8 border-t border-white/5">
+                            <div className="lg:hidden flex items-center justify-between border-b border-outline-variant/10 pb-2 mb-5">
+                                <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Seguridad</h3>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <h4 className="hidden lg:block text-lg font-bold mb-6 text-on-surface">Seguridad</h4>
+                            <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className={labelClass}>Nueva contraseña</label>
-                                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                                    <label className={labelClass}>Contraseña actual</label>
+                                    <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className={labelClass}>Confirmar contraseña</label>
-                                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className={labelClass}>Nueva contraseña</label>
+                                        <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={labelClass}>Confirmar contraseña</label>
+                                        <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                                    </div>
                                 </div>
                             </div>
                         </div>

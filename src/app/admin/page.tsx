@@ -24,6 +24,7 @@ export default async function AdminDashboard() {
 
     const [
         totalStudents,
+        totalInstructors,
         monthlyPayments,
         yearlyPayments,
         totalProgress,
@@ -34,6 +35,7 @@ export default async function AdminDashboard() {
         allPayments,
     ] = await Promise.all([
         prisma.user.count({ where: { role: 'STUDENT' } }),
+        prisma.user.count({ where: { role: 'ADMIN' } }),
         prisma.payment.findMany({
             where: { created_at: { gte: oneMonthAgo } },
             select: { amount: true, status: true },
@@ -169,24 +171,21 @@ export default async function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* Avg Completion */}
+                {/* Instructors */}
                 <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 lg:border-primary/30 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
-                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">verified</span>
+                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">school</span>
                     <div className="flex justify-between items-start relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Completación</span>
-                        <span className="material-symbols-outlined text-secondary lg:hidden">analytics</span>
+                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Instructores</span>
+                        <span className="material-symbols-outlined text-secondary lg:hidden">school</span>
                         <div className="hidden lg:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-                            <MaterialIcon name="verified" size="text-xl" className="text-primary" />
+                            <MaterialIcon name="school" size="text-xl" className="text-primary" />
                         </div>
                     </div>
                     <div className="space-y-1 relative z-10">
                         <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
-                            {avgCompletion}%
+                            {totalInstructors}
                         </div>
-                        <div className="w-full bg-surface-container-highest h-1.5 rounded-full mt-2 overflow-hidden lg:hidden">
-                            <div className="bg-primary-container h-full rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ width: `${avgCompletion}%` }} />
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Completación</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Instructores</p>
                     </div>
                 </div>
             </div>
