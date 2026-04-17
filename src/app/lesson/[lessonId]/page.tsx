@@ -143,7 +143,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                             </span>
                         </Link>
                         <Link
-                            href={`/course/${lesson.module.course_id}`}
+                            href={`/dashboard/courses/${lesson.module.course_id}`}
                             className="hidden md:flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
                         >
                             <MaterialIcon name="arrow_back" size="text-sm" />
@@ -489,7 +489,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                         </Link>
                     ) : (
                         <Link
-                            href={`/course/${lesson.module.course_id}`}
+                            href={`/dashboard/courses/${lesson.module.course_id}`}
                             className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
                         >
                             Ver curso completo

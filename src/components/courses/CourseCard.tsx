@@ -116,7 +116,7 @@ export function CourseCard({
                 {/* CTA */}
                 {isEnrolled ? (
                     <Link
-                        href={`/course/${id}`}
+                        href={`/dashboard/courses/${id}`}
                         className="mt-6 bg-gradient-to-br from-primary-container to-secondary-container text-on-primary-container px-6 py-3 rounded-full font-semibold text-sm text-center flex items-center justify-center gap-2 hover:shadow-lg transition-all"
                     >
                         Continuar Curso

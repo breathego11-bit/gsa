@@ -37,7 +37,7 @@ export function MarkCompleteButton({ lessonId, initialCompleted, nextLessonId, c
                     if (nextLessonId) {
                         router.push(`/lesson/${nextLessonId}`)
                     } else if (courseId) {
-                        router.push(`/course/${courseId}`)
+                        router.push(`/dashboard/courses/${courseId}`)
                     }
                 }, 500)
             }

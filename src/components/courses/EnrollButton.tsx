@@ -36,7 +36,7 @@ export function EnrollButton({ courseId, isAuthenticated, hasPaid = false }: Enr
             if (res.ok) {
                 setEnrolled(true)
                 router.refresh()
-                router.push(`/course/${courseId}`)
+                router.push(`/dashboard/courses/${courseId}`)
             }
         } finally {
             setLoading(false)

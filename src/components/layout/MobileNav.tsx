@@ -12,7 +12,7 @@ export function MobileNav({ role }: { role: Role }) {
     return (
         <>
             <MobileSidebar role={role} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-            <BottomNav role={role} />
+            <BottomNav role={role} onOpenMenu={() => setDrawerOpen(true)} />
         </>
     )
 }

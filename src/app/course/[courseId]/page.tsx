@@ -155,7 +155,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
 
             <main className="pt-20 min-h-screen">
                 {/* ── Hero ────────────────────────────────────── */}
-                <header className="relative w-full h-[300px] sm:h-[450px] overflow-hidden">
+                <header className="relative w-full min-h-[420px] sm:min-h-[520px] overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         {course.hero_image ? (
                             <img
@@ -169,18 +169,17 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                         <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent" />
                     </div>
 
-                    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 h-full flex flex-col justify-end pb-8 sm:pb-12">
-                        {/* Back button */}
-                        <Link
-                            href={session?.user.role === 'ADMIN' ? '/admin/courses' : session ? '/dashboard' : '/'}
-                            className="absolute top-8 left-8 flex items-center gap-2 text-on-surface-variant hover:text-on-surface transition-colors text-sm"
-                        >
-                            <MaterialIcon name="arrow_back" size="text-lg" />
-                            {session?.user.role === 'ADMIN' ? 'Volver a cursos' : session ? 'Volver al dashboard' : 'Volver al inicio'}
-                        </Link>
-
+                    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 h-full flex flex-col justify-end pb-8 sm:pb-12 pt-16">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                             <div className="space-y-4">
+                                {/* Back button */}
+                                <Link
+                                    href={session?.user.role === 'ADMIN' ? '/admin/courses' : session ? '/dashboard' : '/'}
+                                    className="inline-flex items-center gap-2 text-on-surface-variant hover:text-on-surface transition-colors text-sm"
+                                >
+                                    <MaterialIcon name="arrow_back" size="text-lg" />
+                                    {session?.user.role === 'ADMIN' ? 'Volver a cursos' : session ? 'Volver al dashboard' : 'Volver al inicio'}
+                                </Link>
                                 <div className="inline-flex items-center px-3 py-1 bg-primary-container/20 text-primary rounded-full text-xs font-bold tracking-[0.1em] uppercase">
                                     Formación en ventas
                                 </div>
@@ -192,7 +191,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                 <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter text-on-surface max-w-3xl">
                                     {course.title}
                                 </h1>
-                                <p className="text-on-surface-variant text-lg leading-relaxed max-w-2xl">
+                                <p className="text-on-surface-variant text-lg leading-relaxed max-w-2xl text-justify">
                                     {course.description}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-6 text-on-surface-variant pt-2">

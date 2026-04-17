@@ -270,7 +270,7 @@ export default async function DashboardPage() {
                             return (
                                 <Link
                                     key={course.id}
-                                    href={`/course/${course.id}`}
+                                    href={`/dashboard/courses/${course.id}`}
                                     className="bg-surface-container-low rounded-xl overflow-hidden group hover:translate-y-[-4px] transition-transform duration-300"
                                 >
                                     {/* Thumbnail */}
