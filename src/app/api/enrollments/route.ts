@@ -15,9 +15,9 @@ export async function POST(req: NextRequest) {
         if (session.user.role !== 'ADMIN') {
             const user = await prisma.user.findUnique({
                 where: { id: session.user.id },
-                select: { payment_status: true },
+                select: { payment_status: true, blocked: true },
             })
-            if (user?.payment_status !== 'active') {
+            if (user?.payment_status !== 'active' || user?.blocked) {
                 return NextResponse.json({ error: 'Payment required' }, { status: 402 })
             }
         }

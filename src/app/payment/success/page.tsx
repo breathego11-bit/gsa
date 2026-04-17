@@ -24,20 +24,14 @@ export default async function PaymentSuccessPage({
             if (checkoutSession.payment_status === 'paid' || checkoutSession.status === 'complete') {
                 const userId = checkoutSession.metadata?.user_id
                 if (userId) {
-                    // Activate user access
                     await prisma.user.update({
                         where: { id: userId },
                         data: { payment_status: 'active' },
                     })
 
-                    // Update payment record
                     await prisma.payment.updateMany({
                         where: { stripe_checkout_id: checkoutSession.id },
-                        data: {
-                            status: checkoutSession.mode === 'payment' ? 'completed' : 'pending',
-                            stripe_subscription_id: checkoutSession.subscription as string | null,
-                            installments_paid: checkoutSession.mode === 'payment' ? 1 : 1,
-                        },
+                        data: { status: 'completed' },
                     })
                 }
             }

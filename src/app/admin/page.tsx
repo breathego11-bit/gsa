@@ -7,13 +7,10 @@ import { GrowthCharts } from '@/components/charts/GrowthCharts'
 
 export const dynamic = 'force-dynamic'
 
-function calcRevenue(payments: { amount_total: number; payment_type: string; installments_paid: number; installments_total: number; status: string }[]) {
-    return payments.reduce((sum, p) => {
-        if (p.status === 'failed') return sum
-        if (p.payment_type === 'one_time' && p.status === 'completed') return sum + p.amount_total
-        if (p.payment_type === 'installment') return sum + (p.installments_paid * Math.round(p.amount_total / p.installments_total))
-        return sum
-    }, 0)
+function calcRevenue(payments: { amount: number; status: string }[]) {
+    return payments
+        .filter(p => p.status === 'completed')
+        .reduce((sum, p) => sum + p.amount, 0)
 }
 
 export default async function AdminDashboard() {
@@ -39,11 +36,11 @@ export default async function AdminDashboard() {
         prisma.user.count({ where: { role: 'STUDENT' } }),
         prisma.payment.findMany({
             where: { created_at: { gte: oneMonthAgo } },
-            select: { amount_total: true, payment_type: true, installments_paid: true, installments_total: true, status: true },
+            select: { amount: true, status: true },
         }),
         prisma.payment.findMany({
             where: { created_at: { gte: oneYearAgo } },
-            select: { amount_total: true, payment_type: true, installments_paid: true, installments_total: true, status: true },
+            select: { amount: true, status: true },
         }),
         prisma.lessonProgress.count(),
         prisma.lessonProgress.count({ where: { completed: true } }),
@@ -63,7 +60,7 @@ export default async function AdminDashboard() {
         }),
         prisma.payment.findMany({
             where: { status: { not: 'failed' } },
-            select: { amount_total: true, payment_type: true, installments_paid: true, installments_total: true, status: true, created_at: true },
+            select: { amount: true, status: true, created_at: true },
         }),
     ])
 
@@ -86,15 +83,10 @@ export default async function AdminDashboard() {
             return c.getFullYear() === year && c.getMonth() === month
         }).length
 
-        const revenueInMonth = Math.round(allPayments.filter((p: any) => {
+        const revenueInMonth = Math.round(calcRevenue(allPayments.filter((p: any) => {
             const c = new Date(p.created_at)
             return c.getFullYear() === year && c.getMonth() === month
-        }).reduce((sum: number, p: any) => {
-            if (p.status === 'failed') return sum
-            if (p.payment_type === 'one_time' && p.status === 'completed') return sum + p.amount_total
-            if (p.payment_type === 'installment') return sum + (p.installments_paid * Math.round(p.amount_total / p.installments_total))
-            return sum
-        }, 0) / 100)
+        })) / 100)
 
         chartMonths.push({ label, students: studentsInMonth, revenue: revenueInMonth })
     }

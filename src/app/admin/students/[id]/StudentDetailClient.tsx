@@ -1,8 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import type { CourseEnrollmentProgress } from '@/types'
@@ -17,16 +17,18 @@ interface StudentInfo {
     profile_image: string | null
     created_at: string
     payment_status: string
+    blocked: boolean
 }
 
 interface PaymentInfo {
     id: string
     payment_type: string
-    amount_total: number
+    amount: number
     currency: string
     status: string
-    installments_paid: number
-    installments_total: number
+    installment_number: number | null
+    installment_plan_id: string | null
+    due_date: string | null
     created_at: string
 }
 
@@ -55,12 +57,28 @@ const paymentStatusLabels: Record<string, { label: string; color: string }> = {
     cancelled: { label: 'Cancelado', color: 'bg-red-500/20 text-red-400' },
 }
 
-const paymentTypeLabels: Record<string, string> = {
-    one_time: 'Pago Completo',
-    installment: 'Plan de Cuotas',
-}
-
 export function StudentDetailClient({ student, courses, payments }: Props) {
+    const [blocked, setBlocked] = useState(student.blocked)
+    const [blocking, setBlocking] = useState(false)
+
+    async function toggleBlock() {
+        setBlocking(true)
+        try {
+            const res = await fetch(`/api/admin/students/${student.id}/block`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blocked: !blocked }),
+            })
+            if (res.ok) setBlocked(!blocked)
+        } finally {
+            setBlocking(false)
+        }
+    }
+
+    const totalPaid = payments
+        .filter(p => p.status === 'completed')
+        .reduce((sum, p) => sum + p.amount, 0)
+
     return (
         <div className="space-y-8">
             {/* Back link */}
@@ -124,7 +142,7 @@ export function StudentDetailClient({ student, courses, payments }: Props) {
             {/* Payment info */}
             <div>
                 <h2 className="section-title mb-1">Información de Pago</h2>
-                <p className="section-subtitle mb-6">Estado de la suscripción y pagos realizados</p>
+                <p className="section-subtitle mb-6">Estado de acceso y pagos realizados</p>
 
                 <Card>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -134,27 +152,39 @@ export function StudentDetailClient({ student, courses, payments }: Props) {
                             </div>
                             <div>
                                 <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Estado de acceso</p>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${paymentStatusLabels[student.payment_status]?.color || paymentStatusLabels.none.color}`}>
-                                    {paymentStatusLabels[student.payment_status]?.label || 'Sin pago'}
-                                </span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${paymentStatusLabels[student.payment_status]?.color || paymentStatusLabels.none.color}`}>
+                                        {paymentStatusLabels[student.payment_status]?.label || 'Sin pago'}
+                                    </span>
+                                    {blocked && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400">
+                                            Bloqueado
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        {payments.length > 0 && (() => {
-                            const totalPaid = payments.reduce((sum, p) => {
-                                if (p.status === 'failed') return sum
-                                if (p.payment_type === 'one_time' && p.status === 'completed') return sum + p.amount_total
-                                if (p.payment_type === 'installment') return sum + (p.installments_paid * Math.round(p.amount_total / p.installments_total))
-                                return sum
-                            }, 0)
-                            return (
+                        <div className="flex items-center gap-4">
+                            {payments.length > 0 && (
                                 <div className="text-right">
                                     <p className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
                                         {formatAmount(totalPaid, payments[0].currency)}
                                     </p>
                                     <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Total pagado</p>
                                 </div>
-                            )
-                        })()}
+                            )}
+                            <button
+                                onClick={toggleBlock}
+                                disabled={blocking}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 ${
+                                    blocked
+                                        ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
+                                        : 'bg-red-500/15 text-red-400 hover:bg-red-500/25'
+                                }`}
+                            >
+                                {blocking ? '...' : blocked ? 'Desbloquear' : 'Bloquear'}
+                            </button>
+                        </div>
                     </div>
 
                     {payments.length === 0 ? (
@@ -163,54 +193,41 @@ export function StudentDetailClient({ student, courses, payments }: Props) {
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {payments.map((p) => {
-                                const perInstallment = Math.round(p.amount_total / p.installments_total)
-                                const amountPaid = p.payment_type === 'installment'
-                                    ? p.installments_paid * perInstallment
-                                    : (p.status === 'completed' ? p.amount_total : 0)
-
-                                return (
-                                    <div
-                                        key={p.id}
-                                        className="flex items-center justify-between p-4 rounded-xl"
-                                        style={{ background: 'var(--bg-raised)' }}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <MaterialIcon
-                                                name={p.payment_type === 'one_time' ? 'credit_card' : 'event_repeat'}
-                                                size="text-lg"
-                                                className={p.status === 'completed' ? 'text-emerald-400' : p.status === 'failed' ? 'text-red-400' : 'text-blue-400'}
-                                            />
-                                            <div>
-                                                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                                                    {paymentTypeLabels[p.payment_type] || p.payment_type}
-                                                </p>
-                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                    {formatDate(p.created_at)}
-                                                    {p.payment_type === 'installment' && ` • Cuota ${p.installments_paid}/${p.installments_total}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                                                {formatAmount(amountPaid, p.currency)}
-                                                {p.payment_type === 'installment' && (
-                                                    <span className="text-xs font-normal" style={{ color: 'var(--text-secondary)' }}>
-                                                        {' '}/ {formatAmount(p.amount_total, p.currency)}
-                                                    </span>
-                                                )}
+                            {payments.map((p) => (
+                                <div
+                                    key={p.id}
+                                    className="flex items-center justify-between p-4 rounded-xl"
+                                    style={{ background: 'var(--bg-raised)' }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <MaterialIcon
+                                            name={p.payment_type === 'one_time' ? 'credit_card' : 'event_repeat'}
+                                            size="text-lg"
+                                            className={p.status === 'completed' ? 'text-emerald-400' : p.status === 'failed' ? 'text-red-400' : 'text-amber-400'}
+                                        />
+                                        <div>
+                                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                                {p.payment_type === 'one_time' ? 'Pago Completo' : `Cuota ${p.installment_number}`}
                                             </p>
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                                p.status === 'completed' ? 'text-emerald-400'
-                                                    : p.status === 'failed' ? 'text-red-400'
-                                                        : 'text-blue-400'
-                                            }`}>
-                                                {p.status === 'completed' ? 'Completado' : p.status === 'failed' ? 'Fallido' : p.payment_type === 'installment' ? `${p.installments_paid} de ${p.installments_total} cuotas` : 'Pendiente'}
-                                            </span>
+                                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                {p.status === 'completed' ? formatDate(p.created_at) : p.due_date ? `Vence: ${formatDate(p.due_date)}` : formatDate(p.created_at)}
+                                            </p>
                                         </div>
                                     </div>
-                                )
-                            })}
+                                    <div className="text-right">
+                                        <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                            {formatAmount(p.amount, p.currency)}
+                                        </p>
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                            p.status === 'completed' ? 'text-emerald-400'
+                                                : p.status === 'failed' ? 'text-red-400'
+                                                    : 'text-amber-400'
+                                        }`}>
+                                            {p.status === 'completed' ? 'Pagado' : p.status === 'failed' ? 'Fallido' : 'Pendiente'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </Card>
@@ -236,90 +253,55 @@ export function StudentDetailClient({ student, courses, payments }: Props) {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                                            Curso
-                                        </th>
-                                        <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
-                                            Inscripcion
-                                        </th>
-                                        <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                                            Progreso
-                                        </th>
-                                        <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                                            Estado
-                                        </th>
-                                        <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
-                                            Examen Final
-                                        </th>
+                                        <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Curso</th>
+                                        <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Inscripción</th>
+                                        <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Progreso</th>
+                                        <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {courses.map((course) => (
-                                        <tr key={course.enrollmentId} className="table-row-base">
-                                            {/* Course name */}
+                                    {courses.map((c) => (
+                                        <tr key={c.courseId} className="table-row-base">
                                             <td className="py-4 pr-4">
-                                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                                                    {course.courseTitle}
-                                                </p>
-                                                {course.instructorName && (
+                                                <Link href={`/admin/courses/${c.courseId}/builder`} className="font-medium hover:underline" style={{ color: 'var(--text-primary)' }}>
+                                                    {c.courseTitle}
+                                                </Link>
+                                                {c.instructorName && (
                                                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                                                        {course.instructorName}
+                                                        {c.instructorName}
                                                     </p>
                                                 )}
                                             </td>
-
-                                            {/* Enrollment date */}
                                             <td className="py-4 pr-4 hidden md:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                {formatDate(course.enrolledAt)}
+                                                {formatDate(c.enrolledAt)}
                                             </td>
-
-                                            {/* Progress bar */}
-                                            <td className="py-4 pr-4 min-w-[160px]">
+                                            <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-raised)' }}>
+                                                    <div className="w-24 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-raised)' }}>
                                                         <div
-                                                            className="h-full rounded-full transition-all duration-500"
+                                                            className="h-full rounded-full transition-all"
                                                             style={{
-                                                                width: `${course.progressPercent}%`,
-                                                                background: course.approved
-                                                                    ? 'rgb(16, 185, 129)'
-                                                                    : course.progressPercent > 0
-                                                                        ? 'var(--blue-accent)'
-                                                                        : 'transparent',
+                                                                width: `${c.progressPercent}%`,
+                                                                background: c.progressPercent >= 100 ? 'var(--green-accent, #10b981)' : 'var(--blue-accent, #3b82f6)',
                                                             }}
                                                         />
                                                     </div>
-                                                    <span className="text-xs font-bold w-10 text-right" style={{ color: 'var(--text-primary)' }}>
-                                                        {course.progressPercent}%
+                                                    <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                                        {c.progressPercent}%
                                                     </span>
                                                 </div>
                                                 <p className="text-[10px] mt-1" style={{ color: 'var(--text-secondary)' }}>
-                                                    {course.completedLessons}/{course.totalLessons} lecciones
+                                                    {c.completedLessons}/{c.totalLessons} lecciones
                                                 </p>
                                             </td>
-
-                                            {/* Status badge */}
-                                            <td className="py-4 pr-4 text-center">
-                                                {course.approved ? (
-                                                    <Badge variant="success">Aprobado</Badge>
-                                                ) : course.progressPercent > 0 ? (
-                                                    <Badge variant="info">En progreso</Badge>
-                                                ) : (
-                                                    <Badge variant="draft">No iniciado</Badge>
-                                                )}
-                                            </td>
-
-                                            {/* Final exam */}
                                             <td className="py-4 text-center hidden sm:table-cell">
-                                                {!course.hasFinalExam ? (
-                                                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>—</span>
-                                                ) : course.finalExamPassed === true ? (
-                                                    <Badge variant="success">Aprobado {course.finalExamScore}%</Badge>
-                                                ) : course.finalExamPassed === false ? (
-                                                    <Badge variant="warning">Reprobado {course.finalExamScore}%</Badge>
-                                                ) : (
-                                                    <Badge variant="draft">Pendiente</Badge>
-                                                )}
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                    c.approved ? 'bg-emerald-500/20 text-emerald-400'
+                                                        : c.progressPercent > 0 ? 'bg-blue-500/20 text-blue-400'
+                                                            : 'bg-surface-variant text-on-surface-variant'
+                                                }`}>
+                                                    {c.approved ? 'Aprobado' : c.progressPercent > 0 ? 'En progreso' : 'No iniciado'}
+                                                </span>
                                             </td>
                                         </tr>
                                     ))}

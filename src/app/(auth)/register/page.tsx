@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/Input'
 
 export default function RegisterPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const invite = searchParams.get('invite')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -37,6 +39,7 @@ export default function RegisterPage() {
                 email: (form.elements.namedItem('email') as HTMLInputElement).value,
                 phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
                 password,
+                ...(invite ? { invite } : {}),
             }),
         })
 
@@ -77,12 +80,21 @@ export default function RegisterPage() {
                     className="rounded-2xl border p-8 shadow-2xl"
                     style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                 >
+                    {invite && (
+                        <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                            <span className="material-symbols-outlined text-emerald-400 text-xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                            <p className="text-sm text-emerald-400 font-medium">
+                                Has sido invitado a Growth Sales Academy
+                            </p>
+                        </div>
+                    )}
+
                     <div className="mb-7">
                         <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                            Únete a la Academia
+                            {invite ? 'Completa tu registro' : 'Únete a la Academia'}
                         </h2>
                         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                            Crea tu cuenta gratuita y empieza a aprender
+                            {invite ? 'Crea tu cuenta para acceder a los cursos' : 'Crea tu cuenta gratuita y empieza a aprender'}
                         </p>
                     </div>
 

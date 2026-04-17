@@ -77,11 +77,11 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                 }),
                 prisma.user.findUnique({
                     where: { id: session.user.id },
-                    select: { payment_status: true },
+                    select: { payment_status: true, blocked: true },
                 }),
             ])
             isEnrolled = !!enrollment
-            hasPaid = user?.payment_status === 'active'
+            hasPaid = user?.payment_status === 'active' && !user?.blocked
         }
     }
 

@@ -44,6 +44,7 @@ export const authOptions: NextAuthOptions = {
                     profile_image: user.profile_image,
                     role: user.role,
                     payment_status: user.payment_status,
+                    blocked: user.blocked,
                 };
             }
         })
@@ -56,6 +57,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.last_name = token.last_name as string | null;
                 session.user.profile_image = token.profile_image as string | null;
                 session.user.payment_status = (token.payment_status as string) || 'none';
+                session.user.blocked = (token.blocked as boolean) ?? false;
             }
             return session;
         },
@@ -66,6 +68,7 @@ export const authOptions: NextAuthOptions = {
                 token.last_name = (user as any).last_name ?? null;
                 token.profile_image = (user as any).profile_image ?? null;
                 token.payment_status = (user as any).payment_status ?? 'none';
+                token.blocked = (user as any).blocked ?? false;
             }
             return token;
         }

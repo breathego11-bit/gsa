@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import { InstallmentBanner } from '@/components/payment/InstallmentBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -119,6 +120,16 @@ export default async function DashboardPage() {
         },
     })
 
+    // Check for pending installments (all, not just overdue)
+    const pendingInstallments = await prisma.payment.findMany({
+        where: {
+            user_id: session!.user.id,
+            payment_type: 'installment',
+            status: 'pending',
+        },
+        orderBy: { installment_number: 'asc' },
+    })
+
     const gradients = [
         'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)',
         'linear-gradient(135deg, #164e63 0%, #134e4a 100%)',
@@ -128,6 +139,18 @@ export default async function DashboardPage() {
 
     return (
         <div className="space-y-12">
+            {/* ── Installment Due Banner ─────────────────── */}
+            {pendingInstallments.length > 0 && (
+                <InstallmentBanner
+                    installments={pendingInstallments.map(p => ({
+                        id: p.id,
+                        amount: p.amount,
+                        installmentNumber: p.installment_number!,
+                        dueDate: p.due_date?.toISOString() ?? null,
+                    }))}
+                />
+            )}
+
             {/* ── Hero Bento Grid ─────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Greeting Card */}

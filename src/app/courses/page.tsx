@@ -34,11 +34,11 @@ export default async function CoursesPage() {
             }),
             prisma.user.findUnique({
                 where: { id: session.user.id },
-                select: { payment_status: true, role: true },
+                select: { payment_status: true, role: true, blocked: true },
             }),
         ])
         enrolledCourseIds = enrollments.map((e) => e.course_id)
-        hasPaid = user?.role === 'ADMIN' || user?.payment_status === 'active'
+        hasPaid = user?.role === 'ADMIN' || (user?.payment_status === 'active' && !user?.blocked)
     }
 
     return (

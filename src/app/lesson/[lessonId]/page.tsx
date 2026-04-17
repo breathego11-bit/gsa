@@ -51,9 +51,9 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
     if (session.user.role !== 'ADMIN') {
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            select: { payment_status: true },
+            select: { payment_status: true, blocked: true },
         })
-        if (user?.payment_status !== 'active') redirect('/payment')
+        if (user?.payment_status !== 'active' || user?.blocked) redirect('/payment')
 
         const enrollment = await prisma.enrollment.findUnique({
             where: {

@@ -12,6 +12,8 @@ export default async function AdminStudentsPage() {
             username: true,
             email: true,
             phone: true,
+            payment_status: true,
+            blocked: true,
             created_at: true,
             _count: { select: { enrollments: true } },
         },
@@ -42,6 +44,7 @@ export default async function AdminStudentsPage() {
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Estudiante</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Usuario</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Teléfono</th>
+                                    <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Estado</th>
                                     <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Cursos</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>Registro</th>
                                     <th className="pb-3.5 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
@@ -65,6 +68,21 @@ export default async function AdminStudentsPage() {
                                         </td>
                                         <td className="py-4 pr-4 hidden md:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>
                                             {student.phone ?? '—'}
+                                        </td>
+                                        <td className="py-4 pr-4 text-center hidden sm:table-cell">
+                                            {student.blocked ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400">
+                                                    Bloqueado
+                                                </span>
+                                            ) : student.payment_status === 'active' ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400">
+                                                    Activo
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-white/5 text-on-surface-variant">
+                                                    Sin pago
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="py-4 pr-4 text-center">
                                             <span

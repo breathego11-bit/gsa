@@ -11,6 +11,7 @@ declare module "next-auth" {
             profile_image?: string | null;
             role: string;
             payment_status: string;
+            blocked: boolean;
         };
     }
 
@@ -19,6 +20,7 @@ declare module "next-auth" {
         last_name?: string | null;
         profile_image?: string | null;
         payment_status?: string;
+        blocked?: boolean;
     }
 }
 
@@ -29,5 +31,6 @@ declare module "next-auth/jwt" {
         last_name?: string | null;
         profile_image?: string | null;
         payment_status?: string;
+        blocked?: boolean;
     }
 }

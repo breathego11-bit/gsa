@@ -131,8 +131,8 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
         }
     }
 
-    const inputClass = "w-full bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-secondary/50 text-on-surface px-4 py-3 text-sm"
-    const labelClass = "text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 ml-1"
+    const inputClass = "w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-1 focus:ring-secondary/50 focus:border-secondary/50 text-on-surface px-4 py-3 text-sm transition-colors"
+    const labelClass = "text-[10px] font-bold uppercase tracking-wider text-on-surface-variant ml-1"
 
     return (
         <form onSubmit={handleSave} className="space-y-8 lg:space-y-12">

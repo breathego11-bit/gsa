@@ -11,6 +11,8 @@ import {
     User,
     LogOut,
     BarChart3,
+    Settings,
+    MailPlus,
     X,
 } from 'lucide-react'
 
@@ -32,6 +34,8 @@ const adminNav: NavItem[] = [
     { href: '/admin', label: 'Dashboard', icon: <BarChart3 size={18} /> },
     { href: '/admin/courses', label: 'Cursos', icon: <BookOpen size={18} /> },
     { href: '/admin/students', label: 'Estudiantes', icon: <Users size={18} /> },
+    { href: '/admin/invitations', label: 'Invitaciones', icon: <MailPlus size={18} /> },
+    { href: '/admin/settings', label: 'Configuración', icon: <Settings size={18} /> },
     { href: '/admin/profile', label: 'Perfil', icon: <User size={18} /> },
 ]
 

@@ -3,21 +3,23 @@
 import { useState } from 'react'
 
 interface CheckoutButtonProps {
-    plan: 'one_time' | 'installment'
+    plan?: 'one_time' | 'installment'
+    paymentId?: string
     children: React.ReactNode
     className?: string
 }
 
-export function CheckoutButton({ plan, children, className }: CheckoutButtonProps) {
+export function CheckoutButton({ plan, paymentId, children, className }: CheckoutButtonProps) {
     const [loading, setLoading] = useState(false)
 
     async function handleClick() {
         setLoading(true)
         try {
+            const body = paymentId ? { paymentId } : { plan }
             const res = await fetch('/api/stripe/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan }),
+                body: JSON.stringify(body),
             })
             const data = await res.json()
             if (data.url) {

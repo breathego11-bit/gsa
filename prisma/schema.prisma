@@ -37,6 +37,7 @@ model User {
 
   payment_status     String    @default("none")   // none | active | past_due | cancelled
   stripe_customer_id String?   @unique
+  blocked            Boolean   @default(false)
 
   enrollments        Enrollment[]
   progress           LessonProgress[]
@@ -44,7 +45,9 @@ model User {
   instructed_courses Course[]          @relation("CourseInstructor")
   form_submissions   FormSubmission[]
   exam_attempts      ExamAttempt[]
-  payments           Payment[]
+  payments              Payment[]
+  created_invitations   Invitation[] @relation("InvitationCreator")
+  redeemed_invitations  Invitation[] @relation("InvitationRedeemer")
 }
 
 model Course {
@@ -177,20 +180,43 @@ model ExamAttempt {
 }
 
 model Payment {
-  id                     String   @id @default(cuid())
-  user_id                String
-  stripe_checkout_id     String?  @unique
-  stripe_subscription_id String?
-  payment_type           String   // one_time | installment
-  amount_total           Int      // Total in cents (188800 or 222201)
-  currency               String   @default("eur")
-  status                 String   @default("pending") // pending | completed | failed
-  installments_paid      Int      @default(0)
-  installments_total     Int      @default(1)
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  user_id             String
+  stripe_checkout_id  String?   @unique
+  payment_type        String    // one_time | installment
+  amount              Int       // Amount for THIS payment in cents
+  currency            String    @default("eur")
+  status              String    @default("pending") // pending | completed | failed
+  installment_number  Int?      // 1, 2, 3... null for one_time
+  installment_plan_id String?   // Groups related installments together
+  due_date            DateTime? // When this installment is due
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
 
-  user                   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user                User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([installment_plan_id])
+}
+
+model SiteSettings {
+  id         String   @id @default("singleton")
+  pricing    Json     // { totalPrice: 188800, firstInstallment: 188800, installmentCount: 1 }
+  updated_at DateTime @updatedAt
+}
+
+model Invitation {
+  id           String    @id @default(cuid())
+  created_by   String
+  payment_type String    // one_time | installment
+  amount_paid  Int       // cents already paid externally
+  installments Json?     // [{ number, amount, dueDate }] pending installments
+  used         Boolean   @default(false)
+  used_by      String?
+  used_at      DateTime?
+  expires_at   DateTime?
+  created_at   DateTime  @default(now())
+
+  creator      User      @relation("InvitationCreator", fields: [created_by], references: [id])
+  redeemer     User?     @relation("InvitationRedeemer", fields: [used_by], references: [id])
 }

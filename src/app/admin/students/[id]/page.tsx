@@ -24,6 +24,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 profile_image: true,
                 created_at: true,
                 payment_status: true,
+                blocked: true,
             },
         }),
         prisma.enrollment.findMany({
@@ -55,14 +56,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             select: {
                 id: true,
                 payment_type: true,
-                amount_total: true,
+                amount: true,
                 currency: true,
                 status: true,
-                installments_paid: true,
-                installments_total: true,
+                installment_number: true,
+                installment_plan_id: true,
+                due_date: true,
                 created_at: true,
             },
-            orderBy: { created_at: 'desc' },
+            orderBy: [{ installment_plan_id: 'asc' }, { installment_number: 'asc' }],
         }),
     ])
 
@@ -101,11 +103,12 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     const paymentData = payments.map((p) => ({
         id: p.id,
         payment_type: p.payment_type,
-        amount_total: p.amount_total,
+        amount: p.amount,
         currency: p.currency,
         status: p.status,
-        installments_paid: p.installments_paid,
-        installments_total: p.installments_total,
+        installment_number: p.installment_number,
+        installment_plan_id: p.installment_plan_id,
+        due_date: p.due_date?.toISOString() ?? null,
         created_at: p.created_at.toISOString(),
     }))
 
@@ -121,6 +124,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 profile_image: student.profile_image,
                 created_at: student.created_at.toISOString(),
                 payment_status: student.payment_status,
+                blocked: student.blocked,
             }}
             courses={courses}
             payments={paymentData}

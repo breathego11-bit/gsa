@@ -27,11 +27,11 @@ export default async function DashboardCoursesPage() {
         }),
         prisma.user.findUnique({
             where: { id: session!.user.id },
-            select: { payment_status: true },
+            select: { payment_status: true, blocked: true },
         }),
     ])
     const enrolledCourseIds = enrollments.map((e) => e.course_id)
-    const hasPaid = user?.payment_status === 'active'
+    const hasPaid = user?.payment_status === 'active' && !user?.blocked
 
     const coursesData = courses.map((course) => {
         const lessonCount = course.modules.reduce(
