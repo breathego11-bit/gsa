@@ -209,7 +209,7 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
                                     <MaterialIcon name={uploadingVideo ? 'hourglass_empty' : 'cloud_upload'} size="text-base" />
-                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 500 MB)'}
+                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 1 GB)'}
                                     <input
                                         type="file"
                                         className="hidden"

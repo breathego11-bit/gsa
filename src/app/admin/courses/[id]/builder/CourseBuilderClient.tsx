@@ -473,7 +473,7 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                             ) : (
                                                 <label className="flex items-center gap-2 px-3 py-3 rounded-xl cursor-pointer text-xs font-medium transition-colors border border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 justify-center text-on-surface-variant">
                                                     <span className="material-symbols-outlined text-base">{uploadingVideo ? 'hourglass_empty' : 'cloud_upload'}</span>
-                                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 500 MB)'}
+                                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 1 GB)'}
                                                     <input type="file" className="hidden"
                                                         accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
                                                         disabled={uploadingVideo}

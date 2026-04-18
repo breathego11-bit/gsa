@@ -18,13 +18,13 @@ const ALLOWED_DOC_TYPES = [
 ]
 const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_DOC_TYPES]
 const MAX_SIZE_DEFAULT = 10 * 1024 * 1024 // 10 MB
-const MAX_SIZE_VIDEO = 500 * 1024 * 1024 // 500 MB
+const MAX_SIZE_VIDEO = 1024 * 1024 * 1024 // 1 GB
 
 export const config = {
     api: { bodyParser: false },
 }
 
-// Allow large uploads (videos up to 500MB)
+// Allow large uploads (videos up to 1GB)
 export const maxDuration = 300 // 5 minutes timeout
 
 export async function POST(req: NextRequest) {
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
         if (file.size > maxSize) {
             return NextResponse.json(
-                { error: isVideo ? 'El video es muy grande. Máximo 500 MB.' : 'El archivo es muy grande. Máximo 10 MB.' },
+                { error: isVideo ? 'El video es muy grande. Máximo 1 GB.' : 'El archivo es muy grande. Máximo 10 MB.' },
                 { status: 400 },
             )
         }
