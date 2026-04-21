@@ -56,13 +56,6 @@ App en `http://localhost:3000`
 
 > **Nota:** El DB corre en el puerto **5433** del host para evitar conflictos con instalaciones nativas de PostgreSQL.
 
-### Usuario Admin
-
-| Campo | Valor |
-|---|---|
-| Email | `admin@gsa.com` |
-| Contraseña | `Admin@GSA2024!` |
-| Rol | `ADMIN` |
 
 Los admins **solo se crean vía seed** — no hay registro público de administradores. Para agregar más (máx. 3), editar `prisma/seed.ts`.
 
