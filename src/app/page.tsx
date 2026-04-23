@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import LiquidEther from '@/components/ui/LiquidEther'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { FeaturedCourseCard } from '@/components/landing/FeaturedCourseCard'
+import { AboutSection } from '@/components/landing/AboutSection'
 
 
 export const dynamic = 'force-dynamic'
@@ -37,7 +38,6 @@ const features = [
         image: '/feature4.jpg',
     },
 ]
-
 
 export default async function LandingPage() {
     const featuredCourses = await prisma.course.findMany({
@@ -152,7 +152,7 @@ export default async function LandingPage() {
                 <section id="features" className="relative py-24 px-4 sm:px-8 max-w-7xl mx-auto">
                     <div className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface">
-                            Los 4 pilares del método{' '}
+                            Qué incluye el programa{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-tertiary">
                                 GSA
                             </span>
@@ -185,6 +185,9 @@ export default async function LandingPage() {
                         ))}
                     </div>
                 </section>
+
+                {/* ── About / Quiénes somos ──────────────────── */}
+                <AboutSection />
 
                 {/* ── Featured Courses ────────────────────────── */}
                 <section className="relative py-24 px-4 sm:px-8 bg-surface-container-low/40 backdrop-blur-sm">

@@ -1,9 +1,15 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Instrument_Serif } from 'next/font/google'
 import { Providers } from '@/components/layout/Providers'
 
 const inter = Inter({ subsets: ['latin'] })
+const instrumentSerif = Instrument_Serif({
+    subsets: ['latin'],
+    weight: '400',
+    style: ['normal', 'italic'],
+    variable: '--font-instrument-serif',
+})
 
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
@@ -13,7 +19,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="es">
+        <html lang="es" className={instrumentSerif.variable}>
             <head>
                 <link
                     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
