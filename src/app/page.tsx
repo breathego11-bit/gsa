@@ -4,40 +4,10 @@ import LiquidEther from '@/components/ui/LiquidEther'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { FeaturedCourseCard } from '@/components/landing/FeaturedCourseCard'
 import { AboutSection } from '@/components/landing/AboutSection'
+import { ProgramIncludesSection } from '@/components/landing/ProgramIncludesSection'
 
 
 export const dynamic = 'force-dynamic'
-
-const features = [
-    {
-        icon: 'psychology',
-        title: 'Desarrollo de habilidades de conexión humana y creación de relaciones',
-        desc: 'Aprende a generar confianza genuina, escuchar activamente y construir vínculos duraderos con cada cliente.',
-        offset: false,
-        image: '/feature1.jpg',
-    },
-    {
-        icon: 'trending_up',
-        title: 'Técnicas avanzadas de venta consciente',
-        desc: 'Domina metodologías de cierre éticas que priorizan el valor real para el cliente, no la presión.',
-        offset: true,
-        image: '/feature2.jpg',
-    },
-    {
-        icon: 'diamond',
-        title: 'Comunidad privada',
-        desc: 'Forma parte de un grupo exclusivo de vendedores comprometidos donde compartir experiencias, estrategias y apoyo mutuo.',
-        offset: false,
-        image: '/feature3.jpg',
-    },
-    {
-        icon: 'hub',
-        title: 'Sesiones en vivo',
-        desc: 'Participa en sesiones interactivas con mentores expertos para resolver dudas, practicar cierres y recibir feedback en tiempo real.',
-        offset: true,
-        image: '/feature4.jpg',
-    },
-]
 
 export default async function LandingPage() {
     const featuredCourses = await prisma.course.findMany({
@@ -148,43 +118,8 @@ export default async function LandingPage() {
                     </div>
                 </section>
 
-                {/* ── Features ────────────────────────────────── */}
-                <section id="features" className="relative py-24 px-4 sm:px-8 max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface">
-                            Qué incluye el programa{' '}
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-tertiary">
-                                GSA
-                            </span>
-                        </h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        {features.map((f) => (
-                            <div
-                                key={f.icon}
-                                className={`glass rounded-xl border border-outline-variant/10 flex flex-col overflow-hidden hover:bg-surface-container-high transition-all group ${
-                                    f.offset ? 'md:mt-12' : ''
-                                }`}
-                            >
-                                <div className="h-36 overflow-hidden">
-                                    <img src={f.image} alt={f.title}
-                                        className="w-full h-full object-cover opacity-60 group-hover:scale-110 group-hover:opacity-80 transition-all duration-700" />
-                                </div>
-                                <div className="p-6 flex flex-col flex-1">
-                                    <div>
-                                        <MaterialIcon
-                                            name={f.icon}
-                                            size="text-3xl"
-                                            className="text-secondary mb-3"
-                                        />
-                                        <h3 className="text-lg font-bold text-on-surface">{f.title}</h3>
-                                    </div>
-                                    <p className="text-sm text-on-surface-variant mt-3">{f.desc}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                {/* ── Features / Qué incluye el programa ──────── */}
+                <ProgramIncludesSection />
 
                 {/* ── About / Quiénes somos ──────────────────── */}
                 <AboutSection />
