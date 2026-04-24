@@ -1,8 +1,11 @@
+import { createHash } from 'crypto'
+
 const BUNNY_API_KEY = process.env.BUNNY_LIBRARY_API_KEY!
 const BUNNY_LIBRARY_ID = process.env.BUNNY_LIBRARY_ID!
 const BUNNY_CDN_HOSTNAME = process.env.BUNNY_CDN_HOSTNAME!
 
 const BASE_URL = `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}/videos`
+const TUS_ENDPOINT = 'https://video.bunnycdn.com/tusupload'
 
 export const BUNNY_STATUS_MAP: Record<number, string> = {
     0: 'processing', // created
@@ -33,19 +36,26 @@ export async function createBunnyVideo(title: string): Promise<{ guid: string }>
     return { guid: data.guid }
 }
 
-export async function uploadToBunny(videoId: string, buffer: Buffer): Promise<void> {
-    const res = await fetch(`${BASE_URL}/${videoId}`, {
-        method: 'PUT',
-        headers: {
-            'AccessKey': BUNNY_API_KEY,
-            'Content-Type': 'application/octet-stream',
-        },
-        body: new Uint8Array(buffer),
-    })
+export type TusCredentials = {
+    endpoint: string
+    videoId: string
+    libraryId: string
+    signature: string
+    expirationTime: number
+}
 
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Bunny upload failed (${res.status}): ${text}`)
+export async function generateTusUploadCredentials(title: string): Promise<TusCredentials> {
+    const { guid } = await createBunnyVideo(title)
+    const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60 * 24
+    const signature = createHash('sha256')
+        .update(`${BUNNY_LIBRARY_ID}${BUNNY_API_KEY}${expirationTime}${guid}`)
+        .digest('hex')
+    return {
+        endpoint: TUS_ENDPOINT,
+        videoId: guid,
+        libraryId: BUNNY_LIBRARY_ID,
+        signature,
+        expirationTime,
     }
 }
 

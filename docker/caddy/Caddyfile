@@ -5,14 +5,10 @@ growthsalessacademy.com {
     }
 
     handle {
-        reverse_proxy app:3000 {
-            transport http {
-                response_header_timeout 600s
-            }
-        }
+        reverse_proxy app:3000
     }
 
     request_body {
-        max_size 1GB
+        max_size 25MB
     }
 }

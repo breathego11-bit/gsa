@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { FormSchemaBuilder } from '@/components/admin/FormSchemaBuilder'
 import { ExamSchemaBuilder } from '@/components/admin/ExamSchemaBuilder'
+import { useVideoUpload } from '@/hooks/useVideoUpload'
 import type { LessonResource } from '@/types'
 
 /* ── Types ─────────────────────────────────────────── */
@@ -60,8 +61,7 @@ export function CourseBuilderClient({ course: initial }: Props) {
     const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
     const [editLesson, setEditLesson] = useState<LessonData | null>(null)
     const [lessonSaving, setLessonSaving] = useState(false)
-    const [uploadingVideo, setUploadingVideo] = useState(false)
-    const [videoProgress, setVideoProgress] = useState(0)
+    const videoUpload = useVideoUpload()
     const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
     const [uploadingResource, setUploadingResource] = useState(false)
     const [newLinkName, setNewLinkName] = useState('')
@@ -81,12 +81,38 @@ export function CourseBuilderClient({ course: initial }: Props) {
     const selectLesson = (lesson: LessonData) => {
         setSelectedLessonId(lesson.id)
         setEditLesson({ ...lesson })
+        videoUpload.reset()
         setTimeout(() => {
             editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 100)
     }
 
-    const deselectLesson = () => { setSelectedLessonId(null); setEditLesson(null) }
+    const deselectLesson = () => {
+        setSelectedLessonId(null)
+        setEditLesson(null)
+        videoUpload.reset()
+    }
+
+    // Sync upload state into the current editLesson so it gets persisted on save
+    useEffect(() => {
+        if (!videoUpload.videoId) return
+        if (videoUpload.status !== 'processing' && videoUpload.status !== 'ready') return
+        setEditLesson(prev => prev ? ({
+            ...prev,
+            bunny_video_id: videoUpload.videoId,
+            bunny_status: videoUpload.status === 'ready' ? 'ready' : 'processing',
+            thumbnail: videoUpload.thumbnailUrl ?? prev.thumbnail,
+            video_url: null,
+        }) : prev)
+    }, [videoUpload.status, videoUpload.videoId, videoUpload.thumbnailUrl])
+
+    useEffect(() => {
+        if (videoUpload.error) {
+            setSaveMsg(videoUpload.error)
+            const t = setTimeout(() => setSaveMsg(null), 5000)
+            return () => clearTimeout(t)
+        }
+    }, [videoUpload.error])
 
     // ── Course save ──
 
@@ -472,41 +498,24 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                 </div>
                                             ) : (
                                                 <label className="flex items-center gap-2 px-3 py-3 rounded-xl cursor-pointer text-xs font-medium transition-colors border border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 justify-center text-on-surface-variant">
-                                                    <span className="material-symbols-outlined text-base">{uploadingVideo ? 'hourglass_empty' : 'cloud_upload'}</span>
-                                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 1 GB)'}
+                                                    <span className="material-symbols-outlined text-base">
+                                                        {videoUpload.status === 'uploading' || videoUpload.status === 'processing' ? 'hourglass_empty' : 'cloud_upload'}
+                                                    </span>
+                                                    {videoUpload.status === 'uploading'
+                                                        ? `Subiendo a Bunny Stream... ${videoUpload.progress}%`
+                                                        : videoUpload.status === 'processing'
+                                                            ? 'Procesando video en Bunny Stream...'
+                                                            : videoUpload.status === 'failed'
+                                                                ? (videoUpload.error || 'Error al subir')
+                                                                : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 1 GB)'}
                                                     <input type="file" className="hidden"
                                                         accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                                                        disabled={uploadingVideo}
-                                                        onChange={async (e) => {
+                                                        disabled={videoUpload.status === 'uploading' || videoUpload.status === 'processing'}
+                                                        onChange={(e) => {
                                                             const file = e.target.files?.[0]
                                                             if (!file) return
-                                                            setUploadingVideo(true)
-                                                            setVideoProgress(0)
-                                                            try {
-                                                                const xhr = new XMLHttpRequest()
-                                                                const fd = new FormData()
-                                                                fd.append('file', file)
-                                                                fd.append('title', editLesson!.title || file.name)
-                                                                const result = await new Promise<{ bunny_video_id: string; thumbnail_url: string }>((resolve, reject) => {
-                                                                    xhr.upload.onprogress = (ev) => {
-                                                                        if (ev.lengthComputable) setVideoProgress(Math.round((ev.loaded / ev.total) * 100))
-                                                                    }
-                                                                    xhr.onload = () => {
-                                                                        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText))
-                                                                        else reject(new Error(JSON.parse(xhr.responseText).error || 'Error al subir'))
-                                                                    }
-                                                                    xhr.onerror = () => reject(new Error('Error de red'))
-                                                                    xhr.open('POST', '/api/upload-video')
-                                                                    xhr.send(fd)
-                                                                })
-                                                                setEditLesson({ ...editLesson!, bunny_video_id: result.bunny_video_id, bunny_status: 'processing', thumbnail: result.thumbnail_url, video_url: null })
-                                                            } catch (err: any) {
-                                                                setSaveMsg(err.message || 'Error al subir video')
-                                                            } finally {
-                                                                setUploadingVideo(false)
-                                                                setVideoProgress(0)
-                                                                e.target.value = ''
-                                                            }
+                                                            videoUpload.upload(file, editLesson!.title || file.name)
+                                                            e.target.value = ''
                                                         }}
                                                     />
                                                 </label>

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { FormSchemaBuilder } from '@/components/admin/FormSchemaBuilder'
 import { ExamSchemaBuilder } from '@/components/admin/ExamSchemaBuilder'
+import { useVideoUpload } from '@/hooks/useVideoUpload'
 import type { FormField, ExamQuestion, LessonType, LessonResource } from '@/types'
 
 interface LessonData {
@@ -66,14 +67,30 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
     const [maxAttempts, setMaxAttempts] = useState(String(initial?.max_attempts ?? ''))
     const [isFinalExam, setIsFinalExam] = useState(initial?.is_final_exam || false)
     const [resources, setResources] = useState<LessonResource[]>(initial?.resources || [])
-    const [uploadingVideo, setUploadingVideo] = useState(false)
-    const [videoProgress, setVideoProgress] = useState(0)
+    const videoUpload = useVideoUpload()
     const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
     const [uploadingResource, setUploadingResource] = useState(false)
     const [newLinkName, setNewLinkName] = useState('')
     const [newLinkUrl, setNewLinkUrl] = useState('')
 
     const isEdit = !!initial?.id
+
+    useEffect(() => {
+        if (!videoUpload.videoId) return
+        if (videoUpload.status !== 'processing' && videoUpload.status !== 'ready') return
+        setBunnyVideoId(videoUpload.videoId)
+        setBunnyStatus(videoUpload.status === 'ready' ? 'ready' : 'processing')
+        if (videoUpload.thumbnailUrl) setThumbnail(videoUpload.thumbnailUrl)
+        setVideoUrl('')
+    }, [videoUpload.status, videoUpload.videoId, videoUpload.thumbnailUrl])
+
+    useEffect(() => {
+        if (videoUpload.error) setError(videoUpload.error)
+    }, [videoUpload.error])
+
+    useEffect(() => {
+        if (!open) videoUpload.reset()
+    }, [open])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -208,46 +225,27 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                                 <label className="flex items-center gap-2 px-3 py-3 rounded-lg cursor-pointer text-xs font-medium transition-colors border border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 justify-center"
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
-                                    <MaterialIcon name={uploadingVideo ? 'hourglass_empty' : 'cloud_upload'} size="text-base" />
-                                    {uploadingVideo ? `Subiendo video... ${videoProgress}%` : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 1 GB)'}
+                                    <MaterialIcon
+                                        name={videoUpload.status === 'uploading' || videoUpload.status === 'processing' ? 'hourglass_empty' : 'cloud_upload'}
+                                        size="text-base"
+                                    />
+                                    {videoUpload.status === 'uploading'
+                                        ? `Subiendo a Bunny Stream... ${videoUpload.progress}%`
+                                        : videoUpload.status === 'processing'
+                                            ? 'Procesando video en Bunny Stream...'
+                                            : videoUpload.status === 'failed'
+                                                ? (videoUpload.error || 'Error al subir')
+                                                : 'Subir video a Bunny Stream (MP4, WebM, MOV — máx. 1 GB)'}
                                     <input
                                         type="file"
                                         className="hidden"
                                         accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                                        disabled={uploadingVideo}
-                                        onChange={async (e) => {
+                                        disabled={videoUpload.status === 'uploading' || videoUpload.status === 'processing'}
+                                        onChange={(e) => {
                                             const file = e.target.files?.[0]
                                             if (!file) return
-                                            setUploadingVideo(true)
-                                            setVideoProgress(0)
-                                            try {
-                                                const xhr = new XMLHttpRequest()
-                                                const fd = new FormData()
-                                                fd.append('file', file)
-                                                fd.append('title', title || file.name)
-                                                const result = await new Promise<{ bunny_video_id: string; thumbnail_url: string }>((resolve, reject) => {
-                                                    xhr.upload.onprogress = (ev) => {
-                                                        if (ev.lengthComputable) setVideoProgress(Math.round((ev.loaded / ev.total) * 100))
-                                                    }
-                                                    xhr.onload = () => {
-                                                        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText))
-                                                        else reject(new Error(JSON.parse(xhr.responseText).error || 'Error al subir'))
-                                                    }
-                                                    xhr.onerror = () => reject(new Error('Error de red'))
-                                                    xhr.open('POST', '/api/upload-video')
-                                                    xhr.send(fd)
-                                                })
-                                                setBunnyVideoId(result.bunny_video_id)
-                                                setBunnyStatus('processing')
-                                                setThumbnail(result.thumbnail_url)
-                                                setVideoUrl('')
-                                            } catch (err: any) {
-                                                setError(err.message || 'Error al subir video')
-                                            } finally {
-                                                setUploadingVideo(false)
-                                                setVideoProgress(0)
-                                                e.target.value = ''
-                                            }
+                                            videoUpload.upload(file, title || file.name)
+                                            e.target.value = ''
                                         }}
                                     />
                                 </label>
