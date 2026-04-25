@@ -60,7 +60,6 @@ export function CourseBuilderClient({ course: initial }: Props) {
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set(initial.modules.length > 0 ? [initial.modules[0].id] : []))
     const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
     const [editLesson, setEditLesson] = useState<LessonData | null>(null)
-    const [lessonSaving, setLessonSaving] = useState(false)
     const videoUpload = useVideoUpload()
     const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
     const [uploadingResource, setUploadingResource] = useState(false)
@@ -105,6 +104,12 @@ export function CourseBuilderClient({ course: initial }: Props) {
             video_url: null,
         }) : prev)
     }, [videoUpload.status, videoUpload.videoId, videoUpload.thumbnailUrl])
+
+    // Auto-populate duration from Bunny once it reports the video length
+    useEffect(() => {
+        if (!videoUpload.durationMin) return
+        setEditLesson(prev => prev ? ({ ...prev, duration: videoUpload.durationMin }) : prev)
+    }, [videoUpload.durationMin])
 
     useEffect(() => {
         if (videoUpload.error) {
@@ -196,45 +201,55 @@ export function CourseBuilderClient({ course: initial }: Props) {
         }
     }
 
-    const applyLessonChanges = async () => {
-        if (!editLesson) return
-        setLessonSaving(true)
+    const saveAll = useCallback(async () => {
+        setSaving(true)
+        setSaveMsg(null)
         try {
-            const body: any = {
-                title: editLesson.title,
-                description: editLesson.description || null,
-                type: editLesson.type,
-                video_url: editLesson.video_url || null,
-                bunny_video_id: editLesson.bunny_video_id || null,
-                bunny_status: editLesson.bunny_status || null,
-                thumbnail: editLesson.thumbnail || null,
-                content: editLesson.content || null,
-                form_schema: editLesson.form_schema || null,
-                exam_schema: editLesson.exam_schema || null,
-                duration: editLesson.duration ? Number(editLesson.duration) : null,
-                resources: editLesson.resources && editLesson.resources.length > 0 ? editLesson.resources : null,
-                passing_score: editLesson.passing_score != null ? Number(editLesson.passing_score) : null,
-                max_attempts: editLesson.max_attempts != null ? Number(editLesson.max_attempts) : null,
-                is_final_exam: editLesson.is_final_exam,
-            }
-            const res = await fetch(`/api/lessons/${editLesson.id}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+            const courseTask = fetch(`/api/courses/${initial.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description }),
             })
-            if (res.ok) {
-                const updated = await res.json()
+
+            const lessonTask = editLesson ? fetch(`/api/lessons/${editLesson.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: editLesson.title,
+                    description: editLesson.description || null,
+                    type: editLesson.type,
+                    video_url: editLesson.video_url || null,
+                    bunny_video_id: editLesson.bunny_video_id || null,
+                    bunny_status: editLesson.bunny_status || null,
+                    thumbnail: editLesson.thumbnail || null,
+                    content: editLesson.content || null,
+                    form_schema: editLesson.form_schema || null,
+                    exam_schema: editLesson.exam_schema || null,
+                    duration: editLesson.duration ? Number(editLesson.duration) : null,
+                    resources: editLesson.resources && editLesson.resources.length > 0 ? editLesson.resources : null,
+                    passing_score: editLesson.passing_score != null ? Number(editLesson.passing_score) : null,
+                    max_attempts: editLesson.max_attempts != null ? Number(editLesson.max_attempts) : null,
+                    is_final_exam: editLesson.is_final_exam,
+                }),
+            }) : Promise.resolve(null)
+
+            const [courseRes, lessonRes] = await Promise.all([courseTask, lessonTask])
+
+            if (lessonRes && lessonRes.ok) {
+                const updated = await lessonRes.json()
                 setModules(prev => prev.map(m => ({
                     ...m,
                     lessons: m.lessons.map(l => l.id === updated.id ? { ...l, ...updated } : l),
                 })))
-                setSaveMsg('Cambios guardados')
-                setTimeout(() => setSaveMsg(null), 3000)
-            } else {
-                setSaveMsg('Error al guardar cambios')
-                setTimeout(() => setSaveMsg(null), 3000)
             }
-        } finally { setLessonSaving(false) }
-    }
+
+            const allOk = courseRes.ok && (!lessonRes || lessonRes.ok)
+            setSaveMsg(allOk ? 'Guardado' : 'Error al guardar')
+            setTimeout(() => setSaveMsg(null), 3000)
+        } finally {
+            setSaving(false)
+        }
+    }, [initial.id, title, description, editLesson])
 
     const discardLessonChanges = () => {
         // Find original lesson from modules state
@@ -271,11 +286,11 @@ export function CourseBuilderClient({ course: initial }: Props) {
                         Vista previa
                     </Link>
                     {/* Mobile: text save button / Desktop: full button */}
-                    <button onClick={saveCourse} disabled={saving}
+                    <button onClick={saveAll} disabled={saving}
                         className="lg:hidden text-blue-400 font-bold px-3 py-2 hover:bg-white/5 rounded-lg transition-colors active:scale-95 text-sm disabled:opacity-50">
                         {saving ? 'Guardando...' : 'Guardar'}
                     </button>
-                    <button onClick={saveCourse} disabled={saving}
+                    <button onClick={saveAll} disabled={saving}
                         className="hidden lg:inline-flex px-4 py-1.5 rounded-lg bg-primary-container text-on-primary-container font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
                         {saving ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
@@ -698,15 +713,11 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="pt-2 flex gap-3">
+                            {/* Discard (subtle, secondary action — saving happens via the top "Guardar Cambios" button) */}
+                            <div className="pt-2 flex justify-end">
                                 <button onClick={discardLessonChanges}
-                                    className="flex-1 bg-surface-container-high py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-on-surface hover:bg-surface-variant transition-colors">
-                                    Descartar
-                                </button>
-                                <button onClick={applyLessonChanges} disabled={lessonSaving}
-                                    className="flex-1 bg-blue-600 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white hover:bg-blue-500 transition-colors disabled:opacity-50">
-                                    {lessonSaving ? 'Guardando...' : 'Aplicar Cambios'}
+                                    className="text-xs font-medium uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors">
+                                    Descartar cambios
                                 </button>
                             </div>
                         </div>

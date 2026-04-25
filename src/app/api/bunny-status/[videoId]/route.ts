@@ -10,8 +10,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ vid
     const { videoId } = await params
 
     try {
-        const { status, encodeProgress } = await getBunnyVideoStatus(videoId)
-        return NextResponse.json({ status, encodeProgress })
+        const { status, encodeProgress, lengthSec } = await getBunnyVideoStatus(videoId)
+        return NextResponse.json({ status, encodeProgress, lengthSec })
     } catch (error) {
         console.error('Bunny status error:', error)
         return NextResponse.json({ error: 'Error al consultar estado del video' }, { status: 500 })

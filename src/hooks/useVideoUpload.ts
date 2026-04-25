@@ -20,6 +20,7 @@ export function useVideoUpload() {
     const [error, setError] = useState<string | null>(null)
     const [videoId, setVideoId] = useState<string | null>(null)
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+    const [durationMin, setDurationMin] = useState<number | null>(null)
 
     const uploadRef = useRef<tus.Upload | null>(null)
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -38,6 +39,9 @@ export function useVideoUpload() {
                 const res = await fetch(`/api/bunny-status/${id}`)
                 if (!res.ok) return
                 const data = await res.json()
+                if (typeof data.lengthSec === 'number' && data.lengthSec > 0) {
+                    setDurationMin(Math.max(1, Math.round(data.lengthSec / 60)))
+                }
                 if (data.status === 'ready') {
                     setStatus('ready')
                     stopPolling()
@@ -58,6 +62,7 @@ export function useVideoUpload() {
         setStatus('uploading')
         setVideoId(null)
         setThumbnailUrl(null)
+        setDurationMin(null)
 
         try {
             const res = await fetch('/api/upload-video', {
@@ -124,6 +129,7 @@ export function useVideoUpload() {
         setError(null)
         setVideoId(null)
         setThumbnailUrl(null)
+        setDurationMin(null)
     }, [stopPolling])
 
     useEffect(() => {
@@ -133,5 +139,5 @@ export function useVideoUpload() {
         }
     }, [])
 
-    return { progress, status, error, videoId, thumbnailUrl, upload, cancel, reset }
+    return { progress, status, error, videoId, thumbnailUrl, durationMin, upload, cancel, reset }
 }

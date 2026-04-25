@@ -89,6 +89,10 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
     }, [videoUpload.error])
 
     useEffect(() => {
+        if (videoUpload.durationMin) setDuration(String(videoUpload.durationMin))
+    }, [videoUpload.durationMin])
+
+    useEffect(() => {
         if (!open) videoUpload.reset()
     }, [open])
 

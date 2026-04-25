@@ -59,7 +59,7 @@ export async function generateTusUploadCredentials(title: string): Promise<TusCr
     }
 }
 
-export async function getBunnyVideoStatus(videoId: string): Promise<{ status: string; encodeProgress: number }> {
+export async function getBunnyVideoStatus(videoId: string): Promise<{ status: string; encodeProgress: number; lengthSec: number }> {
     const res = await fetch(`${BASE_URL}/${videoId}`, {
         method: 'GET',
         headers: { 'AccessKey': BUNNY_API_KEY },
@@ -74,6 +74,7 @@ export async function getBunnyVideoStatus(videoId: string): Promise<{ status: st
     return {
         status: BUNNY_STATUS_MAP[data.status] ?? 'processing',
         encodeProgress: data.encodeProgress ?? 0,
+        lengthSec: typeof data.length === 'number' ? data.length : 0,
     }
 }
 
