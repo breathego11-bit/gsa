@@ -16,128 +16,18 @@ type Phase = {
     subtitle: string
     time: string
     group: 'apertura' | 'descubrimiento' | 'presentacion' | 'cierre' | 'post'
-    short: string
-    detail: string
-    tactics?: string[]
-    questions?: { q: string; a: string }[]
 }
 
 const PHASES: Phase[] = [
-    {
-        num: '01',
-        key: 'conexion',
-        title: 'Conexión',
-        subtitle: 'Quiebre del escudo',
-        time: '2–3 min',
-        group: 'apertura',
-        short: 'Empatía, puntos en común. Quien pregunta tiene el control.',
-        detail:
-            'Los primeros 2–3 minutos son puro rapport. No vendes, conectas. Encuentras puntos en común auténticos y dejas claro que quien pregunta dirige la conversación.',
-        tactics: ['Escucha activa', 'Puntos en común', 'Tono cálido'],
-    },
-    {
-        num: '02',
-        key: 'marco',
-        title: 'Marco',
-        subtitle: 'Toma de control',
-        time: '1–2 min',
-        group: 'apertura',
-        short: 'Yo decido si puedo ayudarte. Tiempo limitado. Pago implícito al final.',
-        detail:
-            'Estableces el encuadre de la llamada: tú decides si hay fit, hay un tiempo acotado, y al final habrá una decisión de pago. El marco se pone una sola vez y sostiene toda la conversación.',
-        tactics: ['Encuadre claro', 'Tiempo acotado', 'Pago implícito'],
-    },
-    {
-        num: '03',
-        key: 'diagnostico',
-        title: 'Diagnóstico',
-        subtitle: 'Las 3 preguntas de oro',
-        time: '8–10 min',
-        group: 'descubrimiento',
-        short: 'Dolor, resultado deseado y visión futura.',
-        detail:
-            'Las tres preguntas de oro estructuran todo el diagnóstico y extraen el material con el que cerrarás después.',
-        questions: [
-            { q: '¿Qué te trajo aquí?', a: 'Dolor o placer' },
-            { q: '¿Qué esperas recibir?', a: 'Resultado deseado' },
-            {
-                q: '¿Qué habría cambiado en 6 meses para decir que fue un éxito?',
-                a: 'Visión futura',
-            },
-        ],
-    },
-    {
-        num: '04',
-        key: 'espejo',
-        title: 'Espejo',
-        subtitle: 'Reafirmación y confianza',
-        time: '2–3 min',
-        group: 'descubrimiento',
-        short: 'Reencuadras lo que dijo. Que se sienta comprendido.',
-        detail:
-            'Devuelves con tus palabras lo que la persona acaba de decir. No es una técnica, es presencia. La otra persona siente que la escuchaste de verdad.',
-        tactics: ['Reencuadre', 'Validación', 'Espacio seguro'],
-    },
-    {
-        num: '05',
-        key: 'autoridad',
-        title: 'Autoridad',
-        subtitle: 'El porqué de confiar',
-        time: '3–4 min',
-        group: 'presentacion',
-        short: 'Método, prueba social, alcance. Solo lo que le importa.',
-        detail:
-            'Presentas el método, evidencia y alcance — pero filtrado por lo que ESTA persona necesita oír. No es un pitch genérico: es tu autoridad hablándole a su problema concreto.',
-        tactics: ['Método propio', 'Prueba social', 'Casos relevantes'],
-    },
-    {
-        num: '06',
-        key: 'claridad',
-        title: 'Claridad',
-        subtitle: 'Resolver dudas con intención',
-        time: '3–5 min',
-        group: 'presentacion',
-        short: 'Documento previo, repaso, objeciones. ¿Tienes toda la info?',
-        detail:
-            'Revisas el documento previo, resuelves objeciones con calma y te aseguras de que tiene todo lo necesario para decidir ahora — no dentro de tres días.',
-        tactics: ['Documento de apoyo', 'Manejo de objeciones', 'Cierre de info'],
-    },
-    {
-        num: '07',
-        key: 'anclaje',
-        title: 'Anclaje de valor',
-        subtitle: 'El precio como inversión',
-        time: '2–3 min',
-        group: 'cierre',
-        short: 'Recapitulas el valor antes del precio. Silencio estratégico después.',
-        detail:
-            'Antes de pronunciar el precio, recapitulas todo el valor incluido. Dices el número con claridad y sostienes el silencio. Quien habla primero después del precio, pierde.',
-        tactics: ['Recap de valor', 'Precio claro', 'Silencio post-precio'],
-    },
-    {
-        num: '08',
-        key: 'cierre',
-        title: 'Cierre consciente',
-        subtitle: 'Acción en el momento presente',
-        time: '3–5 min',
-        group: 'cierre',
-        short: '"Vamos juntos ahora." Manejas resistencias del ego.',
-        detail:
-            'Guías al pago con seguridad total. Manejas las resistencias del ego con la pregunta clave: ¿reafirmas amor o reafirmas miedo? Enlace en llamada. Si no hay cierre total, reserva mínima.',
-        tactics: ['Enlace en vivo', '¿Amor o miedo?', 'Reserva mínima'],
-    },
-    {
-        num: '09',
-        key: 'post',
-        title: 'Post-cierre',
-        subtitle: 'Sostener o sembrar',
-        time: '24–48h',
-        group: 'post',
-        short: 'Biblioteca de recursos, seguimiento sin presión.',
-        detail:
-            'Si cerró, sostienes la decisión con onboarding cálido. Si no cerró, siembras: biblioteca de recursos, seguimiento sin presión, próxima reunión en 24–48h.',
-        tactics: ['Onboarding cálido', 'Recursos', 'Follow-up sin presión'],
-    },
+    { num: '01', key: 'conexion', title: 'Conexión', subtitle: 'Quiebre del escudo', time: '2–3 min', group: 'apertura' },
+    { num: '02', key: 'marco', title: 'Marco', subtitle: 'Toma de control', time: '1–2 min', group: 'apertura' },
+    { num: '03', key: 'diagnostico', title: 'Diagnóstico', subtitle: 'Las 3 preguntas de oro', time: '8–10 min', group: 'descubrimiento' },
+    { num: '04', key: 'espejo', title: 'Espejo', subtitle: 'Reafirmación y confianza', time: '2–3 min', group: 'descubrimiento' },
+    { num: '05', key: 'autoridad', title: 'Autoridad', subtitle: 'El porqué de confiar', time: '3–4 min', group: 'presentacion' },
+    { num: '06', key: 'claridad', title: 'Claridad', subtitle: 'Resolver dudas con intención', time: '3–5 min', group: 'presentacion' },
+    { num: '07', key: 'anclaje', title: 'Anclaje de valor', subtitle: 'El precio como inversión', time: '2–3 min', group: 'cierre' },
+    { num: '08', key: 'cierre', title: 'Cierre consciente', subtitle: 'Acción en el momento presente', time: '3–5 min', group: 'cierre' },
+    { num: '09', key: 'post', title: 'Post-cierre', subtitle: 'Sostener o sembrar', time: '24–48h', group: 'post' },
 ]
 
 const GROUP_LABELS: Record<Phase['group'], string> = {
@@ -150,20 +40,11 @@ const GROUP_LABELS: Record<Phase['group'], string> = {
 
 export function MethodSection() {
     const [activeIdx, setActiveIdx] = useState(0)
-    const [expanded, setExpanded] = useState<Set<number>>(new Set())
     const [progress, setProgress] = useState(0)
     const [navVisible, setNavVisible] = useState(false)
     const phaseRefs = useRef<(HTMLDivElement | null)[]>([])
     const lineRef = useRef<HTMLDivElement | null>(null)
     const rootRef = useRef<HTMLDivElement | null>(null)
-
-    const toggle = (i: number) =>
-        setExpanded((s) => {
-            const n = new Set(s)
-            if (n.has(i)) n.delete(i)
-            else n.add(i)
-            return n
-        })
 
     // Inject keyframes + responsive rules once on mount (SSR-safe).
     useEffect(() => {
@@ -332,7 +213,6 @@ export function MethodSection() {
 
                     {PHASES.map((p, i) => {
                         const isActive = i === activeIdx
-                        const isOpen = expanded.has(i)
                         const showGroupHeader =
                             i === 0 || PHASES[i - 1].group !== p.group
 
@@ -366,8 +246,7 @@ export function MethodSection() {
                                         />
                                     )}
 
-                                    <button
-                                        onClick={() => toggle(i)}
+                                    <div
                                         style={{
                                             ...thread.card,
                                             ...(isActive ? thread.cardActive : {}),
@@ -389,72 +268,7 @@ export function MethodSection() {
                                                 {p.time}
                                             </div>
                                         </div>
-
-                                        <div
-                                            style={{
-                                                ...thread.cardExpand,
-                                                maxHeight: isOpen ? 600 : 0,
-                                                opacity: isOpen ? 1 : 0,
-                                                marginTop: isOpen ? 18 : 0,
-                                            }}
-                                        >
-                                            <p style={thread.cardDetail}>{p.detail}</p>
-
-                                            {p.questions && (
-                                                <div style={thread.questions}>
-                                                    {p.questions.map((q, qi) => (
-                                                        <div key={qi} style={thread.question}>
-                                                            <div style={thread.questionQ}>
-                                                                <span style={thread.questionIdx}>
-                                                                    0{qi + 1}
-                                                                </span>
-                                                                <span>{q.q}</span>
-                                                            </div>
-                                                            <div style={thread.questionAnswerRow}>
-                                                                <span style={thread.questionArrow}>
-                                                                    ↳
-                                                                </span>
-                                                                <span style={thread.questionA}>
-                                                                    {q.a}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {p.tactics && (
-                                                <div style={thread.tactics}>
-                                                    {p.tactics.map((t, ti) => (
-                                                        <span key={ti} style={thread.tactic}>
-                                                            {t}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div style={thread.cardToggle}>
-                                            <span>{isOpen ? 'Cerrar' : 'Ver detalle'}</span>
-                                            <svg
-                                                width="12"
-                                                height="12"
-                                                viewBox="0 0 12 12"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="1.8"
-                                                strokeLinecap="round"
-                                                style={{
-                                                    transform: isOpen
-                                                        ? 'rotate(180deg)'
-                                                        : 'rotate(0deg)',
-                                                    transition: 'transform .25s',
-                                                }}
-                                            >
-                                                <path d="M2 4l4 4 4-4" />
-                                            </svg>
-                                        </div>
-                                    </button>
+                                    </div>
                                 </div>
                             </Fragment>
                         )
@@ -849,7 +663,6 @@ const thread: Record<string, CSSProperties> = {
         borderColor: 'rgba(129,140,248,0.18)',
         borderRadius: 18,
         padding: '20px 24px',
-        cursor: 'pointer',
         fontFamily: 'inherit',
         color: 'inherit',
         transition: 'all .3s',
@@ -921,90 +734,6 @@ const thread: Record<string, CSSProperties> = {
         height: 4,
         borderRadius: '50%',
         background: '#38bdf8',
-    },
-
-    cardExpand: {
-        overflow: 'hidden',
-        transition: 'max-height .35s ease, opacity .25s, margin-top .25s',
-    },
-    cardDetail: {
-        fontSize: 14.5,
-        lineHeight: 1.6,
-        color: '#dee2f2',
-        margin: '0 0 18px',
-        paddingTop: 18,
-        borderTop: '1px dashed rgba(129,140,248,0.2)',
-    },
-
-    questions: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        marginBottom: 16,
-    },
-    question: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: '12px 14px',
-        borderRadius: 10,
-        background: 'rgba(56,189,248,0.06)',
-        border: '1px solid rgba(56,189,248,0.15)',
-    },
-    questionQ: {
-        display: 'flex',
-        gap: 10,
-        alignItems: 'flex-start',
-        fontSize: 13.5,
-        color: '#dee2f2',
-        lineHeight: 1.4,
-    },
-    questionIdx: {
-        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-        fontSize: 10,
-        color: '#38bdf8',
-        fontWeight: 500,
-        marginTop: 2,
-        flexShrink: 0,
-    },
-    questionAnswerRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        paddingLeft: 22,
-    },
-    questionArrow: { color: '#38bdf8', fontSize: 13, opacity: 0.8 },
-    questionA: {
-        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-        fontSize: 11,
-        letterSpacing: 0.5,
-        color: '#c4c5d5',
-        padding: '4px 10px',
-        borderRadius: 999,
-        background: 'rgba(129,140,248,0.12)',
-        textTransform: 'lowercase',
-    },
-
-    tactics: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-    tactic: {
-        padding: '6px 12px',
-        borderRadius: 999,
-        background: 'rgba(129,140,248,0.08)',
-        border: '1px solid rgba(129,140,248,0.18)',
-        fontSize: 12,
-        color: '#c4c5d5',
-    },
-
-    cardToggle: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 16,
-        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-        fontSize: 11,
-        letterSpacing: 1,
-        color: '#38bdf8',
-        textTransform: 'uppercase',
     },
 
     principles: {
