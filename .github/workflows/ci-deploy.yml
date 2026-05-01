@@ -55,6 +55,7 @@ jobs:
             EOF
             docker compose up -d --build app
             docker compose run --rm migrate
+            docker compose run --rm --entrypoint sh migrate -c "npx prisma db seed"
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
