@@ -27,6 +27,12 @@
 .animate-blob3 { animation: blob3 16s ease-in-out infinite; will-change: transform, opacity; }
 .animate-blob4 { animation: blob4 20s ease-in-out infinite; will-change: transform, opacity; }
 
+/* Featured courses badge dot pulse (CoursesSection) */
+@keyframes gsa-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+
 /* Hide number input spinners */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
@@ -506,4 +512,42 @@ input[type="number"] {
         backdrop-filter: blur(16px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
+
+    /* Hero primary CTA — same identity as the navbar "Empezar" button */
+    .hero-cta-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 40px rgba(56, 189, 248, 0.55) !important;
+    }
+    .hero-cta-primary:active {
+        transform: translateY(0);
+    }
+}
+
+/* ── Auth split layout ────────────────────────────── */
+@keyframes authFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes authProgress {
+    from { width: 0%; }
+    to   { width: 100%; }
+}
+
+/* Manifesto landing section responsive */
+@media (max-width: 900px) {
+    .manifesto-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Override browser autofill yellow/white background inside auth */
+.auth-shell input:-webkit-autofill,
+.auth-shell input:-webkit-autofill:hover,
+.auth-shell input:-webkit-autofill:focus,
+.auth-shell input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px rgba(14, 19, 30, 0.7) inset !important;
+    -webkit-text-fill-color: #dee2f2 !important;
+    caret-color: #dee2f2;
+    border-radius: inherit;
+    transition: background-color 100000s ease-in-out 0s;
 }

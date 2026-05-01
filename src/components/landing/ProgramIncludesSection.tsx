@@ -187,8 +187,6 @@ export function ProgramIncludesSection() {
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                                 backgroundClip: 'text',
-                                fontStyle: 'italic',
-                                fontWeight: 500,
                             }}
                         >
                             programa GSA

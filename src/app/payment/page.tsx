@@ -14,7 +14,7 @@ function formatEur(cents: number) {
 
 export default async function PaymentPage() {
     const session = await getServerSession(authOptions)
-    if (!session) redirect('/login')
+    if (!session) redirect('/auth')
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },

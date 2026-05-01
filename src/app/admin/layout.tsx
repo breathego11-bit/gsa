@@ -7,7 +7,7 @@ import { AnimatedBackground } from '@/components/layout/AnimatedBackground'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'ADMIN') redirect('/login')
+    if (!session || session.user.role !== 'ADMIN') redirect('/auth')
 
     return (
         <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>

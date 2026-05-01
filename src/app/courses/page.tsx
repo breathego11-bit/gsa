@@ -92,7 +92,7 @@ export default async function CoursesPage() {
                             </Link>
                         ) : (
                             <Link
-                                href="/login"
+                                href="/auth"
                                 className="bg-gradient-to-br from-primary-container to-secondary-container text-on-primary-container px-6 py-2.5 rounded-full font-semibold text-sm active:scale-90 transition-transform"
                             >
                                 Ingresar
@@ -191,7 +191,7 @@ export default async function CoursesPage() {
                                     programa ideal para tus metas profesionales.
                                 </p>
                                 <Link
-                                    href="/register"
+                                    href="/auth?mode=register"
                                     className="bg-white text-primary-container px-8 py-4 rounded-full font-bold flex items-center gap-3 w-fit hover:shadow-xl hover:translate-x-2 transition-all"
                                 >
                                     Agendar Llamada

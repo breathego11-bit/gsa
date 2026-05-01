@@ -6,7 +6,10 @@ export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     // Already authenticated — redirect away from auth pages
-    if (token && (pathname === "/login" || pathname === "/register")) {
+    if (
+        token &&
+        (pathname === "/auth" || pathname === "/login" || pathname === "/register")
+    ) {
         const dest = token.role === "ADMIN" ? "/admin" : "/dashboard";
         return NextResponse.redirect(new URL(dest, req.url));
     }
@@ -24,7 +27,7 @@ export async function middleware(req: NextRequest) {
     // Admin routes — require ADMIN role
     if (pathname.startsWith("/admin")) {
         if (!token) {
-            return NextResponse.redirect(new URL("/login", req.url));
+            return NextResponse.redirect(new URL("/auth", req.url));
         }
         if (token.role !== "ADMIN") {
             return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -37,7 +40,7 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith("/lesson")
     ) {
         if (!token) {
-            return NextResponse.redirect(new URL("/login", req.url));
+            return NextResponse.redirect(new URL("/auth", req.url));
         }
     }
 
@@ -52,6 +55,7 @@ export const config = {
         "/course/:path*",
         "/lesson/:path*",
         "/admin/:path*",
+        "/auth",
         "/login",
         "/register",
     ],

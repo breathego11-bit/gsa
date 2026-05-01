@@ -59,11 +59,25 @@ export async function generateTusUploadCredentials(title: string): Promise<TusCr
     }
 }
 
-export async function getBunnyVideoStatus(videoId: string): Promise<{ status: string; encodeProgress: number; lengthSec: number }> {
+export type BunnyVideoStatus = {
+    status: string
+    encodeProgress: number
+    lengthSec: number
+    missing?: boolean
+}
+
+export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoStatus> {
     const res = await fetch(`${BASE_URL}/${videoId}`, {
         method: 'GET',
         headers: { 'AccessKey': BUNNY_API_KEY },
     })
+
+    // 404 = video deleted from Bunny or never finished uploading.
+    // Treat it as a terminal "failed" state rather than an error so the
+    // frontend polling can stop cleanly instead of looping forever.
+    if (res.status === 404) {
+        return { status: 'failed', encodeProgress: 0, lengthSec: 0, missing: true }
+    }
 
     if (!res.ok) {
         const text = await res.text()

@@ -62,6 +62,16 @@ model Course {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
+  // Landing redesign — visual/meta fields for the featured cards
+  tagline    String? @db.Text
+  tier       String?
+  level      String?
+  duration   String?
+  year       String?
+  hue        Int?
+  accent     String?
+  trajectory String?
+
   instructor  User?        @relation("CourseInstructor", fields: [instructor_id], references: [id], onDelete: SetNull)
   modules     Module[]
   enrollments Enrollment[]
@@ -219,4 +229,23 @@ model Invitation {
 
   creator      User      @relation("InvitationCreator", fields: [created_by], references: [id])
   redeemer     User?     @relation("InvitationRedeemer", fields: [used_by], references: [id])
+}
+
+model Testimonial {
+  id            String   @id @default(cuid())
+  name          String
+  role          String?
+  metric        String?
+  quote         String   @db.Text
+  duration      String?
+  video_url     String?
+  hue           Int?
+  poster_bg     String?  @db.Text
+  poster_accent String?
+  order         Int      @default(0)
+  published     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([published, order])
 }

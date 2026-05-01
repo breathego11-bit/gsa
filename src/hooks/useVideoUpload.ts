@@ -47,7 +47,11 @@ export function useVideoUpload() {
                     stopPolling()
                 } else if (data.status === 'failed') {
                     setStatus('failed')
-                    setError('Bunny falló al procesar el video')
+                    setError(
+                        data.missing
+                            ? 'El video ya no existe en Bunny (fue eliminado o nunca terminó de subir)'
+                            : 'Bunny falló al procesar el video'
+                    )
                     stopPolling()
                 }
             } catch {

@@ -143,7 +143,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                             </Link>
                         ) : (
                             <Link
-                                href="/login"
+                                href="/auth"
                                 className="bg-gradient-to-br from-primary-container to-secondary-container text-on-primary-container px-6 py-2.5 rounded-full font-semibold text-sm"
                             >
                                 Ingresar

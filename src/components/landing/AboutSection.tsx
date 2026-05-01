@@ -110,8 +110,7 @@ export function AboutSection() {
                                 letterSpacing: '-1.8px',
                             }}
                         >
-                            Somos <span style={titleAccent}>Iván Abad</span> y{' '}
-                            <span style={titleAccent}>Pau Olmos</span>
+                            <span style={titleAccent}>Growth Sales Academy</span>
                         </h1>
                         <p
                             className="m-0"
@@ -502,8 +501,7 @@ const titleAccent: React.CSSProperties = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
-    fontFamily: '"Instrument Serif", Georgia, serif',
-    fontStyle: 'italic',
+    fontFamily: 'Georgia, serif',
     fontWeight: 400,
 }
 
@@ -516,7 +514,6 @@ const paraStyle: React.CSSProperties = {
 
 const emStyle: React.CSSProperties = {
     color: '#dee2f2',
-    fontStyle: 'italic',
     fontWeight: 500,
 }
 
@@ -552,7 +549,6 @@ const mfAccent: React.CSSProperties = {
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
     fontFamily: '"Instrument Serif", Georgia, serif',
-    fontStyle: 'italic',
     fontWeight: 400,
     letterSpacing: '-0.5px',
 }

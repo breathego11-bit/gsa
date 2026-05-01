@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function CourseBuilderPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'ADMIN') redirect('/login')
+    if (!session || session.user.role !== 'ADMIN') redirect('/auth')
 
     const { id } = await params
 

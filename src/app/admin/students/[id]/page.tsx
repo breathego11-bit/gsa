@@ -7,7 +7,7 @@ import type { CourseEnrollmentProgress } from '@/types'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'ADMIN') redirect('/login')
+    if (!session || session.user.role !== 'ADMIN') redirect('/auth')
 
     const { id } = await params
 

@@ -8,7 +8,7 @@ import { CourseModuleAccordion } from '@/components/courses/CourseModuleAccordio
 
 export default async function DashboardCoursePage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
-    if (!session) redirect('/login')
+    if (!session) redirect('/auth')
 
     const { id } = await params
 

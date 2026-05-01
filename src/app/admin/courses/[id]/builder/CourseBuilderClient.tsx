@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { FormSchemaBuilder } from '@/components/admin/FormSchemaBuilder'
 import { ExamSchemaBuilder } from '@/components/admin/ExamSchemaBuilder'
+import { BunnyVideoPreview } from '@/components/admin/BunnyVideoPreview'
 import { useVideoUpload } from '@/hooks/useVideoUpload'
 import type { LessonResource } from '@/types'
 
@@ -492,15 +493,22 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Video</label>
                                             {editLesson.bunny_video_id ? (
-                                                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">
-                                                    <span className="material-symbols-outlined text-sm text-green-400 shrink-0">cloud_done</span>
-                                                    <span className="flex-1 truncate text-on-surface">
-                                                        Video en Bunny Stream {editLesson.bunny_status === 'processing' ? '(procesando...)' : editLesson.bunny_status === 'failed' ? '(error)' : '(listo)'}
-                                                    </span>
-                                                    <button type="button" onClick={() => setEditLesson({ ...editLesson, bunny_video_id: null, bunny_status: null, thumbnail: null })}
-                                                        className="text-red-400 hover:text-red-300 shrink-0">
-                                                        <span className="material-symbols-outlined text-sm">close</span>
-                                                    </button>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">
+                                                        <span className="material-symbols-outlined text-sm text-green-400 shrink-0">cloud_done</span>
+                                                        <span className="flex-1 truncate text-on-surface">
+                                                            Video en Bunny Stream {editLesson.bunny_status === 'processing' ? '(procesando...)' : editLesson.bunny_status === 'failed' ? '(error)' : '(listo)'}
+                                                        </span>
+                                                        <button type="button" onClick={() => setEditLesson({ ...editLesson, bunny_video_id: null, bunny_status: null, thumbnail: null })}
+                                                            className="text-red-400 hover:text-red-300 shrink-0">
+                                                            <span className="material-symbols-outlined text-sm">close</span>
+                                                        </button>
+                                                    </div>
+                                                    <BunnyVideoPreview
+                                                        videoId={editLesson.bunny_video_id}
+                                                        status={editLesson.bunny_status}
+                                                        thumbnail={editLesson.thumbnail}
+                                                    />
                                                 </div>
                                             ) : editLesson.video_url ? (
                                                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest text-xs">

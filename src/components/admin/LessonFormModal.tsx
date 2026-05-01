@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { FormSchemaBuilder } from '@/components/admin/FormSchemaBuilder'
 import { ExamSchemaBuilder } from '@/components/admin/ExamSchemaBuilder'
+import { BunnyVideoPreview } from '@/components/admin/BunnyVideoPreview'
 import { useVideoUpload } from '@/hooks/useVideoUpload'
 import type { FormField, ExamQuestion, LessonType, LessonResource } from '@/types'
 
@@ -206,14 +207,17 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                         <div className="flex flex-col gap-1.5">
                             <label className="form-label">Video</label>
                             {bunnyVideoId ? (
-                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
-                                    <MaterialIcon name="cloud_done" size="text-sm" className="text-green-400 shrink-0" />
-                                    <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
-                                        Video en Bunny Stream {bunnyStatus === 'processing' ? '(procesando...)' : bunnyStatus === 'failed' ? '(error)' : '(listo)'}
-                                    </span>
-                                    <button type="button" onClick={() => { setBunnyVideoId(''); setBunnyStatus(''); setThumbnail('') }} className="text-red-400 hover:text-red-300 shrink-0">
-                                        <MaterialIcon name="close" size="text-sm" />
-                                    </button>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>
+                                        <MaterialIcon name="cloud_done" size="text-sm" className="text-green-400 shrink-0" />
+                                        <span className="flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                                            Video en Bunny Stream {bunnyStatus === 'processing' ? '(procesando...)' : bunnyStatus === 'failed' ? '(error)' : '(listo)'}
+                                        </span>
+                                        <button type="button" onClick={() => { setBunnyVideoId(''); setBunnyStatus(''); setThumbnail('') }} className="text-red-400 hover:text-red-300 shrink-0">
+                                            <MaterialIcon name="close" size="text-sm" />
+                                        </button>
+                                    </div>
+                                    <BunnyVideoPreview videoId={bunnyVideoId} status={bunnyStatus} thumbnail={thumbnail} />
                                 </div>
                             ) : videoUrl ? (
                                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'var(--bg-raised, rgba(255,255,255,0.05))' }}>

@@ -11,7 +11,7 @@ export default async function PaymentSuccessPage({
     searchParams: Promise<{ session_id?: string }>
 }) {
     const session = await getServerSession(authOptions)
-    if (!session) redirect('/login')
+    if (!session) redirect('/auth')
 
     const { session_id } = await searchParams
 

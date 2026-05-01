@@ -17,7 +17,7 @@ export function EnrollButton({ courseId, isAuthenticated, hasPaid = false }: Enr
 
     async function handleEnroll() {
         if (!isAuthenticated) {
-            router.push('/register')
+            router.push('/auth?mode=register')
             return
         }
 

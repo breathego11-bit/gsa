@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
     const session = await getServerSession(authOptions)
-    if (!session) redirect('/login')
+    if (!session) redirect('/auth')
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
@@ -28,7 +28,7 @@ export default async function ProfilePage() {
         },
     })
 
-    if (!user) redirect('/login')
+    if (!user) redirect('/auth')
 
     const enrollmentCount = await prisma.enrollment.count({
         where: { user_id: session.user.id },

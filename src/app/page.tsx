@@ -1,58 +1,73 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import LiquidEther from '@/components/ui/LiquidEther'
-import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import { FeaturedCourseCard } from '@/components/landing/FeaturedCourseCard'
 import { AboutSection } from '@/components/landing/AboutSection'
 import { ProgramIncludesSection } from '@/components/landing/ProgramIncludesSection'
+import { CoursesSection } from '@/components/landing/CoursesSection'
+import { LandingNavbar } from '@/components/landing/LandingNavbar'
+import { ManifestoSection } from '@/components/landing/ManifestoSection'
+import { MethodSection } from '@/components/landing/MethodSection'
+import { TestimonialsSection } from '@/components/landing/TestimonialsSection'
 
 
 export const dynamic = 'force-dynamic'
 
 export default async function LandingPage() {
-    const featuredCourses = await prisma.course.findMany({
+    const featuredCoursesRaw = await prisma.course.findMany({
         where: { published: true },
-        take: 3,
-        include: { _count: { select: { modules: true, enrollments: true } } },
+        take: 2,
+        include: {
+            modules: {
+                select: { id: true, title: true, order: true },
+                orderBy: { order: 'asc' },
+                take: 3,
+            },
+            _count: { select: { modules: true } },
+        },
         orderBy: { created_at: 'desc' },
+    })
+
+    const featuredCourses = featuredCoursesRaw.map((c) => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        thumbnail: c.thumbnail,
+        hero_image: c.hero_image,
+        published: c.published,
+        created_at: c.created_at,
+        tagline: c.tagline,
+        tier: c.tier,
+        level: c.level,
+        duration: c.duration,
+        year: c.year,
+        hue: c.hue,
+        accent: c.accent,
+        trajectory: c.trajectory,
+        modules: c.modules,
+        moduleCount: c._count.modules,
+    }))
+
+    const testimonials = await prisma.testimonial.findMany({
+        where: { published: true },
+        orderBy: [{ order: 'asc' }, { created_at: 'desc' }],
+        select: {
+            id: true,
+            name: true,
+            role: true,
+            metric: true,
+            quote: true,
+            duration: true,
+            video_url: true,
+            hue: true,
+            poster_bg: true,
+            poster_accent: true,
+        },
     })
 
     return (
         <>
             {/* ── Nav ─────────────────────────────────────── */}
-            <nav className="fixed top-0 w-full z-50 bg-[#0e131e]/60 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                <div className="flex justify-between items-center px-4 sm:px-8 h-20 w-full max-w-[1440px] mx-auto">
-                    <div className="flex items-center gap-3">
-                        <img src="/logo_dark.png" alt="GSA" className="w-auto" style={{ height: '4.25rem' }} />
-                        <span className="text-xl font-bold tracking-tighter text-slate-100">
-                            Growth Sales Academy
-                        </span>
-                    </div>
-                    <div className="hidden md:flex items-center gap-8 tracking-tight font-medium">
-                        <Link href="/courses" className="text-blue-400 font-semibold border-b-2 border-blue-500 pb-1">
-                            Programas
-                        </Link>
-                        <Link href="#" className="text-slate-400 hover:text-slate-100 transition-colors">
-                            Recursos
-                        </Link>
-                        <Link href="#testimonials" className="text-slate-400 hover:text-slate-100 transition-colors">
-                            Comunidad
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-6">
-                        <div className="hidden sm:flex gap-4 text-slate-300">
-                            <MaterialIcon name="search" className="hover:text-blue-400 cursor-pointer transition-colors" />
-                            <MaterialIcon name="notifications" className="hover:text-blue-400 cursor-pointer transition-colors" />
-                        </div>
-                        <Link
-                            href="/login"
-                            className="bg-gradient-to-br from-primary-container to-secondary-container text-white px-6 py-2.5 rounded-xl font-semibold active:scale-90 transition-transform"
-                        >
-                            Ingresar
-                        </Link>
-                    </div>
-                </div>
-            </nav>
+            <LandingNavbar />
 
             {/* ── Global LiquidEther background ─────────── */}
             <div className="fixed inset-0 z-0" aria-hidden="true">
@@ -78,9 +93,9 @@ export default async function LandingPage() {
                 style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 30%, transparent 0%, var(--bg-base) 100%)' }}
             />
 
-            <main className="relative z-10 pt-20">
+            <main className="relative z-10 pt-16">
                 {/* ── Hero ────────────────────────────────────── */}
-                <section className="relative h-[calc(100vh-80px)] flex items-center justify-center px-4 sm:px-8 overflow-hidden">
+                <section className="relative h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-8 overflow-hidden">
 
                     {/* Content */}
                     <div className="z-10 text-center max-w-4xl">
@@ -103,8 +118,14 @@ export default async function LandingPage() {
                         </p>
                         <div className="flex flex-wrap justify-center gap-4">
                             <Link
-                                href="/register"
-                                className="bg-gradient-to-br from-primary-container to-secondary-container text-on-primary-container px-8 py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all"
+                                href="/auth?mode=register"
+                                className="hero-cta-primary px-8 py-4 rounded-xl font-bold text-lg transition-all"
+                                style={{
+                                    background:
+                                        'linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #818cf8 100%)',
+                                    color: '#080d18',
+                                    boxShadow: '0 12px 32px rgba(56,189,248,0.4)',
+                                }}
                             >
                                 Comenzar Ahora
                             </Link>
@@ -121,105 +142,20 @@ export default async function LandingPage() {
                 {/* ── Features / Qué incluye el programa ──────── */}
                 <ProgramIncludesSection />
 
+                {/* ── Manifesto + 10 pilares ─────────────────── */}
+                <ManifestoSection />
+
                 {/* ── About / Quiénes somos ──────────────────── */}
                 <AboutSection />
 
-                {/* ── Featured Courses ────────────────────────── */}
-                <section className="relative py-24 px-4 sm:px-8 bg-surface-container-low/40 backdrop-blur-sm">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="flex justify-between items-end mb-16">
-                            <div>
-                                <h2 className="text-4xl font-black tracking-tight text-on-surface mb-2">
-                                    La puerta al cambio
-                                </h2>
-                                <p className="text-on-surface-variant">
-                                    Nuestros programas de certificación insignia
-                                </p>
-                            </div>
-                            <Link
-                                href="/courses"
-                                className="text-secondary font-bold hover:underline flex items-center gap-2"
-                            >
-                                Explorar Todos
-                                <MaterialIcon name="arrow_forward" />
-                            </Link>
-                        </div>
+                {/* ── El Método GSA ─────────────────────────── */}
+                <MethodSection />
 
-                        {featuredCourses.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                {featuredCourses.map((course) => (
-                                    <FeaturedCourseCard
-                                        key={course.id}
-                                        id={course.id}
-                                        title={course.title}
-                                        thumbnail={course.thumbnail}
-                                        published={course.published}
-                                        moduleCount={course._count.modules}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="glass rounded-xl p-16 text-center border border-outline-variant/10">
-                                <MaterialIcon name="school" size="text-5xl" className="text-secondary mb-4" />
-                                <h3 className="text-xl font-bold text-on-surface mb-2">Próximamente</h3>
-                                <p className="text-on-surface-variant">
-                                    Estamos preparando cursos exclusivos para ti. ¡Vuelve pronto!
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </section>
+                {/* ── Featured Courses (redesign) ─────────────── */}
+                <CoursesSection courses={featuredCourses} />
 
-                {/* ── Social Proof Stats ──────────────────────── */}
-                <section className="relative py-32 px-4 sm:px-8 max-w-7xl mx-auto">
-                    <div className="grid grid-cols-2 md:flex md:flex-nowrap justify-center gap-8 md:gap-16">
-                        {[
-                            { value: '+100', label: 'Estudiantes certificados' },
-                            { value: '+100h', label: 'De estudio' },
-                            { value: '95%', label: 'Completación' },
-                            { value: '+450.000€', label: 'Generados por los cursos' },
-                        ].map((stat) => (
-                            <div key={stat.label} className="text-center">
-                                <div className="text-3xl sm:text-5xl md:text-7xl font-black text-secondary mb-2 whitespace-nowrap">
-                                    {stat.value}
-                                </div>
-                                <div className="uppercase tracking-widest text-on-surface-variant text-sm">
-                                    {stat.label}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* ── Testimonials ────────────────────────────── */}
-                <section id="testimonials" className="relative py-24 px-4 sm:px-8 bg-surface-container-low/40 backdrop-blur-sm overflow-hidden">
-                    <div className="max-w-7xl mx-auto">
-                        <h2 className="text-4xl font-black text-center mb-16 text-on-surface">
-                            TESTIMONIOS ALUMNOS
-                        </h2>
-                        <div className="flex justify-center gap-6 flex-wrap">
-                            {[
-                                { src: '/testimonio-1-p1-opt.mp4', type: 'video/mp4' },
-                                { src: '/testimonio-1-p2-opt.mp4', type: 'video/mp4' },
-                                { src: '/testi3-opt.mp4', type: 'video/mp4' },
-                            ].map((video) => (
-                                <div
-                                    key={video.src}
-                                    className="w-full max-w-[300px] aspect-[9/16] rounded-2xl overflow-hidden border border-outline-variant/10 bg-surface-container"
-                                >
-                                    <video
-                                        controls
-                                        preload="metadata"
-                                        playsInline
-                                        className="w-full h-full object-cover"
-                                    >
-                                        <source src={video.src} type={video.type} />
-                                    </video>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+                {/* ── Testimonios + stats + pre-CTA (redesign) ── */}
+                <TestimonialsSection testimonials={testimonials} />
 
                 {/* ── Final CTA ──────────────────────────────── */}
                 <section className="relative py-16 sm:py-32 px-4 sm:px-8">
@@ -238,7 +174,7 @@ export default async function LandingPage() {
                                 type="email"
                             />
                             <Link
-                                href="/register"
+                                href="/auth?mode=register"
                                 className="bg-gradient-to-br from-primary-container to-secondary-container text-white px-8 py-4 rounded-xl font-bold text-lg hover:scale-105 active:scale-95 transition-all text-center"
                             >
                                 Obtener Acceso

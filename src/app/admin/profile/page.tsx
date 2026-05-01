@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AdminProfilePage() {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'ADMIN') redirect('/login')
+    if (!session || session.user.role !== 'ADMIN') redirect('/auth')
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
@@ -28,7 +28,7 @@ export default async function AdminProfilePage() {
         },
     })
 
-    if (!user) redirect('/login')
+    if (!user) redirect('/auth')
 
     // Fetch instructor-specific metrics
     const [publishedCourses, totalStudents, totalLessons, mostPopularCourse] = await Promise.all([

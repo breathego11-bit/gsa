@@ -16,7 +16,7 @@ import type { FormField, ExamQuestion } from '@/types'
 export default async function LessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
     const { lessonId } = await params
     const session = await getServerSession(authOptions)
-    if (!session) redirect('/login')
+    if (!session) redirect('/auth')
 
     const lesson = await prisma.lesson.findUnique({
         where: { id: lessonId },
@@ -129,6 +129,10 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
 
     const isCompleted = lesson.progress[0]?.completed ?? false
     const durationMin = lesson.duration ?? null
+    const courseBackHref =
+        session.user.role === 'ADMIN'
+            ? `/course/${lesson.module.course_id}`
+            : `/dashboard/courses/${lesson.module.course_id}`
 
     return (
         <div className="min-h-screen bg-surface flex flex-col">
@@ -143,7 +147,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                             </span>
                         </Link>
                         <Link
-                            href={`/dashboard/courses/${lesson.module.course_id}`}
+                            href={courseBackHref}
                             className="hidden md:flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
                         >
                             <MaterialIcon name="arrow_back" size="text-sm" />
@@ -456,9 +460,14 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                             <p className="text-xs text-on-surface-variant mb-3">
                                 Nuestro equipo de soporte está disponible para ti.
                             </p>
-                            <button className="text-xs font-bold text-primary hover:underline">
+                            <a
+                                href="https://growth-sales-academy.slack.com/archives/C0B12LDVAKS"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-primary hover:underline"
+                            >
                                 Contactar soporte
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </aside>
@@ -489,7 +498,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                         </Link>
                     ) : (
                         <Link
-                            href={`/dashboard/courses/${lesson.module.course_id}`}
+                            href={courseBackHref}
                             className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
                         >
                             Ver curso completo
