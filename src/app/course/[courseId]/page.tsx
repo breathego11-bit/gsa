@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { EnrollButton } from '@/components/courses/EnrollButton'
 import { CourseModuleAccordion } from '@/components/courses/CourseModuleAccordion'
+import { getBunnyThumbnailUrl } from '@/lib/bunny'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: Promise<{ courseId: string }> }): Promise<Metadata> {
@@ -47,6 +48,8 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                             order: true,
                             duration: true,
                             type: true,
+                            thumbnail: true,
+                            bunny_video_id: true,
                             ...(session ? { progress: { where: { user_id: session.user.id } } } : {}),
                         },
                     },
@@ -247,6 +250,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                                 order: l.order,
                                                 duration: l.duration,
                                                 type: l.type,
+                                                thumbnail: l.thumbnail || (l.bunny_video_id ? getBunnyThumbnailUrl(l.bunny_video_id) : null),
                                                 progress: (l as typeof l & { progress?: Array<{ completed: boolean }> }).progress as Array<{ completed: boolean }> | undefined,
                                             })),
                                         }))}

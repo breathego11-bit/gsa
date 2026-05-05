@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import {
     Fragment,
     useEffect,
@@ -9,6 +8,8 @@ import {
     type CSSProperties,
 } from 'react'
 
+type GoldenQuestion = { q: string; a: string }
+
 type Phase = {
     num: string
     key: string
@@ -16,18 +17,70 @@ type Phase = {
     subtitle: string
     time: string
     group: 'apertura' | 'descubrimiento' | 'presentacion' | 'cierre' | 'post'
+    detail: string
+    tactics?: string[]
+    questions?: GoldenQuestion[]
 }
 
 const PHASES: Phase[] = [
-    { num: '01', key: 'conexion', title: 'Conexión', subtitle: 'Quiebre del escudo', time: '2–3 min', group: 'apertura' },
-    { num: '02', key: 'marco', title: 'Marco', subtitle: 'Toma de control', time: '1–2 min', group: 'apertura' },
-    { num: '03', key: 'diagnostico', title: 'Diagnóstico', subtitle: 'Las 3 preguntas de oro', time: '8–10 min', group: 'descubrimiento' },
-    { num: '04', key: 'espejo', title: 'Espejo', subtitle: 'Reafirmación y confianza', time: '2–3 min', group: 'descubrimiento' },
-    { num: '05', key: 'autoridad', title: 'Autoridad', subtitle: 'El porqué de confiar', time: '3–4 min', group: 'presentacion' },
-    { num: '06', key: 'claridad', title: 'Claridad', subtitle: 'Resolver dudas con intención', time: '3–5 min', group: 'presentacion' },
-    { num: '07', key: 'anclaje', title: 'Anclaje de valor', subtitle: 'El precio como inversión', time: '2–3 min', group: 'cierre' },
-    { num: '08', key: 'cierre', title: 'Cierre consciente', subtitle: 'Acción en el momento presente', time: '3–5 min', group: 'cierre' },
-    { num: '09', key: 'post', title: 'Post-cierre', subtitle: 'Sostener o sembrar', time: '24–48h', group: 'post' },
+    {
+        num: '01', key: 'conexion', title: 'Conexión', subtitle: 'Quiebre del escudo',
+        time: '2–3 min', group: 'apertura',
+        detail: 'Los primeros 2–3 minutos son puro rapport. No vendes, conectas. Encuentras puntos en común auténticos y dejas claro que quien pregunta dirige la conversación.',
+        tactics: ['Escucha activa', 'Puntos en común', 'Tono cálido'],
+    },
+    {
+        num: '02', key: 'marco', title: 'Marco', subtitle: 'Toma de control',
+        time: '1–2 min', group: 'apertura',
+        detail: 'Estableces el encuadre de la llamada: tú decides si hay fit, hay un tiempo acotado, y al final habrá una decisión de pago. El marco se pone una sola vez y sostiene toda la conversación.',
+        tactics: ['Encuadre claro', 'Tiempo acotado', 'Pago implícito'],
+    },
+    {
+        num: '03', key: 'diagnostico', title: 'Diagnóstico', subtitle: 'Las 3 preguntas de oro',
+        time: '8–10 min', group: 'descubrimiento',
+        detail: 'Las tres preguntas de oro estructuran todo el diagnóstico y extraen el material con el que cerrarás después.',
+        questions: [
+            { q: '¿Qué te trajo aquí?', a: 'Dolor o placer' },
+            { q: '¿Qué esperas recibir?', a: 'Resultado deseado' },
+            { q: '¿Qué habría cambiado en 6 meses para decir que fue un éxito?', a: 'Visión futura' },
+        ],
+    },
+    {
+        num: '04', key: 'espejo', title: 'Espejo', subtitle: 'Reafirmación y confianza',
+        time: '2–3 min', group: 'descubrimiento',
+        detail: 'Devuelves con tus palabras lo que la persona acaba de decir. No es una técnica, es presencia. La otra persona siente que la escuchaste de verdad.',
+        tactics: ['Reencuadre', 'Validación', 'Espacio seguro'],
+    },
+    {
+        num: '05', key: 'autoridad', title: 'Autoridad', subtitle: 'El porqué de confiar',
+        time: '3–4 min', group: 'presentacion',
+        detail: 'Presentas el método, evidencia y alcance — pero filtrado por lo que ESTA persona necesita oír. No es un pitch genérico: es tu autoridad hablándole a su problema concreto.',
+        tactics: ['Método propio', 'Prueba social', 'Casos relevantes'],
+    },
+    {
+        num: '06', key: 'claridad', title: 'Claridad', subtitle: 'Resolver dudas con intención',
+        time: '3–5 min', group: 'presentacion',
+        detail: 'Revisas el documento previo, resuelves objeciones con calma y te aseguras de que tiene todo lo necesario para decidir ahora — no dentro de tres días.',
+        tactics: ['Documento de apoyo', 'Manejo de objeciones', 'Cierre de info'],
+    },
+    {
+        num: '07', key: 'anclaje', title: 'Anclaje de valor', subtitle: 'El precio como inversión',
+        time: '2–3 min', group: 'cierre',
+        detail: 'Antes de pronunciar el precio, recapitulas todo el valor incluido. Dices el número con claridad y sostienes el silencio. Quien habla primero después del precio, pierde.',
+        tactics: ['Recap de valor', 'Precio claro', 'Silencio post-precio'],
+    },
+    {
+        num: '08', key: 'cierre', title: 'Cierre consciente', subtitle: 'Acción en el momento presente',
+        time: '3–5 min', group: 'cierre',
+        detail: 'Guías al pago con seguridad total. Manejas las resistencias del ego con la pregunta clave: ¿reafirmas amor o reafirmas miedo? Enlace en llamada. Si no hay cierre total, reserva mínima.',
+        tactics: ['Enlace en vivo', '¿Amor o miedo?', 'Reserva mínima'],
+    },
+    {
+        num: '09', key: 'post', title: 'Post-cierre', subtitle: 'Sostener o sembrar',
+        time: '24–48h', group: 'post',
+        detail: 'Si cerró, sostienes la decisión con onboarding cálido. Si no cerró, siembras: biblioteca de recursos, seguimiento sin presión, próxima reunión en 24–48h.',
+        tactics: ['Onboarding cálido', 'Recursos', 'Follow-up sin presión'],
+    },
 ]
 
 const GROUP_LABELS: Record<Phase['group'], string> = {
@@ -38,13 +91,22 @@ const GROUP_LABELS: Record<Phase['group'], string> = {
     post: 'Después · Sostener',
 }
 
-export function MethodSection() {
+export function MethodContent() {
     const [activeIdx, setActiveIdx] = useState(0)
     const [progress, setProgress] = useState(0)
     const [navVisible, setNavVisible] = useState(false)
+    const [expanded, setExpanded] = useState<Set<number>>(new Set())
     const phaseRefs = useRef<(HTMLDivElement | null)[]>([])
     const lineRef = useRef<HTMLDivElement | null>(null)
     const rootRef = useRef<HTMLDivElement | null>(null)
+
+    const toggle = (i: number) =>
+        setExpanded((prev) => {
+            const next = new Set(prev)
+            if (next.has(i)) next.delete(i)
+            else next.add(i)
+            return next
+        })
 
     // Inject keyframes + responsive rules once on mount (SSR-safe).
     useEffect(() => {
@@ -58,9 +120,12 @@ export function MethodSection() {
                 70% { transform: scale(1.8); opacity: 0; }
                 100% { transform: scale(1.8); opacity: 0; }
             }
-            .gsa-thread-inner { padding: 80px 24px; max-width: 1280px; margin: 0 auto; position: relative; z-index: 1; }
+            .gsa-thread-inner { padding: 32px 16px; max-width: 100%; margin: 0 auto; position: relative; z-index: 1; }
             @media (min-width: 900px) {
-                .gsa-thread-inner { padding: 80px 80px 80px 260px; }
+                .gsa-thread-inner { padding: 40px 24px 60px 240px; max-width: 1280px; }
+            }
+            @media (min-width: 1024px) {
+                .gsa-thread-nav { left: 272px !important; }
             }
             @media (max-width: 900px) {
                 .gsa-thread-nav { display: none !important; }
@@ -71,6 +136,10 @@ export function MethodSection() {
 
     // Scroll-driven: active phase + progress line fill + nav visibility.
     useEffect(() => {
+        const scrollEl =
+            (rootRef.current?.closest('main') as HTMLElement | null) ?? null
+        const target: HTMLElement | Window = scrollEl ?? window
+
         const onScroll = () => {
             const vh = window.innerHeight
             const anchor = vh * 0.45
@@ -100,17 +169,30 @@ export function MethodSection() {
             }
         }
         onScroll()
-        window.addEventListener('scroll', onScroll, { passive: true })
+        target.addEventListener('scroll', onScroll, { passive: true } as AddEventListenerOptions)
         window.addEventListener('resize', onScroll)
         return () => {
-            window.removeEventListener('scroll', onScroll)
+            target.removeEventListener('scroll', onScroll)
             window.removeEventListener('resize', onScroll)
         }
     }, [])
 
     const scrollToPhase = (i: number) => {
         const el = phaseRefs.current[i]
-        if (el) {
+        if (!el) return
+        const scrollEl =
+            (rootRef.current?.closest('main') as HTMLElement | null) ?? null
+        if (scrollEl) {
+            const containerRect = scrollEl.getBoundingClientRect()
+            const elRect = el.getBoundingClientRect()
+            scrollEl.scrollTo({
+                top:
+                    scrollEl.scrollTop +
+                    (elRect.top - containerRect.top) -
+                    window.innerHeight * 0.35,
+                behavior: 'smooth',
+            })
+        } else {
             window.scrollTo({
                 top:
                     window.scrollY +
@@ -122,7 +204,7 @@ export function MethodSection() {
     }
 
     return (
-        <section id="metodo" style={thread.root} ref={rootRef}>
+        <section style={thread.root} ref={rootRef}>
             <div style={thread.bgGlow1} />
             <div style={thread.bgGlow2} />
 
@@ -246,7 +328,9 @@ export function MethodSection() {
                                         />
                                     )}
 
-                                    <div
+                                    <button
+                                        type="button"
+                                        onClick={() => toggle(i)}
                                         style={{
                                             ...thread.card,
                                             ...(isActive ? thread.cardActive : {}),
@@ -268,7 +352,62 @@ export function MethodSection() {
                                                 {p.time}
                                             </div>
                                         </div>
-                                    </div>
+
+                                        <div
+                                            style={{
+                                                ...thread.cardExpand,
+                                                maxHeight: expanded.has(i) ? 600 : 0,
+                                                opacity: expanded.has(i) ? 1 : 0,
+                                                marginTop: expanded.has(i) ? 18 : 0,
+                                            }}
+                                        >
+                                            <p style={thread.cardDetail}>{p.detail}</p>
+
+                                            {p.questions && (
+                                                <div style={thread.questions}>
+                                                    {p.questions.map((q, qi) => (
+                                                        <div key={qi} style={thread.question}>
+                                                            <div style={thread.questionQ}>
+                                                                <span style={thread.questionIdx}>0{qi + 1}</span>
+                                                                <span>{q.q}</span>
+                                                            </div>
+                                                            <div style={thread.questionAnswerRow}>
+                                                                <span style={thread.questionArrow}>↳</span>
+                                                                <span style={thread.questionA}>{q.a}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {p.tactics && (
+                                                <div style={thread.tactics}>
+                                                    {p.tactics.map((t, ti) => (
+                                                        <span key={ti} style={thread.tactic}>{t}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={thread.cardToggle}>
+                                            <span>{expanded.has(i) ? 'Cerrar' : 'Ver detalle'}</span>
+                                            <svg
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 12 12"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="1.8"
+                                                strokeLinecap="round"
+                                                style={{
+                                                    transform: expanded.has(i) ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    transition: 'transform .25s',
+                                                }}
+                                            >
+                                                <path d="M2 4l4 4 4-4" />
+                                            </svg>
+                                        </div>
+                                    </button>
                                 </div>
                             </Fragment>
                         )
@@ -296,35 +435,6 @@ export function MethodSection() {
                             title="Tu estado, tu herramienta"
                             body="Energía y presencia son la herramienta más poderosa del método."
                         />
-                    </div>
-                </section>
-
-                {/* CTA */}
-                <section style={thread.cta}>
-                    <h2 style={thread.ctaTitle}>
-                        ¿Listo para aplicar el método
-                        <br />
-                        en <span style={thread.ctaAccent}>tu próxima llamada</span>?
-                    </h2>
-                    <p style={thread.ctaSub}>
-                        Empieza tu transformación con GSA. Cierra sin presión. Vende con
-                        presencia.
-                    </p>
-                    <div style={thread.ctaRow}>
-                        <Link href="/auth?mode=register" style={thread.ctaPrimary}>
-                            Empieza tu transformación
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                            >
-                                <path d="M2 8h12M9 3l5 5-5 5" />
-                            </svg>
-                        </Link>
                     </div>
                 </section>
             </div>
@@ -424,7 +534,6 @@ function Principle({
 const thread: Record<string, CSSProperties> = {
     root: {
         width: '100%',
-        minHeight: '100vh',
         color: '#dee2f2',
         fontFamily: 'Inter, system-ui, sans-serif',
         position: 'relative',
@@ -669,6 +778,9 @@ const thread: Record<string, CSSProperties> = {
         position: 'relative',
         overflow: 'hidden',
         zIndex: 2,
+        cursor: 'pointer',
+        width: '100%',
+        display: 'block',
     },
     cardLeft: { gridColumn: 1, marginRight: 0 },
     cardRight: { gridColumn: 2, marginLeft: 0 },
@@ -736,6 +848,90 @@ const thread: Record<string, CSSProperties> = {
         background: '#38bdf8',
     },
 
+    cardExpand: {
+        overflow: 'hidden',
+        transition: 'max-height .35s ease, opacity .25s, margin-top .25s',
+    },
+    cardDetail: {
+        fontSize: 14.5,
+        lineHeight: 1.6,
+        color: '#dee2f2',
+        margin: '0 0 18px',
+        paddingTop: 18,
+        borderTop: '1px dashed rgba(129,140,248,0.2)',
+    },
+
+    questions: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        marginBottom: 16,
+    },
+    question: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '12px 14px',
+        borderRadius: 10,
+        background: 'rgba(56,189,248,0.06)',
+        border: '1px solid rgba(56,189,248,0.15)',
+    },
+    questionQ: {
+        display: 'flex',
+        gap: 10,
+        alignItems: 'flex-start',
+        fontSize: 13.5,
+        color: '#dee2f2',
+        lineHeight: 1.4,
+    },
+    questionIdx: {
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 10,
+        color: '#38bdf8',
+        fontWeight: 500,
+        marginTop: 2,
+        flexShrink: 0,
+    },
+    questionAnswerRow: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        paddingLeft: 22,
+    },
+    questionArrow: { color: '#38bdf8', fontSize: 13, opacity: 0.8 },
+    questionA: {
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 11,
+        letterSpacing: 0.5,
+        color: '#c4c5d5',
+        padding: '4px 10px',
+        borderRadius: 999,
+        background: 'rgba(129,140,248,0.12)',
+        textTransform: 'lowercase',
+    },
+
+    tactics: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+    tactic: {
+        padding: '6px 12px',
+        borderRadius: 999,
+        background: 'rgba(129,140,248,0.08)',
+        border: '1px solid rgba(129,140,248,0.18)',
+        fontSize: 12,
+        color: '#c4c5d5',
+    },
+
+    cardToggle: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 16,
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 11,
+        letterSpacing: 1,
+        color: '#38bdf8',
+        textTransform: 'uppercase',
+    },
+
     principles: {
         marginTop: 100,
         padding: '56px 40px',
@@ -781,57 +977,5 @@ const thread: Record<string, CSSProperties> = {
         lineHeight: 1.55,
         color: '#c4c5d5',
         margin: 0,
-    },
-
-    cta: {
-        marginTop: 100,
-        textAlign: 'center',
-        padding: '60px 20px',
-    },
-    ctaTitle: {
-        fontSize: 'clamp(32px, 4.5vw, 56px)',
-        lineHeight: 1.08,
-        letterSpacing: -1.8,
-        fontWeight: 600,
-        margin: '0 0 20px',
-    },
-    ctaAccent: {
-        background:
-            'linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #818cf8 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-        fontStyle: 'italic',
-        fontWeight: 500,
-    },
-    ctaSub: {
-        fontSize: 17,
-        color: '#c4c5d5',
-        maxWidth: 560,
-        margin: '0 auto 40px',
-        lineHeight: 1.55,
-    },
-    ctaRow: {
-        display: 'flex',
-        gap: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-    },
-    ctaPrimary: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '20px 36px',
-        borderRadius: 999,
-        background:
-            'linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #818cf8 100%)',
-        color: '#080d18',
-        fontSize: 16,
-        fontWeight: 600,
-        letterSpacing: -0.1,
-        cursor: 'pointer',
-        textDecoration: 'none',
-        boxShadow: '0 30px 80px -20px rgba(56,189,248,0.7)',
     },
 }

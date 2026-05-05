@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
+import { headers } from 'next/headers'
 import { authOptions } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileNav } from '@/components/layout/MobileNav'
@@ -9,6 +10,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const session = await getServerSession(authOptions)
     if (!session) redirect('/auth')
 
+    const pathname = (await headers()).get('x-pathname') ?? ''
+    const fullBleed = pathname.endsWith('/method')
+
     return (
         <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
@@ -17,9 +21,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
             <MobileNav role="STUDENT" />
             <main className="flex-1 overflow-y-auto relative z-10">
-                <div className="p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto">
-                    {children}
-                </div>
+                {fullBleed ? children : (
+                    <div className="p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto">
+                        {children}
+                    </div>
+                )}
             </main>
         </div>
     )

@@ -10,6 +10,7 @@ interface LessonData {
     order: number
     duration: number | null
     type?: string
+    thumbnail?: string | null
     progress?: Array<{ completed: boolean }>
 }
 
@@ -127,7 +128,16 @@ export function CourseModuleAccordion({ modules, isEnrolled }: CourseModuleAccor
                                                             {formatDuration(lesson.duration)}
                                                         </span>
                                                     )}
-                                                    <MaterialIcon name={lessonTypeIcon[lesson.type || 'VIDEO'] || 'play_circle'} size="text-sm" className="text-on-surface-variant" />
+                                                    {lesson.thumbnail ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={lesson.thumbnail}
+                                                            alt=""
+                                                            className="w-14 h-8 object-cover rounded shrink-0"
+                                                        />
+                                                    ) : (
+                                                        <MaterialIcon name={lessonTypeIcon[lesson.type || 'VIDEO'] || 'play_circle'} size="text-sm" className="text-on-surface-variant" />
+                                                    )}
                                                 </div>
                                             </div>
                                         )

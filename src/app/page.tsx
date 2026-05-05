@@ -6,7 +6,6 @@ import { ProgramIncludesSection } from '@/components/landing/ProgramIncludesSect
 import { CoursesSection } from '@/components/landing/CoursesSection'
 import { LandingNavbar } from '@/components/landing/LandingNavbar'
 import { ManifestoSection } from '@/components/landing/ManifestoSection'
-import { MethodSection } from '@/components/landing/MethodSection'
 import { TestimonialsSection } from '@/components/landing/TestimonialsSection'
 
 
@@ -147,9 +146,6 @@ export default async function LandingPage() {
 
                 {/* ── About / Quiénes somos ──────────────────── */}
                 <AboutSection />
-
-                {/* ── El Método GSA ─────────────────────────── */}
-                <MethodSection />
 
                 {/* ── Featured Courses (redesign) ─────────────── */}
                 <CoursesSection courses={featuredCourses} />

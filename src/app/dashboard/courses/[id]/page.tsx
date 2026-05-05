@@ -5,6 +5,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { CourseModuleAccordion } from '@/components/courses/CourseModuleAccordion'
+import { getBunnyThumbnailUrl } from '@/lib/bunny'
 
 export default async function DashboardCoursePage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -21,7 +22,7 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
                 include: {
                     lessons: {
                         orderBy: { order: 'asc' },
-                        select: { id: true, title: true, order: true, duration: true, type: true },
+                        select: { id: true, title: true, order: true, duration: true, type: true, thumbnail: true, bunny_video_id: true },
                     },
                 },
             },
@@ -169,6 +170,7 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
                                 order: l.order,
                                 duration: l.duration,
                                 type: l.type,
+                                thumbnail: l.thumbnail || (l.bunny_video_id ? getBunnyThumbnailUrl(l.bunny_video_id) : null),
                                 progress: progressMap.has(l.id) ? [{ completed: progressMap.get(l.id)! }] : undefined,
                             })),
                         }))}

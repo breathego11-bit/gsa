@@ -9,7 +9,6 @@ const LINKS: NavLink[] = [
     { label: 'Programa', href: '#features' },
     { label: 'Pilares', href: '#manifesto' },
     { label: 'Nosotros', href: '#about' },
-    { label: 'Método', href: '#metodo' },
     { label: 'Cursos', href: '#courses' },
     { label: 'Comunidad', href: '#testimonials' },
 ]
