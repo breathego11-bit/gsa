@@ -18,6 +18,7 @@ interface StudentInfo {
     created_at: string
     payment_status: string
     blocked: boolean
+    closer_enabled: boolean
 }
 
 interface PaymentInfo {
@@ -60,6 +61,8 @@ const paymentStatusLabels: Record<string, { label: string; color: string }> = {
 export function StudentDetailClient({ student, courses, payments }: Props) {
     const [blocked, setBlocked] = useState(student.blocked)
     const [blocking, setBlocking] = useState(false)
+    const [closerEnabled, setCloserEnabled] = useState(student.closer_enabled)
+    const [updatingCloser, setUpdatingCloser] = useState(false)
 
     async function toggleBlock() {
         setBlocking(true)
@@ -72,6 +75,20 @@ export function StudentDetailClient({ student, courses, payments }: Props) {
             if (res.ok) setBlocked(!blocked)
         } finally {
             setBlocking(false)
+        }
+    }
+
+    async function toggleCloser() {
+        setUpdatingCloser(true)
+        try {
+            const res = await fetch(`/api/admin/students/${student.id}/closer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ closer_enabled: !closerEnabled }),
+            })
+            if (res.ok) setCloserEnabled(!closerEnabled)
+        } finally {
+            setUpdatingCloser(false)
         }
     }
 
@@ -138,6 +155,41 @@ export function StudentDetailClient({ student, courses, payments }: Props) {
                     </div>
                 </div>
             </Card>
+
+            {/* Closer toggle */}
+            <div>
+                <h2 className="section-title mb-1">Rol de Closer</h2>
+                <p className="section-subtitle mb-6">Activa el módulo de CRM de ventas para este alumno</p>
+
+                <Card>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--bg-raised)' }}>
+                                <MaterialIcon name="trending_up" size="text-xl" className="text-secondary" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Acceso al CRM de Ventas</p>
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                    {closerEnabled
+                                        ? 'El alumno puede registrar ventas y ver su comisión'
+                                        : 'El alumno no tiene acceso al panel de ventas'}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={toggleCloser}
+                            disabled={updatingCloser}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 ${
+                                closerEnabled
+                                    ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25'
+                                    : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
+                            }`}
+                        >
+                            {updatingCloser ? '...' : closerEnabled ? 'Desactivar Closer' : 'Activar Closer'}
+                        </button>
+                    </div>
+                </Card>
+            </div>
 
             {/* Payment info */}
             <div>

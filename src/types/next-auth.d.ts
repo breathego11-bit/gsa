@@ -12,6 +12,7 @@ declare module "next-auth" {
             role: string;
             payment_status: string;
             blocked: boolean;
+            closer_enabled: boolean;
         };
     }
 
@@ -21,6 +22,7 @@ declare module "next-auth" {
         profile_image?: string | null;
         payment_status?: string;
         blocked?: boolean;
+        closer_enabled?: boolean;
     }
 }
 
@@ -32,5 +34,6 @@ declare module "next-auth/jwt" {
         profile_image?: string | null;
         payment_status?: string;
         blocked?: boolean;
+        closer_enabled?: boolean;
     }
 }

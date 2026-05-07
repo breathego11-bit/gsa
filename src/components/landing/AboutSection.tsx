@@ -33,7 +33,7 @@ export function AboutSection() {
     return (
         <section
             id="about"
-            className="relative overflow-hidden lg:h-screen lg:min-h-[720px]"
+            className="relative overflow-hidden lg:min-h-screen"
             style={{ color: '#dee2f2' }}
         >
             <style>{`
@@ -548,7 +548,4 @@ const mfAccent: React.CSSProperties = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
-    fontFamily: '"Instrument Serif", Georgia, serif',
-    fontWeight: 400,
-    letterSpacing: '-0.5px',
 }

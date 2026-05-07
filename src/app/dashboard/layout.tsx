@@ -11,15 +11,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     if (!session) redirect('/auth')
 
     const pathname = (await headers()).get('x-pathname') ?? ''
-    const fullBleed = pathname.endsWith('/method')
+    const fullBleed = pathname.endsWith('/method') || pathname.startsWith('/dashboard/sales')
+    const closerEnabled = session.user.closer_enabled ?? false
 
     return (
         <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
             <div className="hidden lg:flex shrink-0 relative z-10">
-                <Sidebar role="STUDENT" />
+                <Sidebar role="STUDENT" closerEnabled={closerEnabled} />
             </div>
-            <MobileNav role="STUDENT" />
+            <MobileNav role="STUDENT" closerEnabled={closerEnabled} />
             <main className="flex-1 overflow-y-auto relative z-10">
                 {fullBleed ? children : (
                     <div className="p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto">

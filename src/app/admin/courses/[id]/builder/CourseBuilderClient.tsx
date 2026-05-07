@@ -25,8 +25,8 @@ interface ModuleData { id: string; title: string; order: number; lessons: Lesson
 
 interface CourseData {
     id: string; title: string; description: string; thumbnail: string | null; hero_image: string | null
-    price: number | null; published: boolean; instructor_id: string | null
-    instructor: { id: string; name: string; last_name: string; profile_image: string | null } | null
+    price: number | null; published: boolean
+    instructors: Array<{ user: { id: string; name: string; last_name: string; profile_image: string | null } }>
     modules: ModuleData[]
 }
 
@@ -311,10 +311,10 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                 <input type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={saveCourse}
                                     className="bg-transparent border-none text-xl sm:text-3xl font-bold text-on-surface p-0 focus:ring-0 w-full mb-2" />
                                 <div className="flex items-center gap-6 text-sm text-on-surface-variant">
-                                    {initial.instructor && (
+                                    {initial.instructors.length > 0 && (
                                         <span className="flex items-center gap-1">
                                             <span className="material-symbols-outlined text-sm">person</span>
-                                            {initial.instructor.name} {initial.instructor.last_name}
+                                            {initial.instructors.map((i) => `${i.user.name} ${i.user.last_name}`).join(' · ')}
                                         </span>
                                     )}
                                 </div>

@@ -12,7 +12,8 @@ interface CourseData {
     thumbnail?: string | null
     hero_image?: string | null
     price?: number | null
-    instructor_id?: string | null
+    instructor_ids?: string[]
+    included_items?: string[] | null
 }
 
 interface CourseFormModalProps {
@@ -42,8 +43,63 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
     const [heroImageUrl, setHeroImageUrl] = useState<string | null>(initial?.hero_image ?? null)
     const [thumbnailUploading, setThumbnailUploading] = useState(false)
     const [heroUploading, setHeroUploading] = useState(false)
-    const [instructorId, setInstructorId] = useState<string | null>(initial?.instructor_id ?? null)
+    const [instructorIds, setInstructorIds] = useState<string[]>(initial?.instructor_ids ?? [])
     const [admins, setAdmins] = useState<Array<{ id: string; name: string; last_name: string }>>([])
+    const [includedItems, setIncludedItems] = useState<string[]>(initial?.included_items ?? [])
+    const [newItem, setNewItem] = useState('')
+
+    // Sync state with `initial` when modal opens or course id changes
+    // (modal stays mounted between edits — without this, state from the previous course bleeds into the new one)
+    const initialId = initial?.id ?? null
+    useEffect(() => {
+        if (!open) return
+        setThumbnailUrl(initial?.thumbnail ?? null)
+        setHeroImageUrl(initial?.hero_image ?? null)
+        setInstructorIds(initial?.instructor_ids ?? [])
+        setIncludedItems(initial?.included_items ?? [])
+        setNewItem('')
+        setError('')
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialId, open])
+
+    function addInstructor(id: string) {
+        if (!id || instructorIds.includes(id)) return
+        setInstructorIds((prev) => [...prev, id])
+    }
+    function removeInstructor(id: string) {
+        setInstructorIds((prev) => prev.filter((x) => x !== id))
+    }
+    function moveInstructor(idx: number, dir: -1 | 1) {
+        setInstructorIds((prev) => {
+            const next = [...prev]
+            const target = idx + dir
+            if (target < 0 || target >= next.length) return prev
+            ;[next[idx], next[target]] = [next[target], next[idx]]
+            return next
+        })
+    }
+
+    function addIncludedItem() {
+        const trimmed = newItem.trim()
+        if (!trimmed) return
+        setIncludedItems((prev) => [...prev, trimmed])
+        setNewItem('')
+    }
+    function removeIncludedItem(idx: number) {
+        setIncludedItems((prev) => prev.filter((_, i) => i !== idx))
+    }
+    function moveIncludedItem(idx: number, dir: -1 | 1) {
+        setIncludedItems((prev) => {
+            const next = [...prev]
+            const target = idx + dir
+            if (target < 0 || target >= next.length) return prev
+            ;[next[idx], next[target]] = [next[target], next[idx]]
+            return next
+        })
+    }
+    function updateIncludedItem(idx: number, value: string) {
+        setIncludedItems((prev) => prev.map((it, i) => (i === idx ? value : it)))
+    }
 
     const thumbnailRef = useRef<HTMLInputElement>(null)
     const heroRef = useRef<HTMLInputElement>(null)
@@ -85,7 +141,8 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
             description: (form.elements.namedItem('description') as HTMLTextAreaElement).value,
             thumbnail: thumbnailUrl,
             hero_image: heroImageUrl,
-            instructor_id: instructorId,
+            instructor_ids: instructorIds,
+            included_items: includedItems.filter((s) => s.trim().length > 0),
         }
 
         const url = isEdit ? `/api/courses/${initial!.id}` : '/api/courses'
@@ -162,21 +219,167 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
                     }}
                 />
 
-                {/* Instructor dropdown */}
+                {/* Instructores (multi-select con orden) */}
                 <div className="flex flex-col gap-1.5">
-                    <label className="form-label">Instructor (opcional)</label>
+                    <label className="form-label">Instructores (opcional)</label>
+
+                    {instructorIds.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                            {instructorIds.map((id, idx) => {
+                                const admin = admins.find((a) => a.id === id)
+                                const label = admin ? `${admin.name} ${admin.last_name}` : id
+                                return (
+                                    <div
+                                        key={id}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                                        style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)' }}
+                                    >
+                                        <span className="text-xs font-mono w-6 text-center" style={{ color: 'var(--text-secondary)' }}>
+                                            {idx + 1}
+                                        </span>
+                                        <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                                            {label}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveInstructor(idx, -1)}
+                                            disabled={idx === 0}
+                                            className="w-7 h-7 rounded-lg text-sm disabled:opacity-30"
+                                            style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                                            aria-label="Subir"
+                                        >
+                                            ↑
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveInstructor(idx, 1)}
+                                            disabled={idx === instructorIds.length - 1}
+                                            className="w-7 h-7 rounded-lg text-sm disabled:opacity-30"
+                                            style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                                            aria-label="Bajar"
+                                        >
+                                            ↓
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeInstructor(id)}
+                                            className="w-7 h-7 rounded-lg text-sm"
+                                            style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
+                                            aria-label="Quitar"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+
                     <select
-                        value={instructorId || ''}
-                        onChange={(e) => setInstructorId(e.target.value || null)}
+                        value=""
+                        onChange={(e) => {
+                            addInstructor(e.target.value)
+                            e.target.value = ''
+                        }}
                         className="form-input text-sm"
                     >
-                        <option value="">Sin instructor asignado</option>
-                        {admins.map((a) => (
-                            <option key={a.id} value={a.id}>
-                                {a.name} {a.last_name}
-                            </option>
-                        ))}
+                        <option value="">+ Agregar instructor</option>
+                        {admins
+                            .filter((a) => !instructorIds.includes(a.id))
+                            .map((a) => (
+                                <option key={a.id} value={a.id}>
+                                    {a.name} {a.last_name}
+                                </option>
+                            ))}
                     </select>
+                </div>
+
+                {/* Sección "INCLUYE" del card público */}
+                <div className="flex flex-col gap-1.5">
+                    <label className="form-label">Sección &quot;INCLUYE&quot; del card público (opcional)</label>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Lista que sale en el card del curso en la landing. Si la dejas vacía, se muestran los primeros 3 módulos.
+                    </p>
+
+                    {includedItems.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                            {includedItems.map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)' }}
+                                >
+                                    <span
+                                        className="text-xs font-mono w-6 text-center"
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                        {String(idx + 1).padStart(2, '0')}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={item}
+                                        onChange={(e) => updateIncludedItem(idx, e.target.value)}
+                                        className="flex-1 bg-transparent border-none outline-none text-sm"
+                                        style={{ color: 'var(--text-primary)' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => moveIncludedItem(idx, -1)}
+                                        disabled={idx === 0}
+                                        className="w-7 h-7 rounded-lg text-sm disabled:opacity-30"
+                                        style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                                        aria-label="Subir"
+                                    >
+                                        ↑
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => moveIncludedItem(idx, 1)}
+                                        disabled={idx === includedItems.length - 1}
+                                        className="w-7 h-7 rounded-lg text-sm disabled:opacity-30"
+                                        style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                                        aria-label="Bajar"
+                                    >
+                                        ↓
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeIncludedItem(idx)}
+                                        className="w-7 h-7 rounded-lg text-sm"
+                                        style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
+                                        aria-label="Quitar"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newItem}
+                            onChange={(e) => setNewItem(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    addIncludedItem()
+                                }
+                            }}
+                            placeholder="Ej. Mentoría grupal semanal"
+                            className="form-input text-sm flex-1"
+                        />
+                        <button
+                            type="button"
+                            onClick={addIncludedItem}
+                            disabled={!newItem.trim()}
+                            className="px-4 rounded-xl text-sm font-medium disabled:opacity-50"
+                            style={{ background: 'var(--bg-raised)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                        >
+                            + Agregar
+                        </button>
+                    </div>
                 </div>
 
                 {error && (

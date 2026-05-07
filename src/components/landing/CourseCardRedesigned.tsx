@@ -21,6 +21,7 @@ export type CourseCardData = {
     trajectory: string | null
     modules: { id: string; title: string; order: number }[]
     moduleCount: number
+    included_items: string[] | null
 }
 
 interface Props {
@@ -150,21 +151,27 @@ export function CourseCardRedesigned({ course, index }: Props) {
                         )}
                     </div>
 
-                    {course.modules.length > 0 && (
-                        <div style={cr.modules}>
-                            <div style={cr.modulesLabel}>INCLUYE</div>
-                            <ul style={cr.moduleList}>
-                                {course.modules.slice(0, 3).map((m, i) => (
-                                    <li key={m.id} style={cr.moduleItem}>
-                                        <span style={{ ...cr.moduleNum, color: accent }}>
-                                            {String(i + 1).padStart(2, '0')}
-                                        </span>
-                                        <span style={cr.moduleText}>{m.title}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+                    {(() => {
+                        const customItems = course.included_items?.filter((s) => s && s.trim().length > 0) ?? []
+                        const fallbackItems = course.modules.slice(0, 3).map((m) => m.title)
+                        const items = customItems.length > 0 ? customItems : fallbackItems
+                        if (items.length === 0) return null
+                        return (
+                            <div style={cr.modules}>
+                                <div style={cr.modulesLabel}>INCLUYE</div>
+                                <ul style={cr.moduleList}>
+                                    {items.map((text, i) => (
+                                        <li key={i} style={cr.moduleItem}>
+                                            <span style={{ ...cr.moduleNum, color: accent }}>
+                                                {String(i + 1).padStart(2, '0')}
+                                            </span>
+                                            <span style={cr.moduleText}>{text}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )
+                    })()}
 
                     <div style={cr.stats}>
                         {stats.map((s) => (

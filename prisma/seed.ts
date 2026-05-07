@@ -29,12 +29,12 @@ const testimonials = [
     },
     {
         id: 'seed-testimonial-2',
-        name: 'Estudiante GSA · 2',
+        name: 'María',
         role: 'Closer · GSA Community',
         metric: '4 deals en 2 semanas',
         quote: 'Por fin una academia que no te enseña a vender, sino a conectar con personas reales.',
         duration: '0:57',
-        video_url: '/testimonio-1-p2-opt.mp4',
+        video_url: '/testimonio-maria-opt.mp4',
         hue: 215,
         poster_bg: 'linear-gradient(160deg, #3a4055 0%, #1e2434 100%)',
         poster_accent: '#e8b59a',
@@ -77,10 +77,34 @@ async function main() {
     for (const t of testimonials) {
         await prisma.testimonial.upsert({
             where: { id: t.id },
-            update: {},
+            update: t,
             create: t,
         })
         console.log(`✓ Testimonial seeded: ${t.name}`)
+    }
+
+    // Default commission tiers (only set if SiteSettings.commission_tiers is null)
+    const settings = await prisma.siteSettings.findUnique({ where: { id: 'singleton' } })
+    const defaultTiers = [
+        { min_amount: 0, percentage: 9 },
+        { min_amount: 2000000, percentage: 11 },
+        { min_amount: 4000000, percentage: 13 },
+    ]
+    if (settings && settings.commission_tiers === null) {
+        await prisma.siteSettings.update({
+            where: { id: 'singleton' },
+            data: { commission_tiers: defaultTiers },
+        })
+        console.log('✓ Commission tiers seeded (default 9/11/13%)')
+    } else if (!settings) {
+        await prisma.siteSettings.create({
+            data: {
+                id: 'singleton',
+                pricing: { totalPrice: 188800, firstInstallment: 188800, installmentCount: 1, interestRate: 0 },
+                commission_tiers: defaultTiers,
+            },
+        })
+        console.log('✓ SiteSettings created with default pricing + commission tiers')
     }
 
     console.log('\nSeed complete. Default password: Admin@GSA2024!')

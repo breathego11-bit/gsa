@@ -29,8 +29,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         },
                     },
                 },
-                instructor: {
-                    select: { id: true, name: true, last_name: true, profile_image: true, bio: true, title: true },
+                instructors: {
+                    orderBy: { order: 'asc' },
+                    include: {
+                        user: {
+                            select: { id: true, name: true, last_name: true, profile_image: true, bio: true, title: true },
+                        },
+                    },
                 },
                 _count: { select: { enrollments: true } },
             },
@@ -57,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     try {
         const body = await req.json()
-        const { title, description, thumbnail, hero_image, price, published, instructor_id } = body
+        const { title, description, thumbnail, hero_image, price, published, instructor_ids, included_items } = body
 
         const data: Record<string, any> = {}
         if (title !== undefined) data.title = title
@@ -66,12 +71,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (hero_image !== undefined) data.hero_image = hero_image || null
         if (price !== undefined) data.price = price != null ? Number(price) : null
         if (published !== undefined) data.published = published
-        if (instructor_id !== undefined) data.instructor_id = instructor_id || null
+        if (included_items !== undefined) {
+            if (Array.isArray(included_items)) {
+                const items = included_items.filter((s: unknown) => typeof s === 'string' && s.trim().length > 0)
+                data.included_items = items.length > 0 ? items : null
+            } else if (included_items === null) {
+                data.included_items = null
+            }
+        }
 
-        const course = await prisma.course.update({
-            where: { id },
-            data,
+        const updateInstructors = Array.isArray(instructor_ids)
+        const ids: string[] = updateInstructors
+            ? instructor_ids.filter((s: unknown) => typeof s === 'string')
+            : []
+
+        const course = await prisma.$transaction(async (tx) => {
+            const updated = await tx.course.update({ where: { id }, data })
+            if (updateInstructors) {
+                await tx.courseInstructor.deleteMany({ where: { course_id: id } })
+                if (ids.length) {
+                    await tx.courseInstructor.createMany({
+                        data: ids.map((user_id, idx) => ({ course_id: id, user_id, order: idx })),
+                    })
+                }
+            }
+            return updated
         })
+
         return NextResponse.json(course)
     } catch {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -14,6 +14,7 @@ import {
     MailPlus,
     ShieldCheck,
     Compass,
+    TrendingUp,
 } from 'lucide-react'
 
 type Role = 'STUDENT' | 'ADMIN'
@@ -44,11 +45,16 @@ const adminNav: NavItem[] = [
 
 interface SidebarProps {
     role: Role
+    closerEnabled?: boolean
 }
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, closerEnabled = false }: SidebarProps) {
     const pathname = usePathname()
-    const nav = role === 'ADMIN' ? adminNav : studentNav
+    const baseNav = role === 'ADMIN' ? adminNav : studentNav
+    const nav: NavItem[] =
+        role === 'STUDENT' && closerEnabled
+            ? [...baseNav, { href: '/dashboard/sales', label: 'Ventas', icon: <TrendingUp size={18} /> }]
+            : baseNav
 
     const isActive = (href: string) => {
         if (href === '/admin' || href === '/dashboard') return pathname === href

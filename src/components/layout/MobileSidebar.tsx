@@ -15,6 +15,7 @@ import {
     MailPlus,
     ShieldCheck,
     Compass,
+    TrendingUp,
     X,
 } from 'lucide-react'
 
@@ -48,11 +49,16 @@ interface MobileSidebarProps {
     role: Role
     open: boolean
     onClose: () => void
+    closerEnabled?: boolean
 }
 
-export function MobileSidebar({ role, open, onClose }: MobileSidebarProps) {
+export function MobileSidebar({ role, open, onClose, closerEnabled = false }: MobileSidebarProps) {
     const pathname = usePathname()
-    const nav = role === 'ADMIN' ? adminNav : studentNav
+    const baseNav = role === 'ADMIN' ? adminNav : studentNav
+    const nav: NavItem[] =
+        role === 'STUDENT' && closerEnabled
+            ? [...baseNav, { href: '/dashboard/sales', label: 'Ventas', icon: <TrendingUp size={18} /> }]
+            : baseNav
 
     const isActive = (href: string) => {
         if (href === '/admin' || href === '/dashboard') return pathname === href

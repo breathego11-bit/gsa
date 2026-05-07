@@ -25,6 +25,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 created_at: true,
                 payment_status: true,
                 blocked: true,
+                closer_enabled: true,
             },
         }),
         prisma.enrollment.findMany({
@@ -32,7 +33,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             include: {
                 course: {
                     include: {
-                        instructor: { select: { name: true, last_name: true } },
+                        instructors: {
+                            orderBy: { order: 'asc' },
+                            include: { user: { select: { name: true, last_name: true } } },
+                        },
                         modules: {
                             include: {
                                 lessons: {
@@ -81,13 +85,21 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         const finalExamLesson = allLessons.find((l) => l.is_final_exam)
         const finalExamProgress = finalExamLesson ? progressMap.get(finalExamLesson.id) : null
 
-        const instructor = enrollment.course.instructor
+        const courseInstructors = enrollment.course.instructors
+        let instructorName: string | null = null
+        if (courseInstructors.length === 1) {
+            instructorName = `${courseInstructors[0].user.name} ${courseInstructors[0].user.last_name}`
+        } else if (courseInstructors.length === 2) {
+            instructorName = `${courseInstructors[0].user.name} ${courseInstructors[0].user.last_name} · ${courseInstructors[1].user.name} ${courseInstructors[1].user.last_name}`
+        } else if (courseInstructors.length > 2) {
+            instructorName = `${courseInstructors[0].user.name} ${courseInstructors[0].user.last_name} · +${courseInstructors.length - 1} más`
+        }
 
         return {
             enrollmentId: enrollment.id,
             courseId: enrollment.course.id,
             courseTitle: enrollment.course.title,
-            instructorName: instructor ? `${instructor.name} ${instructor.last_name}` : null,
+            instructorName,
             enrolledAt: enrollment.created_at.toISOString(),
             totalLessons,
             completedLessons,
@@ -125,6 +137,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 created_at: student.created_at.toISOString(),
                 payment_status: student.payment_status,
                 blocked: student.blocked,
+                closer_enabled: student.closer_enabled,
             }}
             courses={courses}
             payments={paymentData}

@@ -13,6 +13,15 @@ function calcRevenue(payments: { amount: number; status: string }[]) {
         .reduce((sum, p) => sum + p.amount, 0)
 }
 
+function instructorsLabel(instructors: { user: { name: string; last_name: string } }[]): string {
+    if (instructors.length === 0) return 'Sin instructor'
+    if (instructors.length === 1) return `${instructors[0].user.name} ${instructors[0].user.last_name}`
+    if (instructors.length === 2) {
+        return `${instructors[0].user.name} ${instructors[0].user.last_name} · ${instructors[1].user.name} ${instructors[1].user.last_name}`
+    }
+    return `${instructors[0].user.name} ${instructors[0].user.last_name} · +${instructors.length - 1} más`
+}
+
 export default async function AdminDashboard() {
     await getServerSession(authOptions)
 
@@ -48,7 +57,10 @@ export default async function AdminDashboard() {
         prisma.lessonProgress.count({ where: { completed: true } }),
         prisma.course.findMany({
             include: {
-                instructor: { select: { name: true, last_name: true } },
+                instructors: {
+                    orderBy: { order: 'asc' },
+                    include: { user: { select: { name: true, last_name: true } } },
+                },
                 _count: { select: { modules: true, enrollments: true } },
                 modules: { include: { _count: { select: { lessons: true } } } },
             },
@@ -261,9 +273,7 @@ export default async function AdminDashboard() {
                                     <div className="space-y-1">
                                         <h3 className="text-lg font-bold text-on-surface">{course.title}</h3>
                                         <p className="text-sm text-on-surface-variant">
-                                            {course.instructor
-                                                ? `${course.instructor.name} ${course.instructor.last_name}`
-                                                : 'Sin instructor'}
+                                            {instructorsLabel(course.instructors)}
                                             {' • '}{course._count.modules} Módulos • {totalLessons} Lecciones
                                         </p>
                                     </div>
@@ -332,8 +342,9 @@ export default async function AdminDashboard() {
                             <tbody>
                                 {courses.map((course) => {
                                     const totalLessons = course.modules.reduce((sum, m) => sum + m._count.lessons, 0)
-                                    const initials = course.instructor
-                                        ? `${course.instructor.name[0]}${course.instructor.last_name[0]}`
+                                    const firstInstructor = course.instructors[0]?.user
+                                    const initials = firstInstructor
+                                        ? `${firstInstructor.name[0]}${firstInstructor.last_name[0]}`
                                         : '?'
                                     const enrollPercent = Math.round((course._count.enrollments / maxEnrollments) * 100)
 
@@ -359,13 +370,13 @@ export default async function AdminDashboard() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {course.instructor ? (
+                                                {course.instructors.length > 0 ? (
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-8 h-8 rounded-full bg-primary-container/20 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                                                             {initials}
                                                         </div>
                                                         <span className="text-sm text-on-surface-variant">
-                                                            {course.instructor.name} {course.instructor.last_name}
+                                                            {instructorsLabel(course.instructors)}
                                                         </span>
                                                     </div>
                                                 ) : (

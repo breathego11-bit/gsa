@@ -19,6 +19,11 @@ enum LessonType {
   EXAM
 }
 
+enum PaymentType {
+  SINGLE
+  INSTALLMENTS
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String
@@ -38,16 +43,18 @@ model User {
   payment_status     String    @default("none")   // none | active | past_due | cancelled
   stripe_customer_id String?   @unique
   blocked            Boolean   @default(false)
+  closer_enabled     Boolean   @default(false)
 
   enrollments        Enrollment[]
   progress           LessonProgress[]
   notes              LessonNote[]
-  instructed_courses Course[]          @relation("CourseInstructor")
+  instructed_courses CourseInstructor[] @relation("CourseInstructor")
   form_submissions   FormSubmission[]
   exam_attempts      ExamAttempt[]
   payments              Payment[]
   created_invitations   Invitation[] @relation("InvitationCreator")
   redeemed_invitations  Invitation[] @relation("InvitationRedeemer")
+  sales                 Sale[]
 }
 
 model Course {
@@ -58,23 +65,37 @@ model Course {
   hero_image  String?
   price       Float?
   published     Boolean   @default(false)
-  instructor_id String?
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
   // Landing redesign — visual/meta fields for the featured cards
-  tagline    String? @db.Text
-  tier       String?
-  level      String?
-  duration   String?
-  year       String?
-  hue        Int?
-  accent     String?
-  trajectory String?
+  tagline         String? @db.Text
+  tier            String?
+  level           String?
+  duration        String?
+  year            String?
+  hue             Int?
+  accent          String?
+  trajectory      String?
+  included_items  Json?      // ["Item 1", "Item 2", ...] - shown in "INCLUYE" section of card
 
-  instructor  User?        @relation("CourseInstructor", fields: [instructor_id], references: [id], onDelete: SetNull)
+  instructors CourseInstructor[]
   modules     Module[]
   enrollments Enrollment[]
+}
+
+model CourseInstructor {
+  id         String   @id @default(cuid())
+  course_id  String
+  user_id    String
+  order      Int      @default(0)
+  created_at DateTime @default(now())
+
+  course Course @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  user   User   @relation("CourseInstructor", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([course_id, user_id])
+  @@index([course_id, order])
 }
 
 model Module {
@@ -210,9 +231,48 @@ model Payment {
 }
 
 model SiteSettings {
-  id         String   @id @default("singleton")
-  pricing    Json     // { totalPrice: 188800, firstInstallment: 188800, installmentCount: 1 }
-  updated_at DateTime @updatedAt
+  id               String   @id @default("singleton")
+  pricing          Json     // { totalPrice: 188800, firstInstallment: 188800, installmentCount: 1 }
+  commission_tiers Json?    // [{ min_amount: 0, percentage: 9 }, ...] in cents/percent
+  updated_at       DateTime @updatedAt
+}
+
+model Sale {
+  id                  String      @id @default(cuid())
+  closer_id           String
+  customer_first_name String
+  customer_last_name  String
+  customer_email      String
+  customer_phone      String
+  package_name        String
+  package_description String?     @db.Text
+  total_amount        Int         // cents
+  payment_type        PaymentType
+  screenshot_url      String      // path returned from /api/upload
+  sale_date           DateTime
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+
+  closer       User              @relation(fields: [closer_id], references: [id], onDelete: Cascade)
+  installments SaleInstallment[]
+
+  @@index([closer_id])
+  @@index([sale_date])
+}
+
+model SaleInstallment {
+  id           String    @id @default(cuid())
+  sale_id      String
+  order        Int
+  amount       Int       // cents
+  due_date     DateTime?
+  collected    Boolean   @default(false)
+  collected_at DateTime?
+
+  sale Sale @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+
+  @@index([sale_id])
+  @@index([collected_at])
 }
 
 model Invitation {

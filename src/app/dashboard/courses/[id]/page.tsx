@@ -16,7 +16,12 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
     const course = await prisma.course.findUnique({
         where: { id },
         include: {
-            instructor: { select: { id: true, name: true, last_name: true, profile_image: true, bio: true, title: true } },
+            instructors: {
+                orderBy: { order: 'asc' },
+                include: {
+                    user: { select: { id: true, name: true, last_name: true, profile_image: true, bio: true, title: true } },
+                },
+            },
             modules: {
                 orderBy: { order: 'asc' },
                 include: {
@@ -88,10 +93,12 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
                         {course.title}
                     </h1>
                     <div className="flex flex-wrap items-center gap-6 text-on-surface-variant text-sm">
-                        {course.instructor && (
+                        {course.instructors.length > 0 && (
                             <div className="flex items-center gap-2">
                                 <MaterialIcon name="person" size="text-lg" className="text-blue-400" />
-                                <span className="font-medium">{course.instructor.name} {course.instructor.last_name}</span>
+                                <span className="font-medium">
+                                    {course.instructors.map((i) => `${i.user.name} ${i.user.last_name}`).join(' · ')}
+                                </span>
                             </div>
                         )}
                         <div className="flex items-center gap-2">
@@ -179,26 +186,34 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
                 )}
             </div>
 
-            {/* Instructor */}
-            {course.instructor && (
+            {/* Instructores */}
+            {course.instructors.length > 0 && (
                 <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant/15">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">Tu Instructor</h2>
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center shrink-0">
-                            {course.instructor.profile_image ? (
-                                <img src={course.instructor.profile_image} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <MaterialIcon name="person" size="text-2xl" className="text-on-surface-variant" />
-                            )}
-                        </div>
-                        <div>
-                            <p className="font-bold text-on-surface">{course.instructor.name} {course.instructor.last_name}</p>
-                            {course.instructor.title && <p className="text-xs text-on-surface-variant">{course.instructor.title}</p>}
-                        </div>
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">
+                        {course.instructors.length === 1 ? 'Tu Instructor' : 'Tus Instructores'}
+                    </h2>
+                    <div className="space-y-5">
+                        {course.instructors.map(({ user }, idx) => (
+                            <div key={user.id} className={idx > 0 ? 'pt-5 border-t border-outline-variant/15' : ''}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center shrink-0">
+                                        {user.profile_image ? (
+                                            <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <MaterialIcon name="person" size="text-2xl" className="text-on-surface-variant" />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-on-surface">{user.name} {user.last_name}</p>
+                                        {user.title && <p className="text-xs text-on-surface-variant">{user.title}</p>}
+                                    </div>
+                                </div>
+                                {user.bio && (
+                                    <p className="text-sm text-on-surface-variant mt-4 leading-relaxed">{user.bio}</p>
+                                )}
+                            </div>
+                        ))}
                     </div>
-                    {course.instructor.bio && (
-                        <p className="text-sm text-on-surface-variant mt-4 leading-relaxed">{course.instructor.bio}</p>
-                    )}
                 </div>
             )}
         </div>

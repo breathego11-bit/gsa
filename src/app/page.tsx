@@ -44,6 +44,9 @@ export default async function LandingPage() {
         trajectory: c.trajectory,
         modules: c.modules,
         moduleCount: c._count.modules,
+        included_items: Array.isArray(c.included_items)
+            ? (c.included_items as unknown as string[]).filter((s) => typeof s === 'string')
+            : null,
     }))
 
     const testimonials = await prisma.testimonial.findMany({

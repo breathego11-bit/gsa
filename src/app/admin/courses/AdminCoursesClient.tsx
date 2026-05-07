@@ -18,6 +18,8 @@ type Course = {
     published: boolean
     created_at: Date
     _count: { modules: number; enrollments: number }
+    instructor_ids?: string[]
+    included_items?: string[]
 }
 
 export function AdminCoursesClient({ courses: initialCourses }: { courses: Course[] }) {

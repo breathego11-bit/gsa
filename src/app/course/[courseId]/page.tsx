@@ -34,8 +34,13 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
     const course = await prisma.course.findUnique({
         where: { id: courseId },
         include: {
-            instructor: {
-                select: { id: true, name: true, last_name: true, profile_image: true, bio: true, title: true },
+            instructors: {
+                orderBy: { order: 'asc' },
+                include: {
+                    user: {
+                        select: { id: true, name: true, last_name: true, profile_image: true, bio: true, title: true },
+                    },
+                },
             },
             modules: {
                 orderBy: { order: 'asc' },
@@ -198,11 +203,11 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                     {course.description}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-6 text-on-surface-variant pt-2">
-                                    {course.instructor && (
+                                    {course.instructors.length > 0 && (
                                         <div className="flex items-center gap-2">
                                             <MaterialIcon name="person" size="text-lg" className="text-blue-400" />
                                             <span className="font-medium">
-                                                {course.instructor.name} {course.instructor.last_name}
+                                                {course.instructors.map((i) => `${i.user.name} ${i.user.last_name}`).join(' · ')}
                                             </span>
                                         </div>
                                     )}
@@ -308,46 +313,52 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                 </div>
                             )}
 
-                            {/* Instructor Card */}
-                            {course.instructor && (
+                            {/* Instructores */}
+                            {course.instructors.length > 0 && (
                                 <div className="bg-surface-container-low rounded-2xl p-8 space-y-6">
                                     <h4 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant">
-                                        Tu Instructor
+                                        {course.instructors.length === 1 ? 'Tu Instructor' : 'Tus Instructores'}
                                     </h4>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-primary/20 bg-surface-container flex items-center justify-center shrink-0">
-                                            {course.instructor.profile_image ? (
-                                                <img
-                                                    src={course.instructor.profile_image}
-                                                    alt=""
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <MaterialIcon name="person" size="text-2xl" className="text-on-surface-variant" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="text-lg font-bold text-on-surface">
-                                                {course.instructor.name} {course.instructor.last_name}
-                                            </p>
-                                            {course.instructor.title && (
-                                                <p className="text-xs text-blue-400 font-medium">
-                                                    {course.instructor.title}
-                                                </p>
-                                            )}
-                                        </div>
+                                    <div className="space-y-6">
+                                        {course.instructors.map(({ user }, idx) => (
+                                            <div key={user.id} className={`space-y-4 ${idx > 0 ? 'pt-6 border-t border-outline-variant/20' : ''}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-primary/20 bg-surface-container flex items-center justify-center shrink-0">
+                                                        {user.profile_image ? (
+                                                            <img
+                                                                src={user.profile_image}
+                                                                alt=""
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <MaterialIcon name="person" size="text-2xl" className="text-on-surface-variant" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-lg font-bold text-on-surface">
+                                                            {user.name} {user.last_name}
+                                                        </p>
+                                                        {user.title && (
+                                                            <p className="text-xs text-blue-400 font-medium">
+                                                                {user.title}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {user.bio && (
+                                                    <p className="text-sm text-on-surface-variant leading-relaxed">
+                                                        {user.bio}
+                                                    </p>
+                                                )}
+                                                <Link
+                                                    href={`/instructor/${user.id}`}
+                                                    className="w-full py-3 rounded-xl border border-outline-variant text-on-surface text-sm font-bold hover:bg-white/5 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    Ver Perfil
+                                                </Link>
+                                            </div>
+                                        ))}
                                     </div>
-                                    {course.instructor.bio && (
-                                        <p className="text-sm text-on-surface-variant leading-relaxed">
-                                            {course.instructor.bio}
-                                        </p>
-                                    )}
-                                    <Link
-                                        href={`/instructor/${course.instructor.id}`}
-                                        className="w-full py-3 rounded-xl border border-outline-variant text-on-surface text-sm font-bold hover:bg-white/5 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        Ver Perfil
-                                    </Link>
                                 </div>
                             )}
 
