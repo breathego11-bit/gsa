@@ -44,6 +44,7 @@ model User {
   stripe_customer_id String?   @unique
   blocked            Boolean   @default(false)
   closer_enabled     Boolean   @default(false)
+  onboarded_at       DateTime?
 
   enrollments        Enrollment[]
   progress           LessonProgress[]
@@ -79,6 +80,12 @@ model Course {
   trajectory      String?
   included_items  Json?      // ["Item 1", "Item 2", ...] - shown in "INCLUYE" section of card
 
+  // Student course detail metadata
+  language     String? @default("Español")
+  certificate  Boolean @default(true)
+  requirements Json?              // ["Requisito 1", ...] - shown in "Requisitos" section
+  rating       Float?             // 0–5, admin-settable
+
   instructors CourseInstructor[]
   modules     Module[]
   enrollments Enrollment[]
@@ -103,6 +110,7 @@ model Module {
   course_id   String
   title       String
   order       Int
+  locked      Boolean  @default(false)   // Admin-controlled lock flag shown as "Próximamente" in student UI
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 

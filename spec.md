@@ -1,55 +1,95 @@
 # CRM de Ventas para Closers — Spec Técnico
 
-## Estado actual (snapshot 2026-05-05)
+## Estado actual (snapshot 2026-05-07)
 
-Este feature está **parcialmente implementado**. Se pausó para atender otras correcciones del proyecto. Cuando se retome, el siguiente paso es la vista admin del estudiante (`student-admin.jsx`) y luego la Fase 4 completa.
+Feature **completo en sus 4 fases principales** (todas las vistas mockupeadas implementadas + admin global + config de tiers). Quedan solo pulidos opcionales y cosas diferidas que el cliente no priorizó.
 
-### ✅ Hecho (Fase 1, 2, 3)
+### ✅ Hecho — Fase 1 (Schema + admin toggle)
 
 - **Schema + migración**: `User.closer_enabled`, `Sale`, `SaleInstallment`, enum `PaymentType`, `SiteSettings.commission_tiers` aplicados en [prisma/schema.prisma](prisma/schema.prisma) y [migration.sql](prisma/migrations/20260505000000_add_sales_crm/migration.sql)
 - **Seed**: tiers default 9/11/13% en [prisma/seed.ts](prisma/seed.ts)
 - **Auth**: `closer_enabled` propagado en JWT/session ([src/lib/auth.ts](src/lib/auth.ts), [src/types/next-auth.d.ts](src/types/next-auth.d.ts))
-- **Toggle admin**: endpoint [POST /api/admin/students/[id]/closer](src/app/api/admin/students/[id]/closer/route.ts) + UI en [StudentDetailClient.tsx](src/app/admin/students/[id]/StudentDetailClient.tsx) (versión funcional, **no** la del mockup completo del designer)
-- **Sidebars condicionales**: [Sidebar](src/components/layout/Sidebar.tsx) y [MobileSidebar](src/components/layout/MobileSidebar.tsx) con prop `closerEnabled`; [dashboard/layout.tsx](src/app/dashboard/layout.tsx) lo pasa
+- **Toggle admin**: endpoint [POST /api/admin/students/[id]/closer](src/app/api/admin/students/[id]/closer/route.ts)
+- **Sidebars condicionales**: [Sidebar](src/components/layout/Sidebar.tsx) y [MobileSidebar](src/components/layout/MobileSidebar.tsx) con prop `closerEnabled`; layouts pasan el flag
+
+### ✅ Hecho — Fase 2 (CRUD + dashboard del closer)
+
 - **Helpers**: [sales-period](src/lib/sales-period.ts), [commission](src/lib/commission.ts) (flat al tier, Opción A), [sales](src/lib/sales.ts) (tipos)
 - **API closer**:
   - [GET/POST /api/sales](src/app/api/sales/route.ts)
   - [GET/PATCH/DELETE /api/sales/[id]](src/app/api/sales/[id]/route.ts)
-  - [POST /api/sales/[id]/installments/[iid]/collect](src/app/api/sales/[id]/installments/[iid]/collect/route.ts)
-  - [POST /api/sales/[id]/installments/[iid]/uncollect](src/app/api/sales/[id]/installments/[iid]/uncollect/route.ts)
+  - [POST /api/sales/[id]/installments/[iid]/collect](src/app/api/sales/[id]/installments/[iid]/collect/route.ts) + `/uncollect`
 - **Vistas closer**:
   - [/dashboard/sales](src/app/dashboard/sales/page.tsx) — dashboard completo (KPIs + tier bar + lista + modal de nueva venta) basado en mockup `redesign/sales-dashboard.jsx`
   - [/dashboard/sales/[id]](src/app/dashboard/sales/[id]/page.tsx) — detalle (header + paquete + cuotas con toggle + captura con modal + timeline computada) basado en mockup `redesign/sale-detail.jsx`
-- **Componentes**: [PeriodSelector](src/components/sales/PeriodSelector.tsx), [KpiCard](src/components/sales/KpiCard.tsx), [TierScaleBar](src/components/sales/TierScaleBar.tsx), [SalesList](src/components/sales/SalesList.tsx), [SaleFormModal](src/components/sales/SaleFormModal.tsx)
+- **Componentes reusables**: [PeriodSelector](src/components/sales/PeriodSelector.tsx), [KpiCard](src/components/sales/KpiCard.tsx), [TierScaleBar](src/components/sales/TierScaleBar.tsx), [SalesList](src/components/sales/SalesList.tsx), [SaleFormModal](src/components/sales/SaleFormModal.tsx)
 
-### ⏳ Pendiente
+### ✅ Hecho — Fase 3 (Vista admin del estudiante)
 
-#### Vistas restantes mockupeadas por el designer
-- **`redesign/student-admin.jsx`** — vista admin completa del detalle del estudiante. Hoy hay un toggle básico funcional, pero falta alinear con el mockup (probablemente layout más rico, info estructurada distinto). **Esta es la siguiente cuando se retome.**
+- **Endpoint nuevo**: [DELETE /api/admin/students/[id]](src/app/api/admin/students/[id]/route.ts) — eliminar estudiante con cascade
+- **UI alineada al mockup `redesign/student-admin.jsx`** ([StudentDetailClient.tsx](src/app/admin/students/[id]/StudentDetailClient.tsx)):
+  - Breadcrumb + header con pills BLOQUEADO/CLOSER inline
+  - Stats card con progreso global, ventas, última conexión derivada
+  - Info card con togglesGroup (Switch animado para Bloqueado y Closer)
+  - closerInfoBox condicional (cuando closer = ON)
+  - Activity timeline computada (5 eventos reales: inscripción + lecciones + pagos + ventas)
+  - Danger zone con botón "Eliminar estudiante" + ConfirmDialog
+  - Toast notifications + ConfirmDialog tono cyan/amber/red
+  - Secciones de Pagos y Cursos preservadas debajo
 
-#### Fase 4 — Admin global + config tiers (no mockupeada aún)
-- Página [/admin/sales](src/app/admin/sales/page.tsx) — vista global del equipo: filtros por closer + periodo, tabla con todas las ventas, totales agregados
-  - El item de sidebar admin "Ventas" se quitó temporalmente (causaba 404). Re-agregar cuando se construya la página
-- API `GET /api/admin/sales` con filtros `?closer_id=&period=&from=&to=`
-- API `GET/PUT /api/admin/commission-tiers`
-- UI en `/admin/settings` ([SettingsClient.tsx](src/app/admin/settings/SettingsClient.tsx)): sección "Escala de comisiones" con CRUD de tiers (agregar/editar/eliminar/reordenar, validación de orden y % 0-100)
+### ✅ Hecho — Fase 4 (Admin global + config tiers)
 
-#### Edición de venta (placeholder existente)
-- El botón "Editar" en `/dashboard/sales/[id]` muestra un modal placeholder. La API `PATCH /api/sales/[id]` ya existe pero falta el form de edición completo (campos cliente, paquete, montos; cuotas no editables individualmente — solo via toggle)
+- **Endpoint** [GET /api/admin/sales](src/app/api/admin/sales/route.ts) — filtros por closer + periodo + búsqueda; calcula comisiones correctamente (flat al tier por closer-periodo)
+- **Vista** [/admin/sales](src/app/admin/sales/page.tsx) — basada en mockup `redesign/admin-sales.jsx`:
+  - Breadcrumb + header con tono naranja admin
+  - Filtros: dropdown de closer (con avatares de color hash), period tabs + custom dates, búsqueda inline (debounced)
+  - 4 KPIs: cobrado del equipo, comisiones a pagar, ventas, closer top
+  - Tabla sortable (closer, cliente, total, cobrado, fecha) con avatares y mini barras de progreso
+  - Footer con totales agregados
+  - Item "Ventas" re-agregado al sidebar admin
+- **Endpoint** [GET/PUT /api/admin/commission-tiers](src/app/api/admin/commission-tiers/route.ts) — valida orden ascendente, no duplicados, % 0-100
+- **Sección "Escala de comisiones"** ([CommissionTiersSection.tsx](src/app/admin/settings/CommissionTiersSection.tsx)) integrada en `/admin/settings`:
+  - ScaleBar visual con bandas de colores por tier + marker amarillo (cursor)
+  - Lista de tiers editables (badge T1..Tn, input "Desde €", static "Hasta", input "%", botón eliminar)
+  - Validación inline + banner global cuando hay errores
+  - Botón "Agregar tier"
+  - Simulador con slider €0–€150k que muestra el cálculo en tiempo real
+  - Sticky save bar con animación que aparece solo cuando hay cambios sin guardar
 
-#### Otros pendientes ya identificados (de la sección "Consideraciones diferidas")
-- Refunds / cancelaciones (no decidido)
-- Cierre de periodo (congelar comisión)
-- Reuniones / tasa de cierre (cliente no aclaró)
-- Leaderboard
+### ⏳ Pendiente (opcional)
+
+#### Edición de venta — único pendiente "core" del spec
+- El botón "Editar" en `/dashboard/sales/[id]` muestra un **modal placeholder**.
+- La API `PATCH /api/sales/[id]` ya existe pero falta el form de edición completo:
+  - Editar datos del cliente (nombre, email, teléfono)
+  - Editar paquete (nombre, descripción)
+  - Cambiar fecha de venta
+  - Reemplazar la captura de pantalla
+  - **NO editar montos ni reestructurar cuotas** (eso requiere lógica especial — propuesto: solo via "eliminar venta + crear de nuevo")
+
+#### Feature flag (conversación lateral, no del spec original)
+- Variable de entorno `NEXT_PUBLIC_CLOSER_CRM_ENABLED` para esconder TODO el feature en prod hasta que el cliente decida lanzarlo.
+- Cuando esté en `false`:
+  - Sección "Rol de Closer" en admin no se renderiza
+  - Rutas `/dashboard/sales` y `/admin/sales` devuelven 404
+  - Sidebar nunca muestra "Ventas"
+  - Toggle endpoint rechaza con 404
+- Es ~10 min de trabajo cuando se decida implementarlo.
+
+#### Otros nice-to-haves (de la sección "Consideraciones diferidas")
+- Refunds / cancelaciones (no decidido por el cliente)
+- Cierre de periodo (congelar comisión al final del mes)
+- Reuniones / tasa de cierre (cliente nunca aclaró el modelo)
+- Leaderboard entre closers
 - Notificaciones de cruce de tier
-- Export CSV / PDF
-- Auditoría (tabla de log)
+- Export CSV / PDF (botones placeholder en admin/sales)
+- Auditoría (tabla de log para ver historial de cambios)
 - Multi-currency
+- Sidebar de tabs en `/admin/settings` (Comisiones / Productos / Integraciones, etc. del mockup) — solo la sección de Comisiones se implementó
 
 #### Verificación pendiente
 - Aún no se ha corrido `npx prisma migrate deploy` en el VPS — se aplica automáticamente en el siguiente deploy de CI/CD
-- No se ha hecho prueba E2E manual con un closer real porque el deploy SSH al VPS está bloqueado (issue de firewall reportado por el usuario, sin relación con este feature)
+- No se ha hecho prueba E2E manual con un closer real porque el deploy SSH al VPS estaba bloqueado en algún momento (issue de firewall, sin relación con este feature)
 
 ---
 

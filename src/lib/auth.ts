@@ -72,6 +72,34 @@ export const authOptions: NextAuthOptions = {
                 token.payment_status = (user as any).payment_status ?? 'none';
                 token.blocked = (user as any).blocked ?? false;
                 token.closer_enabled = (user as any).closer_enabled ?? false;
+                return token;
+            }
+
+            // Subsequent calls: refresh dynamic fields from DB so admin toggles
+            // (closer_enabled, blocked, role, payment_status) propagate without re-login.
+            if (token.id) {
+                const fresh = await prisma.user.findUnique({
+                    where: { id: token.id as string },
+                    select: {
+                        role: true,
+                        last_name: true,
+                        profile_image: true,
+                        payment_status: true,
+                        blocked: true,
+                        closer_enabled: true,
+                    },
+                });
+                if (!fresh) {
+                    // User deleted — wipe id so /api/auth/clear-session flow kicks in.
+                    token.id = '';
+                    return token;
+                }
+                token.role = fresh.role;
+                token.last_name = fresh.last_name;
+                token.profile_image = fresh.profile_image;
+                token.payment_status = fresh.payment_status;
+                token.blocked = fresh.blocked;
+                token.closer_enabled = fresh.closer_enabled;
             }
             return token;
         }

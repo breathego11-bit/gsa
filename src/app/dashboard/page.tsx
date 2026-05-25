@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { InstallmentBanner } from '@/components/payment/InstallmentBanner'
+import {
+    CourseCardRedesigned,
+    type CourseCardData,
+} from '@/components/landing/CourseCardRedesigned'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,13 +134,6 @@ export default async function DashboardPage() {
         orderBy: { installment_number: 'asc' },
     })
 
-    const gradients = [
-        'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)',
-        'linear-gradient(135deg, #164e63 0%, #134e4a 100%)',
-        'linear-gradient(135deg, #3b0764 0%, #1e1b4b 100%)',
-        'linear-gradient(135deg, #7c2d12 0%, #1c1917 100%)',
-    ]
-
     return (
         <div className="space-y-12">
             {/* ── Installment Due Banner ─────────────────── */}
@@ -257,68 +254,49 @@ export default async function DashboardPage() {
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                         {coursesWithProgress.map(({ course, percent, completed, total }, idx) => {
-                            const statusText = percent === 0
-                                ? 'Recién empezado'
-                                : percent >= 90 && percent < 100
-                                    ? '¡Casi listo!'
-                                    : percent === 100
-                                        ? 'Completado'
-                                        : 'En progreso'
-
+                            const cardData: CourseCardData = {
+                                id: course.id,
+                                title: course.title,
+                                description: course.description,
+                                thumbnail: course.thumbnail,
+                                hero_image: course.hero_image,
+                                published: course.published,
+                                created_at: course.created_at,
+                                tagline: course.tagline,
+                                tier: course.tier,
+                                level: course.level,
+                                duration: course.duration,
+                                year: course.year,
+                                hue: course.hue,
+                                accent: course.accent,
+                                trajectory: course.trajectory,
+                                modules: course.modules.map((m) => ({
+                                    id: m.id,
+                                    title: m.title,
+                                    order: m.order,
+                                })),
+                                moduleCount: course.modules.length,
+                                included_items: Array.isArray(course.included_items)
+                                    ? (course.included_items as string[])
+                                    : null,
+                            }
+                            const ctaLabel =
+                                percent === 100
+                                    ? 'Repasar curso'
+                                    : percent === 0
+                                        ? 'Empezar curso'
+                                        : 'Continuar curso'
                             return (
-                                <Link
+                                <CourseCardRedesigned
                                     key={course.id}
-                                    href={`/dashboard/courses/${course.id}`}
-                                    className="bg-surface-container-low rounded-xl overflow-hidden group hover:translate-y-[-4px] transition-transform duration-300"
-                                >
-                                    {/* Thumbnail */}
-                                    <div className="h-40 relative">
-                                        {course.thumbnail ? (
-                                            <img
-                                                src={course.thumbnail}
-                                                alt={course.title}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full" style={{ background: gradients[idx % gradients.length] }} />
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent" />
-                                    </div>
-
-                                    {/* Body */}
-                                    <div className="p-6">
-                                        <h4 className="font-bold text-lg mb-4 line-clamp-1 text-on-surface">
-                                            {course.title}
-                                        </h4>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-on-surface-variant mb-2">
-                                                    <span>{completed} de {total} Lecciones</span>
-                                                    <span>{percent}%</span>
-                                                </div>
-                                                <div className="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-secondary transition-all"
-                                                        style={{ width: `${percent}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2">
-                                                <span className={`text-[10px] font-bold uppercase ${
-                                                    percent >= 90 && percent < 100
-                                                        ? 'text-secondary'
-                                                        : percent === 100
-                                                            ? 'text-emerald-400'
-                                                            : 'text-on-surface-variant'
-                                                }`}>
-                                                    {statusText}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Link>
+                                    course={cardData}
+                                    index={idx}
+                                    ctaHref={`/dashboard/courses/${course.id}`}
+                                    ctaLabel={ctaLabel}
+                                    progress={{ percent, completed, total }}
+                                />
                             )
                         })}
                     </div>

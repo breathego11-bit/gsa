@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Upload, ImageIcon, Trash2 } from 'lucide-react'
+import { Upload, Trash2 } from 'lucide-react'
 import type { SaleDTO } from '@/lib/sales'
 
 interface Props {
@@ -237,14 +237,31 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
                 {/* Screenshot */}
                 <Section title="Captura de pantalla">
                     {screenshotUrl ? (
-                        <div className="flex items-center gap-3 p-3 rounded-xl"
+                        <div className="relative rounded-xl overflow-hidden group"
                             style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
-                            <ImageIcon size={20} style={{ color: '#38bdf8' }} />
-                            <span className="text-sm flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
-                                Captura subida correctamente
-                            </span>
-                            <button type="button" onClick={() => setScreenshotUrl(null)} className="text-red-400 hover:text-red-300">
-                                <Trash2 size={16} />
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <a href={screenshotUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                <img
+                                    src={screenshotUrl}
+                                    alt="Captura del pago"
+                                    className="w-full h-auto max-h-80 object-contain"
+                                    style={{ background: 'rgba(8,13,24,0.6)' }}
+                                />
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => setScreenshotUrl(null)}
+                                aria-label="Quitar captura"
+                                className="absolute top-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                style={{
+                                    background: 'rgba(8,13,24,0.85)',
+                                    border: '1px solid rgba(239,68,68,0.35)',
+                                    color: '#fca5a5',
+                                    backdropFilter: 'blur(8px)',
+                                }}
+                            >
+                                <Trash2 size={13} />
+                                Quitar
                             </button>
                         </div>
                     ) : (

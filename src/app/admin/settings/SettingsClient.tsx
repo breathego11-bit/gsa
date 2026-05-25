@@ -1,194 +1,187 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Settings as SettingsIcon, Coins, User as UserIcon, ChevronRight, type LucideIcon } from 'lucide-react'
 import type { PricingConfig } from '@/lib/stripe'
+import type { CommissionTier } from '@/lib/commission'
+import { PricingSection } from './PricingSection'
+import { CommissionTiersSection } from './CommissionTiersSection'
+import { ProfileClient } from '@/components/profile/ProfileClient'
+
+interface UserData {
+    id: string
+    name: string
+    last_name: string
+    username: string
+    email: string
+    phone: string | null
+    profile_image: string | null
+    bio: string | null
+    title: string | null
+    location: string | null
+    role: string
+    created_at: Date
+}
+
+interface AdminStats {
+    publishedCourses: number
+    totalStudents: number
+    totalLessons: number
+    mostPopularCourse: { title: string; enrollments: number } | null
+}
 
 interface Props {
     initialPricing: PricingConfig
+    initialTiers: CommissionTier[]
+    user: UserData
+    adminStats: AdminStats
 }
 
-function centsToCurrency(cents: number) {
-    return (cents / 100).toFixed(2)
-}
+type TabId = 'general' | 'commissions' | 'profile'
 
-function currencyToCents(value: string) {
-    return Math.round(parseFloat(value || '0') * 100)
-}
+const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
+    { id: 'general', label: 'General', icon: SettingsIcon },
+    { id: 'commissions', label: 'Comisiones', icon: Coins },
+    { id: 'profile', label: 'Mi perfil', icon: UserIcon },
+]
 
-export function SettingsClient({ initialPricing }: Props) {
-    const [totalPrice, setTotalPrice] = useState(centsToCurrency(initialPricing.totalPrice))
-    const [firstInstallment, setFirstInstallment] = useState(centsToCurrency(initialPricing.firstInstallment))
-    const [installmentCount, setInstallmentCount] = useState(String(initialPricing.installmentCount))
-    const [interestRate, setInterestRate] = useState(String(initialPricing.interestRate ?? 0))
-    const [saving, setSaving] = useState(false)
-    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+export function SettingsClient({ initialPricing, initialTiers, user, adminStats }: Props) {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const tabParam = searchParams.get('tab') as TabId | null
+    const [activeTab, setActiveTab] = useState<TabId>(
+        tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'general',
+    )
 
-    const totalCents = currencyToCents(totalPrice)
-    const firstCents = currencyToCents(firstInstallment)
-    const count = parseInt(installmentCount) || 1
-    const interest = parseFloat(interestRate) || 0
+    // Sync tab to URL
+    useEffect(() => {
+        const params = new URLSearchParams(Array.from(searchParams.entries()))
+        params.set('tab', activeTab)
+        router.replace(`/admin/settings?${params.toString()}`, { scroll: false })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab])
 
-    // Compute preview with interest
-    const totalWithInterest = count > 1 ? Math.round(totalCents * (1 + interest / 100)) : totalCents
-    const remaining = totalWithInterest - firstCents
-    const perRemainder = count > 1 ? Math.ceil(remaining / (count - 1)) : 0
-
-    async function handleSave() {
-        setSaving(true)
-        setMessage(null)
-        try {
-            const res = await fetch('/api/admin/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    pricing: {
-                        totalPrice: totalCents,
-                        firstInstallment: firstCents,
-                        installmentCount: count,
-                        interestRate: interest,
-                    },
-                }),
-            })
-            if (res.ok) {
-                setMessage({ text: 'Configuración guardada', type: 'success' })
-            } else {
-                const data = await res.json()
-                setMessage({ text: data.error || 'Error al guardar', type: 'error' })
-            }
-        } catch {
-            setMessage({ text: 'Error de conexión', type: 'error' })
-        } finally {
-            setSaving(false)
-            setTimeout(() => setMessage(null), 4000)
-        }
-    }
+    const activeTabInfo = TABS.find((t) => t.id === activeTab) ?? TABS[0]
 
     return (
-        <div className="p-6 sm:p-10 max-w-3xl mx-auto space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold text-on-surface tracking-tight">Configuración</h1>
-                <p className="text-sm text-on-surface-variant mt-1">Configura los precios y opciones de pago de la plataforma</p>
-            </div>
-
-            {/* Pricing Config */}
-            <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/15 space-y-6">
+        <div className="px-6 md:px-7 py-6 pb-24 lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5">
+            {/* Page header */}
+            <header className="flex justify-between items-end gap-5 flex-wrap">
                 <div>
-                    <h2 className="text-lg font-bold text-on-surface">Precios</h2>
-                    <p className="text-xs text-on-surface-variant mt-1">Los alumnos verán estas opciones al momento de pagar</p>
+                    <div
+                        className="inline-flex items-center gap-2 mb-1.5"
+                        style={{
+                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                            color: '#7a8094',
+                        }}
+                    >
+                        <span>Admin</span>
+                        <ChevronRight size={11} />
+                        <span>Settings</span>
+                        <ChevronRight size={11} />
+                        <span style={{ color: '#fb923c' }}>{activeTabInfo.label}</span>
+                    </div>
+                    <h1
+                        className="text-2xl md:text-3xl font-semibold m-0 mb-1"
+                        style={{ color: '#dee2f2', letterSpacing: -0.8 }}
+                    >
+                        Configuración
+                    </h1>
+                    <p className="text-[13px] m-0" style={{ color: '#9ca3b8' }}>
+                        Ajustes globales de la organización GSA · Solo administradores
+                    </p>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Precio total (EUR)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={totalPrice}
-                            onChange={e => setTotalPrice(e.target.value)}
-                            className="w-full bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-3 px-4 text-on-surface"
-                            placeholder="1888.00"
+                <div>
+                    <span
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px]"
+                        style={{
+                            background: 'rgba(27,31,43,0.6)',
+                            border: '1px solid rgba(129,140,248,0.18)',
+                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                            color: '#9ca3b8',
+                            letterSpacing: 0.4,
+                        }}
+                    >
+                        <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: '#34d399', boxShadow: '0 0 8px #34d399' }}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Número de cuotas</label>
-                        <input
-                            type="number"
-                            min="1"
-                            max="12"
-                            value={installmentCount}
-                            onChange={e => setInstallmentCount(e.target.value)}
-                            className="w-full bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-3 px-4 text-on-surface"
-                            placeholder="3"
-                        />
-                    </div>
+                        workspace · gsa-academy
+                    </span>
                 </div>
+            </header>
 
-                {count > 1 && (
-                    <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Primera cuota (EUR)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={firstInstallment}
-                                onChange={e => setFirstInstallment(e.target.value)}
-                                className="w-full bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-3 px-4 text-on-surface"
-                                placeholder="500.00"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Interés (%)</label>
-                            <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                max="100"
-                                value={interestRate}
-                                onChange={e => setInterestRate(e.target.value)}
-                                className="w-full bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-3 px-4 text-on-surface"
-                                placeholder="0"
-                            />
-                        </div>
+            {/* Layout 2 columnas */}
+            <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 184px) 1fr' }}>
+                {/* Sidebar interno */}
+                <aside className="flex flex-col gap-1 sticky top-20 self-start">
+                    <div
+                        className="px-3 pb-2"
+                        style={{
+                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                            fontSize: 10,
+                            letterSpacing: 1.4,
+                            color: '#5a6178',
+                        }}
+                    >
+                        AJUSTES
                     </div>
-                    </>
-                )}
+                    <nav className="flex flex-col gap-0.5">
+                        {TABS.map((tab) => {
+                            const Icon = tab.icon
+                            const active = activeTab === tab.id
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-left relative transition-colors cursor-pointer"
+                                    style={
+                                        active
+                                            ? {
+                                                  background: 'rgba(251,146,60,0.08)',
+                                                  color: '#fb923c',
+                                                  border: '1px solid rgba(251,146,60,0.18)',
+                                              }
+                                            : {
+                                                  background: 'transparent',
+                                                  color: '#9ca3b8',
+                                                  border: '1px solid transparent',
+                                              }
+                                    }
+                                >
+                                    <Icon size={14} />
+                                    <span className="flex-1">{tab.label}</span>
+                                    {active && (
+                                        <span
+                                            className="w-1.5 h-1.5 rounded-full"
+                                            style={{
+                                                background: '#fb923c',
+                                                boxShadow: '0 0 6px #fb923c',
+                                            }}
+                                        />
+                                    )}
+                                </button>
+                            )
+                        })}
+                    </nav>
+                </aside>
 
-                {/* Live Preview */}
-                <div className="bg-surface-container rounded-xl p-4 border border-white/5">
-                    <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">Vista previa</p>
-                    {count <= 1 ? (
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-on-surface">Pago completo</span>
-                            <span className="text-sm font-bold text-on-surface">{centsToCurrency(totalCents)} EUR</span>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-on-surface">Pago completo</span>
-                                <span className="text-sm font-bold text-on-surface">{centsToCurrency(totalCents)} EUR</span>
-                            </div>
-                            <div className="border-t border-white/5 pt-2 mt-2">
-                                <p className="text-xs text-on-surface-variant mb-2">
-                                    Plan de cuotas ({count} cuotas{interest > 0 ? ` + ${interest}% interés` : ''}):
-                                </p>
-                                {Array.from({ length: count }).map((_, i) => {
-                                    const amount = i === 0 ? firstCents : perRemainder
-                                    return (
-                                        <div key={i} className="flex items-center justify-between py-0.5">
-                                            <span className="text-sm text-on-surface-variant">
-                                                Cuota {i + 1} {i === 0 ? '(al inscribirse)' : `(mes ${i})`}
-                                            </span>
-                                            <span className="text-sm font-medium text-on-surface">{centsToCurrency(amount)} EUR</span>
-                                        </div>
-                                    )
-                                })}
-                                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-2">
-                                    <span className="text-sm font-bold text-on-surface-variant">Total cuotas</span>
-                                    <span className="text-sm font-bold text-on-surface">
-                                        {centsToCurrency(firstCents + perRemainder * (count - 1))} EUR
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                {/* Contenido */}
+                <div className="flex flex-col gap-5 min-w-0">
+                    {activeTab === 'general' && <PricingSection initialPricing={initialPricing} />}
+                    {activeTab === 'commissions' && <CommissionTiersSection initialTiers={initialTiers} />}
+                    {activeTab === 'profile' && (
+                        <ProfileClient
+                            user={user}
+                            stats={{ enrollmentCount: 0, completedLessons: 0 }}
+                            adminStats={adminStats}
+                        />
                     )}
                 </div>
-
-                {message && (
-                    <p className={`text-sm rounded-xl p-3 ${message.type === 'success' ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
-                        {message.text}
-                    </p>
-                )}
-
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:brightness-110 transition-all disabled:opacity-50"
-                >
-                    {saving ? 'Guardando...' : 'Guardar configuración'}
-                </button>
             </div>
         </div>
     )

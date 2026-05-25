@@ -24,10 +24,12 @@ import {
     RotateCcw,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { SaleEditModal } from '@/components/sales/SaleEditModal'
 import type { SaleDTO, InstallmentDTO } from '@/lib/sales'
 
 interface Props {
     sale: SaleDTO
+    backHref?: string
 }
 
 function fmt(cents: number) {
@@ -66,12 +68,12 @@ function initials(first: string, last: string): string {
     return `${first.charAt(0) ?? ''}${last.charAt(0) ?? ''}`.toUpperCase() || '??'
 }
 
-export function SaleDetailClient({ sale: initialSale }: Props) {
+export function SaleDetailClient({ sale: initialSale, backHref = '/dashboard/sales' }: Props) {
     const router = useRouter()
     const [sale, setSale] = useState<SaleDTO>(initialSale)
     const [imgModal, setImgModal] = useState(false)
     const [confirmDelete, setConfirmDelete] = useState(false)
-    const [editPlaceholder, setEditPlaceholder] = useState(false)
+    const [editOpen, setEditOpen] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [togglingId, setTogglingId] = useState<string | null>(null)
 
@@ -114,7 +116,7 @@ export function SaleDetailClient({ sale: initialSale }: Props) {
         try {
             const res = await fetch(`/api/sales/${sale.id}`, { method: 'DELETE' })
             if (res.ok) {
-                router.push('/dashboard/sales')
+                router.push(backHref)
                 router.refresh()
             }
         } finally {
@@ -143,7 +145,7 @@ export function SaleDetailClient({ sale: initialSale }: Props) {
         <div className="px-6 md:px-8 py-7 pb-24 lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5">
             {/* Back link */}
             <Link
-                href="/dashboard/sales"
+                href={backHref}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs w-fit"
                 style={{
                     fontFamily: 'JetBrains Mono, ui-monospace, monospace',
@@ -231,7 +233,7 @@ export function SaleDetailClient({ sale: initialSale }: Props) {
                 </div>
                 <div className="flex gap-2 items-center">
                     <button
-                        onClick={() => setEditPlaceholder(true)}
+                        onClick={() => setEditOpen(true)}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs cursor-pointer"
                         style={{
                             background: 'rgba(27,31,43,0.6)',
@@ -676,35 +678,13 @@ export function SaleDetailClient({ sale: initialSale }: Props) {
                 </Modal>
             )}
 
-            {/* Edit placeholder */}
-            {editPlaceholder && (
-                <Modal
-                    open={editPlaceholder}
-                    onClose={() => setEditPlaceholder(false)}
-                    title="Editar venta"
-                    size="sm"
-                >
-                    <div className="flex flex-col gap-4">
-                        <p className="text-sm" style={{ color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                            La edición completa de la venta llega en una próxima iteración. Mientras tanto, puedes
-                            marcar/desmarcar cuotas y eliminar la venta si fuera necesario.
-                        </p>
-                        <div className="flex justify-end">
-                            <button
-                                onClick={() => setEditPlaceholder(false)}
-                                className="px-3.5 py-2 rounded-lg text-xs"
-                                style={{
-                                    background: 'rgba(27,31,43,0.6)',
-                                    border: '1px solid rgba(129,140,248,0.18)',
-                                    color: '#dee2f2',
-                                }}
-                            >
-                                Cerrar
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
+            {/* Edit modal */}
+            <SaleEditModal
+                open={editOpen}
+                onClose={() => setEditOpen(false)}
+                sale={sale}
+                onUpdated={(updated) => setSale(updated)}
+            />
         </div>
     )
 }

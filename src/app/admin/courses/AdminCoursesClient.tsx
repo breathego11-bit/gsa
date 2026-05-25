@@ -20,6 +20,12 @@ type Course = {
     _count: { modules: number; enrollments: number }
     instructor_ids?: string[]
     included_items?: string[]
+    tagline?: string | null
+    level?: string | null
+    language?: string | null
+    certificate?: boolean | null
+    rating?: number | null
+    requirements?: string[]
 }
 
 export function AdminCoursesClient({ courses: initialCourses }: { courses: Course[] }) {

@@ -62,7 +62,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     try {
         const body = await req.json()
-        const { title, description, thumbnail, hero_image, price, published, instructor_ids, included_items } = body
+        const {
+            title, description, thumbnail, hero_image, price, published, instructor_ids,
+            included_items, tagline, level, language, certificate, requirements, rating,
+        } = body
 
         const data: Record<string, any> = {}
         if (title !== undefined) data.title = title
@@ -71,12 +74,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (hero_image !== undefined) data.hero_image = hero_image || null
         if (price !== undefined) data.price = price != null ? Number(price) : null
         if (published !== undefined) data.published = published
+        if (tagline !== undefined) data.tagline = tagline || null
+        if (level !== undefined) data.level = level || null
+        if (language !== undefined) data.language = language || null
+        if (certificate !== undefined) data.certificate = Boolean(certificate)
+        if (rating !== undefined) {
+            const r = rating == null || rating === '' ? null : Number(rating)
+            data.rating = r != null && r >= 0 && r <= 5 ? r : null
+        }
         if (included_items !== undefined) {
             if (Array.isArray(included_items)) {
                 const items = included_items.filter((s: unknown) => typeof s === 'string' && s.trim().length > 0)
                 data.included_items = items.length > 0 ? items : null
             } else if (included_items === null) {
                 data.included_items = null
+            }
+        }
+        if (requirements !== undefined) {
+            if (Array.isArray(requirements)) {
+                const items = requirements.filter((s: unknown) => typeof s === 'string' && s.trim().length > 0)
+                data.requirements = items.length > 0 ? items : null
+            } else if (requirements === null) {
+                data.requirements = null
             }
         }
 

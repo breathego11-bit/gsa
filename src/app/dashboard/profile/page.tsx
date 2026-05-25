@@ -28,7 +28,7 @@ export default async function ProfilePage() {
         },
     })
 
-    if (!user) redirect('/auth')
+    if (!user) redirect('/api/auth/clear-session')
 
     const enrollmentCount = await prisma.enrollment.count({
         where: { user_id: session.user.id },

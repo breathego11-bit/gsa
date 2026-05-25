@@ -28,7 +28,7 @@ export default async function AdminProfilePage() {
         },
     })
 
-    if (!user) redirect('/auth')
+    if (!user) redirect('/api/auth/clear-session')
 
     // Fetch instructor-specific metrics
     const [publishedCourses, totalStudents, totalLessons, mostPopularCourse] = await Promise.all([

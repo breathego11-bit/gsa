@@ -78,6 +78,9 @@ export function AuthShell() {
             return
         }
 
+        const email = get('email')
+        const password = get('password')
+
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -85,8 +88,8 @@ export function AuthShell() {
                 name: get('name'),
                 last_name: get('last_name'),
                 username: get('username'),
-                email: get('email'),
-                password: get('password'),
+                email,
+                password,
                 ...(invite ? { invite } : {}),
             }),
         })
@@ -96,6 +99,22 @@ export function AuthShell() {
             setLoading(false)
             return
         }
+
+        // Invitation-based registrations are already paid (status='active').
+        // Auto-sign-in and take them to the onboarding/welcome page.
+        if (invite) {
+            const signInRes = await signIn('credentials', { email, password, redirect: false })
+            if (signInRes?.error) {
+                setMode('login')
+                router.replace('/auth?registered=1', { scroll: false })
+                setLoading(false)
+                return
+            }
+            router.push('/onboarding')
+            router.refresh()
+            return
+        }
+
         setMode('login')
         router.replace('/auth?registered=1', { scroll: false })
         setLoading(false)

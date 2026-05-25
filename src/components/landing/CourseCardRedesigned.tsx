@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 
 export type CourseCardData = {
     id: string
@@ -24,14 +24,31 @@ export type CourseCardData = {
     included_items: string[] | null
 }
 
+export interface CourseProgress {
+    percent: number
+    completed: number
+    total: number
+}
+
 interface Props {
     course: CourseCardData
     index: number
+    ctaHref?: string
+    ctaLabel?: string
+    progress?: CourseProgress
+    customCta?: ReactNode
 }
 
 const DESC_TRUNCATE_THRESHOLD = 140
 
-export function CourseCardRedesigned({ course, index }: Props) {
+export function CourseCardRedesigned({
+    course,
+    index,
+    ctaHref,
+    ctaLabel,
+    progress,
+    customCta,
+}: Props) {
     const [isHover, setIsHover] = useState(false)
     const [descExpanded, setDescExpanded] = useState(false)
 
@@ -182,32 +199,58 @@ export function CourseCardRedesigned({ course, index }: Props) {
                         ))}
                     </div>
 
+                    {progress && (
+                        <div style={cr.progressBlock}>
+                            <div style={cr.progressHead}>
+                                <span style={cr.progressKey}>
+                                    {progress.completed} de {progress.total} lecciones
+                                </span>
+                                <span style={{ ...cr.progressVal, color: accent }}>
+                                    {progress.percent}%
+                                </span>
+                            </div>
+                            <div style={cr.progressTrack}>
+                                <div
+                                    style={{
+                                        ...cr.progressFill,
+                                        width: `${Math.min(Math.max(progress.percent, 0), 100)}%`,
+                                        background: `linear-gradient(90deg, ${accent}, #818cf8)`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div style={cr.ctaRow}>
-                        <Link
-                            href={`/course/${course.id}`}
-                            style={{
-                                ...cr.ctaPrimary,
-                                background: isHover
-                                    ? `linear-gradient(135deg, ${accent}, #818cf8)`
-                                    : 'rgba(27,31,43,0.9)',
-                                color: isHover ? '#080d18' : '#dee2f2',
-                                borderColor: isHover ? 'transparent' : 'rgba(129,140,248,0.3)',
-                                boxShadow: isHover ? `0 8px 28px ${accent}40` : 'none',
-                            }}
-                        >
-                            Ver detalles
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 14 14"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
+                        {customCta ? (
+                            customCta
+                        ) : (
+                            <Link
+                                href={ctaHref ?? `/course/${course.id}`}
+                                style={{
+                                    ...cr.ctaPrimary,
+                                    background: isHover
+                                        ? `linear-gradient(135deg, ${accent}, #818cf8)`
+                                        : 'rgba(27,31,43,0.9)',
+                                    color: isHover ? '#080d18' : '#dee2f2',
+                                    borderColor: isHover ? 'transparent' : 'rgba(129,140,248,0.3)',
+                                    boxShadow: isHover ? `0 8px 28px ${accent}40` : 'none',
+                                }}
                             >
-                                <path d="M3 7h8M7 3l4 4-4 4" />
-                            </svg>
-                        </Link>
+                                {ctaLabel ?? 'Ver detalles'}
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 14 14"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                >
+                                    <path d="M3 7h8M7 3l4 4-4 4" />
+                                </svg>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
@@ -551,6 +594,42 @@ const cr: Record<string, CSSProperties> = {
         fontWeight: 600,
         color: '#dee2f2',
         letterSpacing: -0.3,
+    },
+
+    progressBlock: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+    },
+    progressHead: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+    },
+    progressKey: {
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 10.5,
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+        color: '#c4c5d5',
+        opacity: 0.75,
+    },
+    progressVal: {
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: -0.2,
+    },
+    progressTrack: {
+        height: 6,
+        borderRadius: 3,
+        background: 'rgba(129,140,248,0.12)',
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 3,
+        transition: 'width .4s ease-out',
     },
 
     ctaRow: { display: 'flex', gap: 10 },

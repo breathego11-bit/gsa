@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getStripe } from '@/lib/stripe'
-import Link from 'next/link'
 
 export default async function PaymentSuccessPage({
     searchParams,
@@ -40,28 +39,5 @@ export default async function PaymentSuccessPage({
         }
     }
 
-    return (
-        <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg-base)' }}>
-            <div className="max-w-md w-full text-center space-y-6">
-                <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-emerald-400 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        check_circle
-                    </span>
-                </div>
-                <h1 className="text-3xl font-black text-on-surface tracking-tight">
-                    Pago Exitoso
-                </h1>
-                <p className="text-on-surface-variant">
-                    Tu acceso a Growth Sales Academy ha sido activado. Ya puedes inscribirte y acceder a todos los cursos.
-                </p>
-                <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-container to-secondary-container text-white px-8 py-4 rounded-xl font-bold hover:shadow-lg active:scale-95 transition-all"
-                >
-                    <span className="material-symbols-outlined text-lg">dashboard</span>
-                    Ir al Dashboard
-                </Link>
-            </div>
-        </div>
-    )
+    redirect('/onboarding')
 }

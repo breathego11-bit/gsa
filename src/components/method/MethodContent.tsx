@@ -204,7 +204,7 @@ export function MethodContent() {
     }
 
     return (
-        <section style={thread.root} ref={rootRef}>
+        <section className="gsa-thread-inner" style={thread.root} ref={rootRef}>
             <div style={thread.bgGlow1} />
             <div style={thread.bgGlow2} />
 
@@ -243,9 +243,8 @@ export function MethodContent() {
                 </div>
             </aside>
 
-            <div className="gsa-thread-inner">
-                {/* Hero */}
-                <header style={thread.hero}>
+            {/* Hero */}
+            <header style={thread.hero}>
                     <div style={thread.heroTag}>
                         <span style={thread.heroTagDot} />
                         El método GSA · en 9 fases
@@ -437,7 +436,6 @@ export function MethodContent() {
                         />
                     </div>
                 </section>
-            </div>
         </section>
     )
 }
@@ -548,9 +546,7 @@ const thread: Record<string, CSSProperties> = {
         borderRadius: '50%',
         pointerEvents: 'none',
         zIndex: 0,
-        filter: 'blur(60px)',
-        background:
-            'radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 60%)',
+        filter: 'blur(60px)'
     },
     bgGlow2: {
         position: 'absolute',
@@ -561,9 +557,7 @@ const thread: Record<string, CSSProperties> = {
         borderRadius: '50%',
         pointerEvents: 'none',
         zIndex: 0,
-        filter: 'blur(60px)',
-        background:
-            'radial-gradient(circle, rgba(129,140,248,0.15) 0%, transparent 60%)',
+        filter: 'blur(60px)'
     },
 
     nav: {
@@ -631,7 +625,7 @@ const thread: Record<string, CSSProperties> = {
     },
     navLabel: { fontWeight: 500 },
 
-    hero: { marginBottom: 80, maxWidth: 780 },
+    hero: { marginBottom: 80, maxWidth: 780, position: 'relative', zIndex: 1 },
     heroTag: {
         display: 'inline-flex',
         alignItems: 'center',
@@ -707,7 +701,7 @@ const thread: Record<string, CSSProperties> = {
     },
     metaPillVal: { fontSize: 14, fontWeight: 500, color: '#dee2f2' },
 
-    timeline: { position: 'relative', paddingTop: 20, paddingBottom: 60 },
+    timeline: { position: 'relative', zIndex: 1, paddingTop: 20, paddingBottom: 60 },
     rail: {
         position: 'absolute',
         top: 0,
@@ -940,6 +934,8 @@ const thread: Record<string, CSSProperties> = {
             'linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(129,140,248,0.08) 100%)',
         border: '1px solid rgba(129,140,248,0.2)',
         backdropFilter: 'blur(20px)',
+        position: 'relative',
+        zIndex: 1,
     },
     principlesKicker: {
         fontFamily: '"JetBrains Mono", ui-monospace, monospace',

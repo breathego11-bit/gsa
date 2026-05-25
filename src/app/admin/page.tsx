@@ -1,418 +1,377 @@
 import { getServerSession } from 'next-auth'
+import { Users, Wallet, Landmark, GraduationCap } from 'lucide-react'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import Link from 'next/link'
-import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import { GrowthCharts } from '@/components/charts/GrowthCharts'
+import { getPeriodRange, type PeriodPreset } from '@/lib/sales-period'
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
+import { DashboardKpi } from '@/components/dashboard/DashboardKpi'
+import { DashboardChartCard } from '@/components/dashboard/DashboardChartCard'
+import { CoursesTable, type CourseRowData } from '@/components/dashboard/CoursesTable'
+import { RecentSalesCard, type RecentSaleItem } from '@/components/dashboard/RecentSalesCard'
+import { TopClosersCard, type TopCloserItem } from '@/components/dashboard/TopClosersCard'
 
 export const dynamic = 'force-dynamic'
 
-function calcRevenue(payments: { amount: number; status: string }[]) {
+type DashboardPeriod = Extract<PeriodPreset, 'today' | 'week' | 'month' | 'year'>
+
+// TODO: mover a SiteSettings.monthly_revenue_target
+const MONTHLY_REVENUE_TARGET_EUR = 30_000
+
+const COURSE_PALETTE = ['#38bdf8', '#fb923c', '#a78bfa', '#34d399', '#f472b6', '#facc15']
+const INSTRUCTOR_PALETTE = ['#38bdf8', '#fb923c', '#a78bfa', '#34d399', '#f472b6']
+
+function sumCompletedCents(payments: { amount: number; status: string }[]): number {
     return payments
-        .filter(p => p.status === 'completed')
+        .filter((p) => p.status === 'completed')
         .reduce((sum, p) => sum + p.amount, 0)
 }
 
-function instructorsLabel(instructors: { user: { name: string; last_name: string } }[]): string {
-    if (instructors.length === 0) return 'Sin instructor'
-    if (instructors.length === 1) return `${instructors[0].user.name} ${instructors[0].user.last_name}`
-    if (instructors.length === 2) {
-        return `${instructors[0].user.name} ${instructors[0].user.last_name} · ${instructors[1].user.name} ${instructors[1].user.last_name}`
+function formatTrend(current: number, previous: number): string {
+    if (previous === 0) {
+        if (current === 0) return '0%'
+        return '+100%'
     }
-    return `${instructors[0].user.name} ${instructors[0].user.last_name} · +${instructors.length - 1} más`
+    const pct = ((current - previous) / previous) * 100
+    const rounded = Math.round(pct)
+    return `${rounded >= 0 ? '+' : ''}${rounded}%`
 }
 
-export default async function AdminDashboard() {
+function parsePeriod(value: string | string[] | undefined): DashboardPeriod {
+    const v = Array.isArray(value) ? value[0] : value
+    if (v === 'today' || v === 'week' || v === 'year') return v
+    return 'month'
+}
+
+function pickColor(palette: string[], seed: string): string {
+    let h = 0
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+    return palette[h % palette.length]
+}
+
+function instructorRole(role: string): string {
+    return role === 'ADMIN' ? 'Admin GSA' : 'Instructor'
+}
+
+function initialsOf(name: string, lastName: string): string {
+    const a = name?.[0] ?? ''
+    const b = lastName?.[0] ?? ''
+    return (a + b).toUpperCase() || '·'
+}
+
+interface PageProps {
+    searchParams: Promise<{ period?: string | string[] }>
+}
+
+export default async function AdminDashboard({ searchParams }: PageProps) {
     await getServerSession(authOptions)
 
+    const sp = await searchParams
+    const period = parsePeriod(sp.period)
+    const { from, to } = getPeriodRange(period)
+    const span = to.getTime() - from.getTime()
+    const prevFrom = new Date(from.getTime() - span - 1)
+    const prevTo = new Date(from.getTime() - 1)
+
     const now = new Date()
-    const oneMonthAgo = new Date(now)
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    const oneYearAgo = new Date(now)
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    const yearStart = new Date(now.getFullYear(), 0, 1)
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
 
     const [
         totalStudents,
         totalInstructors,
-        monthlyPayments,
-        yearlyPayments,
-        totalProgress,
-        completedProgress,
+        studentsThisPeriod,
+        studentsPrevPeriod,
+        paymentsThisPeriod,
+        paymentsPrevPeriod,
+        paymentsYearly,
         courses,
-        // Data for growth chart: students and payments per month (last 6 months)
-        allStudents,
-        allPayments,
+        allStudents6mo,
+        allPayments6mo,
+        completedProgress,
+        recentSales,
+        topClosersInstallments,
     ] = await Promise.all([
         prisma.user.count({ where: { role: 'STUDENT' } }),
         prisma.user.count({ where: { role: 'ADMIN' } }),
+        prisma.user.count({
+            where: { role: 'STUDENT', created_at: { gte: from, lte: to } },
+        }),
+        prisma.user.count({
+            where: { role: 'STUDENT', created_at: { gte: prevFrom, lte: prevTo } },
+        }),
         prisma.payment.findMany({
-            where: { created_at: { gte: oneMonthAgo } },
+            where: { created_at: { gte: from, lte: to } },
             select: { amount: true, status: true },
         }),
         prisma.payment.findMany({
-            where: { created_at: { gte: oneYearAgo } },
+            where: { created_at: { gte: prevFrom, lte: prevTo } },
             select: { amount: true, status: true },
         }),
-        prisma.lessonProgress.count(),
-        prisma.lessonProgress.count({ where: { completed: true } }),
+        prisma.payment.findMany({
+            where: { created_at: { gte: yearStart } },
+            select: { amount: true, status: true },
+        }),
         prisma.course.findMany({
             include: {
                 instructors: {
                     orderBy: { order: 'asc' },
-                    include: { user: { select: { name: true, last_name: true } } },
+                    include: {
+                        user: {
+                            select: { id: true, name: true, last_name: true, role: true },
+                        },
+                    },
                 },
-                _count: { select: { modules: true, enrollments: true } },
+                _count: { select: { enrollments: true, modules: true } },
                 modules: { include: { _count: { select: { lessons: true } } } },
             },
             orderBy: { created_at: 'desc' },
         }),
-        // For growth chart
         prisma.user.findMany({
-            where: { role: 'STUDENT' },
+            where: { role: 'STUDENT', created_at: { gte: sixMonthsAgo } },
             select: { created_at: true },
-            orderBy: { created_at: 'asc' },
         }),
         prisma.payment.findMany({
-            where: { status: { not: 'failed' } },
+            where: { status: { not: 'failed' }, created_at: { gte: sixMonthsAgo } },
             select: { amount: true, status: true, created_at: true },
+        }),
+        prisma.lessonProgress.findMany({
+            where: { completed: true },
+            select: { lesson: { select: { module: { select: { course_id: true } } } } },
+        }),
+        prisma.sale.findMany({
+            where: { sale_date: { gte: from, lte: to } },
+            orderBy: { sale_date: 'desc' },
+            take: 5,
+        }),
+        prisma.saleInstallment.findMany({
+            where: { collected: true, collected_at: { gte: from, lte: to } },
+            include: {
+                sale: {
+                    select: {
+                        id: true,
+                        closer_id: true,
+                        closer: { select: { name: true, last_name: true } },
+                    },
+                },
+            },
         }),
     ])
 
-    const monthlyRevenue = Math.round(calcRevenue(monthlyPayments) / 100)
-    const yearlyRevenue = Math.round(calcRevenue(yearlyPayments) / 100)
-    const avgCompletion = totalProgress > 0 ? Math.round((completedProgress / totalProgress) * 100) : 0
-    const maxEnrollments = Math.max(...courses.map((c: any) => c._count.enrollments), 1)
+    const monthlyRevenueEur = Math.round(sumCompletedCents(paymentsThisPeriod) / 100)
+    const prevRevenueEur = Math.round(sumCompletedCents(paymentsPrevPeriod) / 100)
+    const yearlyRevenueEur = Math.round(sumCompletedCents(paymentsYearly) / 100)
 
-    // Build chart data: last 6 months
-    const chartMonths: { label: string; students: number; revenue: number }[] = []
+    const completionByCourse = new Map<string, number>()
+    for (const p of completedProgress) {
+        const cid = p.lesson?.module?.course_id
+        if (cid) completionByCourse.set(cid, (completionByCourse.get(cid) ?? 0) + 1)
+    }
+
+    const maxEnrollments = Math.max(...courses.map((c) => c._count.enrollments), 1)
+
+    const courseRows: CourseRowData[] = courses.map((c) => {
+        const lecciones = c.modules.reduce((sum, m) => sum + m._count.lessons, 0)
+        const enrolled = c._count.enrollments
+        const expected = enrolled * lecciones
+        const completed = completionByCourse.get(c.id) ?? 0
+        const completion = expected > 0 ? Math.round((completed / expected) * 100) : 0
+        const revenueEur =
+            c.price != null && enrolled > 0 ? Math.round(c.price * enrolled) : c.price != null ? 0 : null
+
+        const firstInstructor = c.instructors[0]?.user
+        const instructor = firstInstructor
+            ? {
+                name: `${firstInstructor.name} ${firstInstructor.last_name}`.trim(),
+                role: instructorRole(firstInstructor.role),
+                initials: initialsOf(firstInstructor.name, firstInstructor.last_name),
+                color: pickColor(INSTRUCTOR_PALETTE, firstInstructor.id),
+            }
+            : null
+
+        return {
+            id: c.id,
+            name: c.title,
+            modulos: c._count.modules,
+            lecciones,
+            completion,
+            published: c.published,
+            inscritos: enrolled,
+            enrollmentMax: maxEnrollments,
+            revenueEur,
+            color: pickColor(COURSE_PALETTE, c.id),
+            instructor,
+        }
+    })
+
+    const chartMonths: string[] = []
+    const studentsSeries: { label: string; value: number }[] = []
+    const revenueSeries: { label: string; value: number }[] = []
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(now)
-        d.setMonth(d.getMonth() - i)
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
         const year = d.getFullYear()
         const month = d.getMonth()
-        const label = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')
+        const label = d
+            .toLocaleDateString('es-ES', { month: 'short' })
+            .replace('.', '')
+            .toLowerCase()
+        chartMonths.push(label)
 
-        const studentsInMonth = allStudents.filter((s: any) => {
+        const studentsInMonth = allStudents6mo.filter((s) => {
             const c = new Date(s.created_at)
             return c.getFullYear() === year && c.getMonth() === month
         }).length
 
-        const revenueInMonth = Math.round(calcRevenue(allPayments.filter((p: any) => {
-            const c = new Date(p.created_at)
-            return c.getFullYear() === year && c.getMonth() === month
-        })) / 100)
+        const revenueInMonth = Math.round(
+            sumCompletedCents(
+                allPayments6mo.filter((p) => {
+                    const c = new Date(p.created_at)
+                    return c.getFullYear() === year && c.getMonth() === month
+                }),
+            ) / 100,
+        )
 
-        chartMonths.push({ label, students: studentsInMonth, revenue: revenueInMonth })
+        studentsSeries.push({ label, value: studentsInMonth })
+        revenueSeries.push({ label, value: revenueInMonth })
     }
 
+    const totalStudents6mo = studentsSeries.reduce((s, m) => s + m.value, 0)
+    const totalRevenue6mo = revenueSeries.reduce((s, m) => s + m.value, 0)
+
+    const studentsTrend = formatTrend(studentsThisPeriod, studentsPrevPeriod)
+    const revenueTrend = formatTrend(monthlyRevenueEur, prevRevenueEur)
+    const sub30Label = `vs. período anterior (${prevRevenueEur.toLocaleString('es-ES')} €)`
+
+    const activeCourses = courses.filter((c) => c.published).length
+
+    const recentSalesItems: RecentSaleItem[] = recentSales.map((s) => ({
+        id: s.id,
+        cliente: `${s.customer_first_name} ${s.customer_last_name}`.trim(),
+        packageName: s.package_name,
+        amountCents: s.total_amount,
+        saleDate: s.sale_date,
+    }))
+
+    const closerMap = new Map<
+        string,
+        { id: string; name: string; cents: number; sales: Set<string> }
+    >()
+    for (const inst of topClosersInstallments) {
+        const closerId = inst.sale.closer_id
+        const existing = closerMap.get(closerId)
+        const fullName = `${inst.sale.closer.name} ${inst.sale.closer.last_name}`.trim()
+        if (existing) {
+            existing.cents += inst.amount
+            existing.sales.add(inst.sale.id)
+        } else {
+            closerMap.set(closerId, {
+                id: closerId,
+                name: fullName,
+                cents: inst.amount,
+                sales: new Set([inst.sale.id]),
+            })
+        }
+    }
+    const topClosers: TopCloserItem[] = [...closerMap.values()]
+        .sort((a, b) => b.cents - a.cents)
+        .slice(0, 4)
+        .map((c) => {
+            const [first = '', last = ''] = c.name.split(' ')
+            return {
+                id: c.id,
+                name: c.name || 'Sin nombre',
+                initials: initialsOf(first, last),
+                cashCollectedCents: c.cents,
+                salesCount: c.sales.size,
+                color: pickColor(INSTRUCTOR_PALETTE, c.id),
+            }
+        })
+
+    const monthlyProgressRatio = monthlyRevenueEur / MONTHLY_REVENUE_TARGET_EUR
 
     return (
-        <div className="space-y-8 lg:space-y-12">
-            {/* ── Header ──────────────────────────────────── */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-on-surface">
-                        Dashboard
-                    </h1>
-                    <p className="text-on-surface-variant mt-1 text-sm lg:text-base">
-                        Información en tiempo real sobre el rendimiento de tu academia.
-                    </p>
+        <div className="space-y-6">
+            <DashboardHeader period={period} />
+
+            {/* KPIs */}
+            <section className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+                <DashboardKpi
+                    icon={<Users size={16} />}
+                    tint="#38bdf8"
+                    label="Total estudiantes"
+                    value={totalStudents.toLocaleString('es-ES')}
+                    trend={studentsTrend}
+                    sub={`${studentsThisPeriod} ${studentsThisPeriod === 1 ? 'nuevo' : 'nuevos'} en período`}
+                    spark={studentsSeries.map((p) => p.value)}
+                />
+                <DashboardKpi
+                    icon={<Wallet size={16} />}
+                    tint="#34d399"
+                    label="Ingresos período"
+                    value={`${monthlyRevenueEur.toLocaleString('es-ES')} €`}
+                    trend={revenueTrend}
+                    sub={sub30Label}
+                    progress={{
+                        ratio: monthlyProgressRatio,
+                        label: `${Math.round(monthlyProgressRatio * 100)}% de €${MONTHLY_REVENUE_TARGET_EUR.toLocaleString('es-ES')} objetivo`,
+                    }}
+                />
+                <DashboardKpi
+                    icon={<Landmark size={16} />}
+                    tint="#a78bfa"
+                    label="Ingresos anuales"
+                    value={`${yearlyRevenueEur.toLocaleString('es-ES')} €`}
+                    sub={`acumulado ${now.getFullYear()}`}
+                />
+                <DashboardKpi
+                    icon={<GraduationCap size={16} />}
+                    tint="#fb923c"
+                    label="Cursos activos"
+                    value={`${activeCourses} / ${courses.length}`}
+                    trend={`${totalInstructors} ${totalInstructors === 1 ? 'instructor' : 'instructores'}`}
+                    sub={
+                        courses.length - activeCourses > 0
+                            ? `${courses.length - activeCourses} en borrador`
+                            : 'todos publicados'
+                    }
+                />
+            </section>
+
+            {/* Charts */}
+            <section className="grid gap-3.5 grid-cols-1 lg:grid-cols-2">
+                <DashboardChartCard
+                    title="Crecimiento de alumnos"
+                    subtitle="Últimos 6 meses · matrícula mensual"
+                    data={studentsSeries}
+                    color="#38bdf8"
+                    headerValue={totalStudents6mo.toLocaleString('es-ES')}
+                    headerKey="NUEVOS"
+                    headerTrend={`+${studentsSeries[studentsSeries.length - 1]?.value ?? 0}`}
+                    valueKind="students"
+                />
+                <DashboardChartCard
+                    title="Crecimiento de ingresos"
+                    subtitle="Últimos 6 meses · revenue mensual"
+                    data={revenueSeries}
+                    color="#34d399"
+                    headerValue={`${totalRevenue6mo.toLocaleString('es-ES')} €`}
+                    headerKey="TOTAL"
+                    valueKind="currency"
+                />
+            </section>
+
+            {/* Bottom: courses + aside */}
+            <section
+                className="grid gap-3.5"
+                style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
+            >
+                <div className="grid gap-3.5 lg:[grid-template-columns:minmax(0,2.1fr)_minmax(280px,1fr)]">
+                    <CoursesTable courses={courseRows} />
+                    <aside className="flex flex-col gap-3.5 min-w-0">
+                        <RecentSalesCard sales={recentSalesItems} />
+                        <TopClosersCard closers={topClosers} />
+                    </aside>
                 </div>
-                <Link
-                    href="/admin/courses"
-                    className="hidden md:flex bg-gradient-to-r from-primary-container to-secondary-container text-white px-6 py-3 rounded-xl font-bold text-sm items-center gap-2 hover:shadow-lg active:scale-95 transition-all w-fit"
-                >
-                    <MaterialIcon name="add" size="text-lg" />
-                    Crear Nuevo Curso
-                </Link>
-            </div>
-
-            {/* ── KPI Cards ───────────────────────────────── */}
-            <div className="flex overflow-x-auto gap-4 no-scrollbar -mx-6 px-6 py-2 lg:mx-0 lg:px-0 lg:py-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
-                {/* Total Students */}
-                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
-                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">groups</span>
-                    <div className="flex justify-between items-start relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Estudiantes</span>
-                        <span className="material-symbols-outlined text-secondary lg:hidden">group</span>
-                        <div className="hidden lg:flex w-10 h-10 rounded-xl bg-blue-500/10 items-center justify-center">
-                            <MaterialIcon name="groups" size="text-xl" className="text-blue-400" />
-                        </div>
-                    </div>
-                    <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
-                            {totalStudents.toLocaleString()}
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Total Estudiantes</p>
-                    </div>
-                </div>
-
-                {/* Monthly Revenue */}
-                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
-                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">payments</span>
-                    <div className="flex justify-between items-start relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Mensual</span>
-                        <span className="material-symbols-outlined text-secondary lg:hidden">payments</span>
-                        <div className="hidden lg:flex w-10 h-10 rounded-xl bg-emerald-500/10 items-center justify-center">
-                            <MaterialIcon name="payments" size="text-xl" className="text-emerald-400" />
-                        </div>
-                    </div>
-                    <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
-                            {monthlyRevenue.toLocaleString('es-ES')}€
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Ingresos Mensuales</p>
-                    </div>
-                </div>
-
-                {/* Yearly Revenue */}
-                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
-                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">account_balance</span>
-                    <div className="flex justify-between items-start relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Anual</span>
-                        <span className="material-symbols-outlined text-secondary lg:hidden">account_balance</span>
-                        <div className="hidden lg:flex w-10 h-10 rounded-xl bg-purple-500/10 items-center justify-center">
-                            <MaterialIcon name="account_balance" size="text-xl" className="text-purple-400" />
-                        </div>
-                    </div>
-                    <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
-                            {yearlyRevenue.toLocaleString('es-ES')}€
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Ingresos Anuales</p>
-                    </div>
-                </div>
-
-                {/* Instructors */}
-                <div className="min-w-[200px] lg:min-w-0 bg-surface-container-low rounded-2xl p-5 lg:p-8 border border-outline-variant/15 lg:border-primary/30 flex flex-col justify-between h-36 lg:h-auto relative overflow-hidden">
-                    <span className="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-surface-variant/5 hidden lg:block">school</span>
-                    <div className="flex justify-between items-start relative z-10">
-                        <span className="text-on-surface-variant font-medium text-sm lg:hidden">Instructores</span>
-                        <span className="material-symbols-outlined text-secondary lg:hidden">school</span>
-                        <div className="hidden lg:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-                            <MaterialIcon name="school" size="text-xl" className="text-primary" />
-                        </div>
-                    </div>
-                    <div className="space-y-1 relative z-10">
-                        <div className="text-2xl lg:text-4xl font-bold lg:font-black text-on-surface lg:tracking-tighter">
-                            {totalInstructors}
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant hidden lg:block">Instructores</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Growth Charts ───────────────────────────── */}
-            <GrowthCharts
-                data={chartMonths}
-                totalStudents={chartMonths.reduce((s, m) => s + m.students, 0)}
-                totalRevenue={chartMonths.reduce((s, m) => s + m.revenue, 0)}
-            />
-
-            {/* ── Course Section ──────────────────────────── */}
-            {/* Mobile: card list / Desktop: table */}
-
-            {/* Mobile header */}
-            <div className="lg:hidden space-y-4">
-                <div className="flex items-end justify-between">
-                    <div>
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-secondary mb-1 block">Resumen</span>
-                        <h2 className="text-2xl font-extrabold tracking-tight text-on-surface">Cursos Activos</h2>
-                    </div>
-                    <Link
-                        href="/admin/courses"
-                        className="bg-surface-container-high p-3 rounded-xl border border-outline-variant/15 text-on-surface-variant active:scale-90 transition-all"
-                    >
-                        <span className="material-symbols-outlined">add</span>
-                    </Link>
-                </div>
-            </div>
-
-            {/* Mobile: Course Cards */}
-            <div className="lg:hidden space-y-4">
-                {courses.length === 0 ? (
-                    <div className="py-16 text-center">
-                        <MaterialIcon name="school" size="text-5xl" className="text-on-surface-variant/30 mb-4" />
-                        <p className="text-on-surface-variant">No hay cursos creados aún</p>
-                    </div>
-                ) : (
-                    courses.map((course) => {
-                        const totalLessons = course.modules.reduce((sum, m) => sum + m._count.lessons, 0)
-                        const enrollPercent = Math.round((course._count.enrollments / maxEnrollments) * 100)
-
-                        return (
-                            <Link
-                                key={course.id}
-                                href={`/admin/courses/${course.id}/builder`}
-                                className="block bg-surface-container-low rounded-2xl overflow-hidden border border-outline-variant/10 active:scale-[0.98] transition-transform"
-                            >
-                                {/* Thumbnail */}
-                                <div className="relative h-44 w-full">
-                                    {course.thumbnail ? (
-                                        <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-primary-container/30 to-secondary-container/30 flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-5xl text-on-surface-variant/20">school</span>
-                                        </div>
-                                    )}
-                                    <div className="absolute top-4 left-4">
-                                        {course.published ? (
-                                            <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full backdrop-blur-md">
-                                                Publicado
-                                            </span>
-                                        ) : (
-                                            <span className="bg-surface-container-highest/60 text-on-surface-variant text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full backdrop-blur-md">
-                                                Borrador
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-surface-container-low to-transparent" />
-                                </div>
-                                {/* Info */}
-                                <div className="p-5 space-y-4">
-                                    <div className="space-y-1">
-                                        <h3 className="text-lg font-bold text-on-surface">{course.title}</h3>
-                                        <p className="text-sm text-on-surface-variant">
-                                            {instructorsLabel(course.instructors)}
-                                            {' • '}{course._count.modules} Módulos • {totalLessons} Lecciones
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-secondary text-sm">group</span>
-                                            <span className="text-xs font-medium text-on-surface">
-                                                {course._count.enrollments.toLocaleString()} Estudiantes
-                                            </span>
-                                        </div>
-                                        <div className="w-24 bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
-                                            <div
-                                                className="bg-primary-container h-full rounded-full"
-                                                style={{ width: `${enrollPercent}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Link>
-                        )
-                    })
-                )}
-            </div>
-
-            {/* Desktop: Table (unchanged) */}
-            <div className="hidden lg:block bg-surface-container-low rounded-2xl overflow-hidden border border-white/5">
-                <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5">
-                    <div>
-                        <h3 className="text-xl font-bold text-on-surface">Gestión de Cursos</h3>
-                        <p className="text-xs text-on-surface-variant mt-1">
-                            {courses.length} cursos {courses.filter((c) => c.published).length > 0 && `(${courses.filter((c) => c.published).length} activos)`}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center bg-surface-container-lowest rounded-full px-4 py-2 border border-outline-variant/15">
-                            <MaterialIcon name="search" size="text-sm" className="text-on-surface-variant" />
-                            <input
-                                className="bg-transparent border-none text-sm focus:ring-0 text-on-surface placeholder:text-on-surface-variant/50 w-40 outline-none ml-2"
-                                placeholder="Buscar curso..."
-                                type="text"
-                            />
-                        </div>
-                        <button className="p-2 rounded-lg hover:bg-white/5 transition-colors">
-                            <MaterialIcon name="filter_list" size="text-xl" className="text-on-surface-variant" />
-                        </button>
-                    </div>
-                </div>
-
-                {courses.length === 0 ? (
-                    <div className="p-16 text-center">
-                        <MaterialIcon name="school" size="text-5xl" className="text-on-surface-variant/30 mb-4" />
-                        <p className="text-on-surface-variant">No hay cursos creados aún</p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-white/5">
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Curso</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Instructor</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Estado</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Inscritos</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {courses.map((course) => {
-                                    const totalLessons = course.modules.reduce((sum, m) => sum + m._count.lessons, 0)
-                                    const firstInstructor = course.instructors[0]?.user
-                                    const initials = firstInstructor
-                                        ? `${firstInstructor.name[0]}${firstInstructor.last_name[0]}`
-                                        : '?'
-                                    const enrollPercent = Math.round((course._count.enrollments / maxEnrollments) * 100)
-
-                                    return (
-                                        <tr key={course.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface-container-highest shrink-0">
-                                                        {course.thumbnail ? (
-                                                            <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center">
-                                                                <MaterialIcon name="school" size="text-lg" className="text-on-surface-variant/40" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-on-surface text-sm line-clamp-1">{course.title}</p>
-                                                        <p className="text-[10px] text-on-surface-variant mt-0.5">
-                                                            {course._count.modules} Módulos • {totalLessons} Lecciones
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {course.instructors.length > 0 ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full bg-primary-container/20 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                                                            {initials}
-                                                        </div>
-                                                        <span className="text-sm text-on-surface-variant">
-                                                            {instructorsLabel(course.instructors)}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm text-on-surface-variant/50">Sin asignar</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {course.published ? (
-                                                    <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Publicado</span>
-                                                ) : (
-                                                    <span className="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Borrador</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="space-y-1.5">
-                                                    <span className="text-sm font-bold text-on-surface">{course._count.enrollments.toLocaleString()}</span>
-                                                    <div className="w-24 h-1 bg-surface-container-highest rounded-full overflow-hidden">
-                                                        <div className="h-full bg-secondary rounded-full" style={{ width: `${enrollPercent}%` }} />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Link href={`/admin/courses/${course.id}/builder`} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                                                        <MaterialIcon name="edit" size="text-sm" className="text-on-surface-variant" />
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+            </section>
         </div>
     )
 }

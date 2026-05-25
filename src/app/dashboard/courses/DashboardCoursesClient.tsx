@@ -1,23 +1,43 @@
 'use client'
 
 import { useState } from 'react'
-import { useDebounce } from '@/hooks/useDebounce'
-import { CourseCard } from '@/components/courses/CourseCard'
-import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import Link from 'next/link'
+import { useDebounce } from '@/hooks/useDebounce'
+import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import {
+    CourseCardRedesigned,
+    type CourseCardData,
+} from '@/components/landing/CourseCardRedesigned'
+import { EnrollButton } from '@/components/courses/EnrollButton'
 
-interface CourseData {
+export interface DashboardCourseData {
     id: string
     title: string
     description: string
     thumbnail: string | null
+    hero_image: string | null
+    published: boolean
+    created_at: string
+    tagline: string | null
+    tier: string | null
+    level: string | null
+    duration: string | null
+    year: string | null
+    hue: number | null
+    accent: string | null
+    trajectory: string | null
+    included_items: string[] | null
+    modules: { id: string; title: string; order: number }[]
+    moduleCount: number
     lessonCount: number
     totalDurationMinutes: number
     isEnrolled: boolean
+    progressPercent: number
+    progressCompleted: number
 }
 
 interface Props {
-    courses: CourseData[]
+    courses: DashboardCourseData[]
     hasPaid: boolean
 }
 
@@ -26,6 +46,29 @@ const filters = [
     { key: 'Inscritos', label: 'Inscritos' },
     { key: 'Disponibles', label: 'Disponibles' },
 ]
+
+function toCardData(c: DashboardCourseData): CourseCardData {
+    return {
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        thumbnail: c.thumbnail,
+        hero_image: c.hero_image,
+        published: c.published,
+        created_at: c.created_at,
+        tagline: c.tagline,
+        tier: c.tier,
+        level: c.level,
+        duration: c.duration,
+        year: c.year,
+        hue: c.hue,
+        accent: c.accent,
+        trajectory: c.trajectory,
+        modules: c.modules,
+        moduleCount: c.moduleCount,
+        included_items: c.included_items,
+    }
+}
 
 export function DashboardCoursesClient({ courses, hasPaid }: Props) {
     const [searchQuery, setSearchQuery] = useState('')
@@ -119,22 +162,54 @@ export function DashboardCoursesClient({ courses, hasPaid }: Props) {
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {filteredCourses.map((course) => (
-                        <CourseCard
-                            key={course.id}
-                            id={course.id}
-                            title={course.title}
-                            description={course.description}
-                            thumbnail={course.thumbnail}
-                            published={true}
-                            lessonCount={course.lessonCount}
-                            totalDurationMinutes={course.totalDurationMinutes}
-                            isEnrolled={course.isEnrolled}
-                            isAuthenticated={true}
-                            hasPaid={hasPaid}
-                        />
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {filteredCourses.map((course, idx) => {
+                        const cardData = toCardData(course)
+
+                        if (course.isEnrolled) {
+                            const ctaLabel =
+                                course.progressPercent === 100
+                                    ? 'Repasar curso'
+                                    : course.progressPercent === 0
+                                        ? 'Empezar curso'
+                                        : 'Continuar curso'
+                            return (
+                                <CourseCardRedesigned
+                                    key={course.id}
+                                    course={cardData}
+                                    index={idx}
+                                    ctaHref={`/dashboard/courses/${course.id}`}
+                                    ctaLabel={ctaLabel}
+                                    progress={
+                                        course.lessonCount > 0
+                                            ? {
+                                                percent: course.progressPercent,
+                                                completed: course.progressCompleted,
+                                                total: course.lessonCount,
+                                            }
+                                            : undefined
+                                    }
+                                />
+                            )
+                        }
+
+                        return (
+                            <CourseCardRedesigned
+                                key={course.id}
+                                course={cardData}
+                                index={idx}
+                                customCta={
+                                    <div className="w-full">
+                                        <EnrollButton
+                                            courseId={course.id}
+                                            isAuthenticated={true}
+                                            hasPaid={hasPaid}
+                                        />
+                                    </div>
+                                }
+                            />
+                        )
+                    })}
 
                     {/* CTA Card */}
                     <div className="lg:col-span-1 bg-gradient-to-br from-primary-container to-secondary-container rounded-xl p-10 flex flex-col justify-center relative overflow-hidden group shadow-2xl">

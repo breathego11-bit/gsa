@@ -73,3 +73,29 @@ export async function getCloserCashCollected(
     })
     return result._sum.amount ?? 0
 }
+
+/**
+ * Cash collected per closer in a date range. Returns a Map<closerId, cents>.
+ * Useful for admin views that show team-wide aggregates.
+ */
+export async function getClosersCashCollected(
+    closerIds: string[],
+    from: Date,
+    to: Date,
+): Promise<Map<string, number>> {
+    if (closerIds.length === 0) return new Map()
+    const results = await prisma.saleInstallment.findMany({
+        where: {
+            sale: { closer_id: { in: closerIds } },
+            collected: true,
+            collected_at: { gte: from, lte: to },
+        },
+        select: { amount: true, sale: { select: { closer_id: true } } },
+    })
+    const map = new Map<string, number>()
+    for (const id of closerIds) map.set(id, 0)
+    for (const r of results) {
+        map.set(r.sale.closer_id, (map.get(r.sale.closer_id) ?? 0) + r.amount)
+    }
+    return map
+}

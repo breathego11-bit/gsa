@@ -19,6 +19,9 @@ export default async function AdminCoursesPage() {
         included_items: Array.isArray(c.included_items)
             ? (c.included_items as unknown as string[]).filter((s) => typeof s === 'string')
             : [],
+        requirements: Array.isArray(c.requirements)
+            ? (c.requirements as unknown as string[]).filter((s) => typeof s === 'string')
+            : [],
     }))
 
     return <AdminCoursesClient courses={mapped} />

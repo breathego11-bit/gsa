@@ -1,57 +1,95 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { DashboardCoursesClient } from './DashboardCoursesClient'
+import { DashboardCoursesClient, type DashboardCourseData } from './DashboardCoursesClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardCoursesPage() {
     const session = await getServerSession(authOptions)
+    const userId = session!.user.id
 
-    const courses = await prisma.course.findMany({
-        where: { published: true },
-        include: {
-            modules: {
-                include: {
-                    lessons: { select: { id: true, duration: true } },
+    const [courses, enrollments, user] = await Promise.all([
+        prisma.course.findMany({
+            where: { published: true },
+            include: {
+                modules: {
+                    orderBy: { order: 'asc' },
+                    include: {
+                        lessons: {
+                            select: {
+                                id: true,
+                                duration: true,
+                                progress: {
+                                    where: { user_id: userId },
+                                    select: { completed: true },
+                                },
+                            },
+                        },
+                    },
                 },
             },
-        },
-        orderBy: { created_at: 'desc' },
-    })
-
-    const [enrollments, user] = await Promise.all([
+            orderBy: { created_at: 'desc' },
+        }),
         prisma.enrollment.findMany({
-            where: { user_id: session!.user.id },
+            where: { user_id: userId },
             select: { course_id: true },
         }),
         prisma.user.findUnique({
-            where: { id: session!.user.id },
+            where: { id: userId },
             select: { payment_status: true, blocked: true },
         }),
     ])
-    const enrolledCourseIds = enrollments.map((e) => e.course_id)
+
+    const enrolledCourseIds = new Set(enrollments.map((e) => e.course_id))
     const hasPaid = user?.payment_status === 'active' && !user?.blocked
 
-    const coursesData = courses.map((course) => {
-        const lessonCount = course.modules.reduce(
-            (sum, m) => sum + m.lessons.length,
+    const coursesData: DashboardCourseData[] = courses.map((course) => {
+        const allLessons = course.modules.flatMap((m) => m.lessons)
+        const lessonCount = allLessons.length
+        const totalDurationMinutes = allLessons.reduce(
+            (sum, l) => sum + (l.duration ?? 0),
             0,
         )
-        const totalDurationMinutes = course.modules.reduce(
-            (sum, m) =>
-                sum + m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0),
-            0,
-        )
+        const isEnrolled = enrolledCourseIds.has(course.id)
+
+        let progressPercent = 0
+        let progressCompleted = 0
+        if (isEnrolled && lessonCount > 0) {
+            progressCompleted = allLessons.filter((l) => l.progress[0]?.completed).length
+            progressPercent = Math.round((progressCompleted / lessonCount) * 100)
+        }
 
         return {
             id: course.id,
             title: course.title,
             description: course.description,
             thumbnail: course.thumbnail,
+            hero_image: course.hero_image,
+            published: course.published,
+            created_at: course.created_at.toISOString(),
+            tagline: course.tagline,
+            tier: course.tier,
+            level: course.level,
+            duration: course.duration,
+            year: course.year,
+            hue: course.hue,
+            accent: course.accent,
+            trajectory: course.trajectory,
+            included_items: Array.isArray(course.included_items)
+                ? (course.included_items as string[])
+                : null,
+            modules: course.modules.map((m) => ({
+                id: m.id,
+                title: m.title,
+                order: m.order,
+            })),
+            moduleCount: course.modules.length,
             lessonCount,
             totalDurationMinutes,
-            isEnrolled: enrolledCourseIds.includes(course.id),
+            isEnrolled,
+            progressPercent,
+            progressCompleted,
         }
     })
 

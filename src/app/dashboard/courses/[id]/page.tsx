@@ -2,10 +2,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
-import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import { CourseModuleAccordion } from '@/components/courses/CourseModuleAccordion'
 import { getBunnyThumbnailUrl } from '@/lib/bunny'
+import { CourseDetailClient } from './CourseDetailClient'
+
+export const dynamic = 'force-dynamic'
 
 export default async function DashboardCoursePage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -27,16 +27,20 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
                 include: {
                     lessons: {
                         orderBy: { order: 'asc' },
-                        select: { id: true, title: true, order: true, duration: true, type: true, thumbnail: true, bunny_video_id: true },
+                        select: {
+                            id: true, title: true, order: true, duration: true, type: true,
+                            thumbnail: true, bunny_video_id: true, resources: true,
+                        },
                     },
                 },
             },
+            _count: { select: { enrollments: true } },
         },
     })
 
     if (!course) notFound()
 
-    // Check enrollment
+    // Check enrollment (admins bypass)
     if (session.user.role !== 'ADMIN') {
         const enrollment = await prisma.enrollment.findUnique({
             where: { user_id_course_id: { user_id: session.user.id, course_id: id } },
@@ -44,178 +48,190 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
         if (!enrollment) redirect(`/course/${id}`)
     }
 
-    // Get progress
+    // Get progress for this user across all lessons in this course
     const allLessons = course.modules.flatMap((m) => m.lessons)
     const progressRecords = await prisma.lessonProgress.findMany({
         where: { user_id: session.user.id, lesson_id: { in: allLessons.map((l) => l.id) } },
         select: { lesson_id: true, completed: true },
     })
-    const progressMap = new Map(progressRecords.map((p) => [p.lesson_id, p.completed]))
+    const completedSet = new Set(progressRecords.filter((p) => p.completed).map((p) => p.lesson_id))
 
-    const completedCount = progressRecords.filter((p) => p.completed).length
-    const percent = allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0
+    const completedCount = completedSet.size
+    const totalLessonsCount = allLessons.length
+    const percent = totalLessonsCount > 0 ? Math.round((completedCount / totalLessonsCount) * 100) : 0
 
-    // Duration
+    // Total duration computed from lesson durations
     const totalDurationMin = allLessons.reduce((sum, l) => sum + (l.duration || 0), 0)
-    const hours = Math.floor(totalDurationMin / 60)
-    const minutes = totalDurationMin % 60
-    const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`
 
-    // First incomplete lesson
-    const firstIncomplete = allLessons.find((l) => !progressMap.get(l.id))
+    // Find current (first incomplete, walking the curriculum in order)
+    let currentLessonId: string | null = null
+    let currentLessonModuleTitle: string | null = null
+    let currentLessonNumberInModule = 0
+    let currentLessonTitle: string | null = null
+    let currentLessonDuration: number | null = null
+    let currentLessonType: string | null = null
+
+    for (const m of course.modules) {
+        for (let i = 0; i < m.lessons.length; i++) {
+            const l = m.lessons[i]
+            if (!completedSet.has(l.id)) {
+                currentLessonId = l.id
+                currentLessonModuleTitle = m.title
+                currentLessonNumberInModule = i + 1
+                currentLessonTitle = l.title
+                currentLessonDuration = l.duration
+                currentLessonType = l.type
+                break
+            }
+        }
+        if (currentLessonId) break
+    }
+
+    // Cohort: last 6 enrolled users (besides self) with avatars
+    const cohort = await prisma.enrollment.findMany({
+        where: { course_id: id, user_id: { not: session.user.id } },
+        orderBy: { created_at: 'desc' },
+        take: 6,
+        select: {
+            user: { select: { id: true, name: true, last_name: true, profile_image: true } },
+        },
+    })
+
+    // Instructor stats — courses they teach + total distinct students across those courses
+    const instructorStats = new Map<string, { courses: number; students: number }>()
+    await Promise.all(
+        course.instructors.map(async ({ user }) => {
+            const instructedCourses = await prisma.courseInstructor.findMany({
+                where: { user_id: user.id },
+                select: { course_id: true },
+            })
+            const courseIds = instructedCourses.map((c) => c.course_id)
+            let studentsCount = 0
+            if (courseIds.length > 0) {
+                const distinctStudents = await prisma.enrollment.findMany({
+                    where: { course_id: { in: courseIds } },
+                    distinct: ['user_id'],
+                    select: { user_id: true },
+                })
+                studentsCount = distinctStudents.length
+            }
+            instructorStats.set(user.id, { courses: courseIds.length, students: studentsCount })
+        }),
+    )
+
+    // Aggregate resources from all lessons (deduplicate by id)
+    type Resource = { id: string; name: string; url: string; type: string; lessonTitle: string }
+    const resources: Resource[] = []
+    const seenResourceIds = new Set<string>()
+    for (const m of course.modules) {
+        for (const l of m.lessons) {
+            if (!Array.isArray(l.resources)) continue
+            for (const r of l.resources as Array<{ id?: string; name?: string; url?: string; type?: string }>) {
+                if (!r || typeof r.url !== 'string' || typeof r.name !== 'string') continue
+                const key = r.id || `${l.id}:${r.url}`
+                if (seenResourceIds.has(key)) continue
+                seenResourceIds.add(key)
+                resources.push({
+                    id: key,
+                    name: r.name,
+                    url: r.url,
+                    type: r.type === 'link' ? 'link' : 'file',
+                    lessonTitle: l.title,
+                })
+            }
+        }
+    }
+
+    // Map modules with per-module progress
+    const modulesView = course.modules.map((m) => {
+        const moduleLessons = m.lessons.map((l) => ({
+            id: l.id,
+            title: l.title,
+            order: l.order,
+            duration: l.duration,
+            type: l.type as string,
+            thumbnail: l.thumbnail || (l.bunny_video_id ? getBunnyThumbnailUrl(l.bunny_video_id) : null),
+            completed: completedSet.has(l.id),
+            current: l.id === currentLessonId,
+        }))
+        const moduleCompletedCount = moduleLessons.filter((l) => l.completed).length
+        const moduleDurationMin = moduleLessons.reduce((s, l) => s + (l.duration || 0), 0)
+        const moduleProgress = moduleLessons.length > 0
+            ? Math.round((moduleCompletedCount / moduleLessons.length) * 100)
+            : 0
+        return {
+            id: m.id,
+            title: m.title,
+            order: m.order,
+            locked: m.locked,
+            lessons: moduleLessons,
+            completedCount: moduleCompletedCount,
+            progress: moduleProgress,
+            durationMin: moduleDurationMin,
+        }
+    })
+
+    const requirementsList: string[] = Array.isArray(course.requirements)
+        ? (course.requirements as unknown as unknown[]).filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+        : []
+    const includedItemsList: string[] = Array.isArray(course.included_items)
+        ? (course.included_items as unknown as unknown[]).filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+        : []
 
     return (
-        <div className="space-y-8">
-            {/* Back */}
-            <Link
-                href="/dashboard/courses"
-                className="inline-flex items-center gap-2 text-on-surface-variant hover:text-on-surface transition-colors text-sm"
-            >
-                <MaterialIcon name="arrow_back" size="text-lg" />
-                Volver a mis cursos
-            </Link>
-
-            {/* Hero */}
-            <div className="relative rounded-2xl overflow-hidden">
-                <div className="absolute inset-0">
-                    {course.hero_image ? (
-                        <img src={course.hero_image} alt="" className="w-full h-full object-cover opacity-30 grayscale" />
-                    ) : (
-                        <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #0c1a3e 0%, #080d18 100%)' }} />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/80 to-transparent" />
-                </div>
-                <div className="relative z-10 p-6 sm:p-10 space-y-4">
-                    <div className="inline-flex items-center px-3 py-1 bg-primary-container/20 text-primary rounded-full text-xs font-bold tracking-[0.1em] uppercase">
-                        {course.modules.length} Módulos • {allLessons.length} Lecciones
-                    </div>
-                    <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tighter text-on-surface max-w-3xl">
-                        {course.title}
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-6 text-on-surface-variant text-sm">
-                        {course.instructors.length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <MaterialIcon name="person" size="text-lg" className="text-blue-400" />
-                                <span className="font-medium">
-                                    {course.instructors.map((i) => `${i.user.name} ${i.user.last_name}`).join(' · ')}
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                            <MaterialIcon name="schedule" size="text-lg" className="text-blue-400" />
-                            <span className="font-medium">{durationStr}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Progress + Continue */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant/15 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Progreso</p>
-                    <p className="text-3xl font-black text-on-surface">{percent}%</p>
-                    <div className="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-primary-container to-secondary-container rounded-full transition-all"
-                            style={{ width: `${percent}%` }}
-                        />
-                    </div>
-                    <p className="text-xs text-on-surface-variant">{completedCount} de {allLessons.length} lecciones</p>
-                </div>
-                <div className="sm:col-span-2 bg-surface-container-low rounded-xl p-6 border border-outline-variant/15 flex items-center justify-between gap-4">
-                    {firstIncomplete ? (
-                        <>
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Siguiente lección</p>
-                                <p className="text-sm font-bold text-on-surface">{firstIncomplete.title}</p>
-                            </div>
-                            <Link
-                                href={`/lesson/${firstIncomplete.id}`}
-                                className="shrink-0 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-container to-secondary-container text-white rounded-xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all"
-                            >
-                                <MaterialIcon name="play_arrow" size="text-lg" />
-                                Continuar
-                            </Link>
-                        </>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-emerald-400 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            <div>
-                                <p className="text-sm font-bold text-on-surface">Curso completado</p>
-                                <p className="text-xs text-on-surface-variant">Has completado todas las lecciones</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Description */}
-            {course.description && (
-                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant/15">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-3">Descripción</h2>
-                    <p className="text-on-surface-variant leading-relaxed text-justify">{course.description}</p>
-                </div>
-            )}
-
-            {/* Curriculum */}
-            <div>
-                <h2 className="text-xl font-bold tracking-tight mb-6 text-on-surface">Contenido del curso</h2>
-                {course.modules.length === 0 ? (
-                    <div className="bg-surface-container-low rounded-xl p-12 text-center">
-                        <MaterialIcon name="school" size="text-4xl" className="text-on-surface-variant mb-4" />
-                        <p className="text-on-surface-variant">El contenido está siendo preparado.</p>
-                    </div>
-                ) : (
-                    <CourseModuleAccordion
-                        modules={course.modules.map((mod) => ({
-                            id: mod.id,
-                            title: mod.title,
-                            order: mod.order,
-                            lessons: mod.lessons.map((l) => ({
-                                id: l.id,
-                                title: l.title,
-                                order: l.order,
-                                duration: l.duration,
-                                type: l.type,
-                                thumbnail: l.thumbnail || (l.bunny_video_id ? getBunnyThumbnailUrl(l.bunny_video_id) : null),
-                                progress: progressMap.has(l.id) ? [{ completed: progressMap.get(l.id)! }] : undefined,
-                            })),
-                        }))}
-                        isEnrolled={true}
-                    />
-                )}
-            </div>
-
-            {/* Instructores */}
-            {course.instructors.length > 0 && (
-                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant/15">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">
-                        {course.instructors.length === 1 ? 'Tu Instructor' : 'Tus Instructores'}
-                    </h2>
-                    <div className="space-y-5">
-                        {course.instructors.map(({ user }, idx) => (
-                            <div key={user.id} className={idx > 0 ? 'pt-5 border-t border-outline-variant/15' : ''}>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center shrink-0">
-                                        {user.profile_image ? (
-                                            <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <MaterialIcon name="person" size="text-2xl" className="text-on-surface-variant" />
-                                        )}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-on-surface">{user.name} {user.last_name}</p>
-                                        {user.title && <p className="text-xs text-on-surface-variant">{user.title}</p>}
-                                    </div>
-                                </div>
-                                {user.bio && (
-                                    <p className="text-sm text-on-surface-variant mt-4 leading-relaxed">{user.bio}</p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
+        <CourseDetailClient
+            course={{
+                id: course.id,
+                title: course.title,
+                description: course.description,
+                tagline: course.tagline,
+                hero_image: course.hero_image,
+                tier: course.tier,
+                level: course.level,
+                language: course.language,
+                certificate: course.certificate,
+                rating: course.rating,
+                includedItems: includedItemsList,
+                requirements: requirementsList,
+            }}
+            stats={{
+                totalModules: course.modules.length,
+                totalLessons: totalLessonsCount,
+                totalDurationMin,
+                completedCount,
+                percent,
+                enrollmentsCount: course._count.enrollments,
+            }}
+            currentLesson={
+                currentLessonId
+                    ? {
+                          id: currentLessonId,
+                          moduleTitle: currentLessonModuleTitle!,
+                          numberInModule: currentLessonNumberInModule,
+                          title: currentLessonTitle!,
+                          duration: currentLessonDuration,
+                          type: currentLessonType!,
+                      }
+                    : null
+            }
+            instructors={course.instructors.map(({ user }) => ({
+                id: user.id,
+                name: user.name,
+                lastName: user.last_name,
+                title: user.title,
+                bio: user.bio,
+                profileImage: user.profile_image,
+                coursesCount: instructorStats.get(user.id)?.courses ?? 0,
+                studentsCount: instructorStats.get(user.id)?.students ?? 0,
+            }))}
+            cohort={cohort.map(({ user }) => ({
+                id: user.id,
+                name: user.name,
+                lastName: user.last_name,
+                profileImage: user.profile_image,
+            }))}
+            modules={modulesView}
+            resources={resources}
+        />
     )
 }

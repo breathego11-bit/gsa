@@ -14,6 +14,12 @@ interface CourseData {
     price?: number | null
     instructor_ids?: string[]
     included_items?: string[] | null
+    tagline?: string | null
+    level?: string | null
+    language?: string | null
+    certificate?: boolean | null
+    rating?: number | null
+    requirements?: string[] | null
 }
 
 interface CourseFormModalProps {
@@ -47,6 +53,13 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
     const [admins, setAdmins] = useState<Array<{ id: string; name: string; last_name: string }>>([])
     const [includedItems, setIncludedItems] = useState<string[]>(initial?.included_items ?? [])
     const [newItem, setNewItem] = useState('')
+    const [tagline, setTagline] = useState<string>(initial?.tagline ?? '')
+    const [level, setLevel] = useState<string>(initial?.level ?? '')
+    const [language, setLanguage] = useState<string>(initial?.language ?? 'Español')
+    const [certificate, setCertificate] = useState<boolean>(initial?.certificate ?? true)
+    const [rating, setRating] = useState<string>(initial?.rating != null ? String(initial.rating) : '')
+    const [requirements, setRequirements] = useState<string[]>(initial?.requirements ?? [])
+    const [newRequirement, setNewRequirement] = useState('')
 
     // Sync state with `initial` when modal opens or course id changes
     // (modal stays mounted between edits — without this, state from the previous course bleeds into the new one)
@@ -58,6 +71,13 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
         setInstructorIds(initial?.instructor_ids ?? [])
         setIncludedItems(initial?.included_items ?? [])
         setNewItem('')
+        setTagline(initial?.tagline ?? '')
+        setLevel(initial?.level ?? '')
+        setLanguage(initial?.language ?? 'Español')
+        setCertificate(initial?.certificate ?? true)
+        setRating(initial?.rating != null ? String(initial.rating) : '')
+        setRequirements(initial?.requirements ?? [])
+        setNewRequirement('')
         setError('')
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialId, open])
@@ -101,6 +121,28 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
         setIncludedItems((prev) => prev.map((it, i) => (i === idx ? value : it)))
     }
 
+    function addRequirement() {
+        const trimmed = newRequirement.trim()
+        if (!trimmed) return
+        setRequirements((prev) => [...prev, trimmed])
+        setNewRequirement('')
+    }
+    function removeRequirement(idx: number) {
+        setRequirements((prev) => prev.filter((_, i) => i !== idx))
+    }
+    function moveRequirement(idx: number, dir: -1 | 1) {
+        setRequirements((prev) => {
+            const next = [...prev]
+            const target = idx + dir
+            if (target < 0 || target >= next.length) return prev
+            ;[next[idx], next[target]] = [next[target], next[idx]]
+            return next
+        })
+    }
+    function updateRequirement(idx: number, value: string) {
+        setRequirements((prev) => prev.map((it, i) => (i === idx ? value : it)))
+    }
+
     const thumbnailRef = useRef<HTMLInputElement>(null)
     const heroRef = useRef<HTMLInputElement>(null)
 
@@ -136,6 +178,7 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
         setLoading(true)
 
         const form = e.currentTarget
+        const ratingNum = rating.trim() === '' ? null : Number(rating)
         const body = {
             title: (form.elements.namedItem('title') as HTMLInputElement).value,
             description: (form.elements.namedItem('description') as HTMLTextAreaElement).value,
@@ -143,6 +186,12 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
             hero_image: heroImageUrl,
             instructor_ids: instructorIds,
             included_items: includedItems.filter((s) => s.trim().length > 0),
+            tagline: tagline.trim() || null,
+            level: level.trim() || null,
+            language: language.trim() || null,
+            certificate,
+            rating: ratingNum != null && !Number.isNaN(ratingNum) ? ratingNum : null,
+            requirements: requirements.filter((s) => s.trim().length > 0),
         }
 
         const url = isEdit ? `/api/courses/${initial!.id}` : '/api/courses'
@@ -294,6 +343,68 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
                     </select>
                 </div>
 
+                {/* Tagline */}
+                <div className="flex flex-col gap-1.5">
+                    <label className="form-label">Tagline (opcional)</label>
+                    <textarea
+                        rows={2}
+                        value={tagline}
+                        onChange={(e) => setTagline(e.target.value)}
+                        placeholder="Subtítulo corto del curso — aparece bajo el título en el detalle."
+                        className="form-input resize-none"
+                    />
+                </div>
+
+                {/* Nivel / Idioma / Certificado */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="form-label">Nivel</label>
+                        <select value={level} onChange={(e) => setLevel(e.target.value)} className="form-input text-sm">
+                            <option value="">—</option>
+                            <option value="Principiante">Principiante</option>
+                            <option value="Intermedio">Intermedio</option>
+                            <option value="Avanzado">Avanzado</option>
+                        </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="form-label">Idioma</label>
+                        <input
+                            type="text"
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value)}
+                            placeholder="Español"
+                            className="form-input text-sm"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="form-label">Certificado</label>
+                        <label className="form-input text-sm flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={certificate}
+                                onChange={(e) => setCertificate(e.target.checked)}
+                                className="w-4 h-4"
+                            />
+                            <span style={{ color: 'var(--text-primary)' }}>Otorgar certificado</span>
+                        </label>
+                    </div>
+                </div>
+
+                {/* Rating */}
+                <div className="flex flex-col gap-1.5">
+                    <label className="form-label">Rating (opcional, 0 – 5)</label>
+                    <input
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={rating}
+                        onChange={(e) => setRating(e.target.value)}
+                        placeholder="4.8"
+                        className="form-input text-sm"
+                    />
+                </div>
+
                 {/* Sección "INCLUYE" del card público */}
                 <div className="flex flex-col gap-1.5">
                     <label className="form-label">Sección &quot;INCLUYE&quot; del card público (opcional)</label>
@@ -374,6 +485,94 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
                             type="button"
                             onClick={addIncludedItem}
                             disabled={!newItem.trim()}
+                            className="px-4 rounded-xl text-sm font-medium disabled:opacity-50"
+                            style={{ background: 'var(--bg-raised)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                        >
+                            + Agregar
+                        </button>
+                    </div>
+                </div>
+
+                {/* Requisitos (curso) */}
+                <div className="flex flex-col gap-1.5">
+                    <label className="form-label">Requisitos del curso (opcional)</label>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Aparece en la pestaña &quot;Acerca del curso&quot; del detalle del estudiante.
+                    </p>
+
+                    {requirements.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                            {requirements.map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)' }}
+                                >
+                                    <span
+                                        className="text-xs font-mono w-6 text-center"
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                        {String(idx + 1).padStart(2, '0')}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={item}
+                                        onChange={(e) => updateRequirement(idx, e.target.value)}
+                                        className="flex-1 bg-transparent border-none outline-none text-sm"
+                                        style={{ color: 'var(--text-primary)' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => moveRequirement(idx, -1)}
+                                        disabled={idx === 0}
+                                        className="w-7 h-7 rounded-lg text-sm disabled:opacity-30"
+                                        style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                                        aria-label="Subir"
+                                    >
+                                        ↑
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => moveRequirement(idx, 1)}
+                                        disabled={idx === requirements.length - 1}
+                                        className="w-7 h-7 rounded-lg text-sm disabled:opacity-30"
+                                        style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                                        aria-label="Bajar"
+                                    >
+                                        ↓
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeRequirement(idx)}
+                                        className="w-7 h-7 rounded-lg text-sm"
+                                        style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
+                                        aria-label="Quitar"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newRequirement}
+                            onChange={(e) => setNewRequirement(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    addRequirement()
+                                }
+                            }}
+                            placeholder="Ej. Haber completado el módulo 0 de fundamentos"
+                            className="form-input text-sm flex-1"
+                        />
+                        <button
+                            type="button"
+                            onClick={addRequirement}
+                            disabled={!newRequirement.trim()}
                             className="px-4 rounded-xl text-sm font-medium disabled:opacity-50"
                             style={{ background: 'var(--bg-raised)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                         >

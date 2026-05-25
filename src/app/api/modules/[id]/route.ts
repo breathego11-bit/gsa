@@ -12,7 +12,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     try {
         const body = await req.json()
-        const module = await prisma.module.update({ where: { id }, data: body })
+        const data: Record<string, any> = {}
+        if (body.title !== undefined) data.title = body.title
+        if (body.order !== undefined) data.order = Number(body.order)
+        if (body.locked !== undefined) data.locked = Boolean(body.locked)
+        const module = await prisma.module.update({ where: { id }, data })
         return NextResponse.json(module)
     } catch {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

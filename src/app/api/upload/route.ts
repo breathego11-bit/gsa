@@ -30,7 +30,7 @@ export const maxDuration = 300 // 5 minutes timeout
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const isAdmin = session.user.role === 'ADMIN'
 
     try {
         const formData = await req.formData()
@@ -48,6 +48,13 @@ export async function POST(req: NextRequest) {
         }
 
         const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type)
+        const isImage = ALLOWED_IMAGE_TYPES.includes(file.type)
+
+        // Non-admins (e.g. closers uploading sale screenshots) may only upload images.
+        if (!isAdmin && !isImage) {
+            return NextResponse.json({ error: 'Solo se permiten imágenes para este tipo de upload.' }, { status: 403 })
+        }
+
         const maxSize = isVideo ? MAX_SIZE_VIDEO : MAX_SIZE_DEFAULT
 
         if (file.size > maxSize) {

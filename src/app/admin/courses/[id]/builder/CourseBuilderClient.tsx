@@ -21,7 +21,7 @@ interface LessonData {
     resources?: LessonResource[] | null
 }
 
-interface ModuleData { id: string; title: string; order: number; lessons: LessonData[] }
+interface ModuleData { id: string; title: string; order: number; locked?: boolean; lessons: LessonData[] }
 
 interface CourseData {
     id: string; title: string; description: string; thumbnail: string | null; hero_image: string | null
@@ -177,6 +177,18 @@ export function CourseBuilderClient({ course: initial }: Props) {
             body: JSON.stringify({ title: newTitle }),
         })
         setModules(prev => prev.map(m => m.id === modId ? { ...m, title: newTitle } : m))
+    }
+
+    const toggleModuleLock = async (modId: string, locked: boolean) => {
+        setModules(prev => prev.map(m => m.id === modId ? { ...m, locked } : m))
+        const res = await fetch(`/api/modules/${modId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locked }),
+        })
+        if (!res.ok) {
+            // Revert on failure
+            setModules(prev => prev.map(m => m.id === modId ? { ...m, locked: !locked } : m))
+        }
     }
 
     // ── Lesson CRUD ──
@@ -368,6 +380,11 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                     {modLessons.length} {modLessons.length === 1 ? 'Lección' : 'Lecciones'}{modDuration > 0 ? ` • ${fmtDuration(modDuration)}` : ''}
                                                 </span>
                                             )}
+                                            <button onClick={() => toggleModuleLock(mod.id, !mod.locked)}
+                                                title={mod.locked ? 'Desbloquear módulo' : 'Bloquear módulo (Próximamente)'}
+                                                className={`p-2 hover:bg-surface-container-high rounded-lg transition-colors ${mod.locked ? 'text-amber-400' : 'text-on-surface-variant'}`}>
+                                                <span className="material-symbols-outlined">{mod.locked ? 'lock' : 'lock_open'}</span>
+                                            </button>
                                             <button onClick={() => addLesson(mod.id)} title="Agregar lección"
                                                 className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors">
                                                 <span className="material-symbols-outlined">add_circle</span>
