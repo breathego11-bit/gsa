@@ -25,6 +25,7 @@ import {
     ArrowRight,
 } from 'lucide-react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import { BunnyVideoPreview } from '@/components/admin/BunnyVideoPreview'
 import type { CourseEnrollmentProgress } from '@/types'
 
 interface StudentInfo {
@@ -39,6 +40,9 @@ interface StudentInfo {
     payment_status: string
     blocked: boolean
     closer_enabled: boolean
+    welcome_video_bunny_id: string | null
+    welcome_video_status: string | null
+    welcome_video_uploaded_at: string | null
 }
 
 interface StatsDTO {
@@ -691,6 +695,45 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                         </button>
                     </section>
                 </aside>
+            </div>
+
+            {/* Sección Video de bienvenida */}
+            <div>
+                <h2 className="section-title mb-1">Video de bienvenida</h2>
+                <p className="section-subtitle mb-5">
+                    {student.welcome_video_bunny_id
+                        ? 'Video personal grabado por el estudiante en el onboarding.'
+                        : 'El estudiante aún no ha subido su video de bienvenida.'}
+                </p>
+                <div
+                    className="p-5 rounded-2xl"
+                    style={{
+                        background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                        border: '1px solid rgba(129,140,248,0.14)',
+                    }}
+                >
+                    {student.welcome_video_bunny_id ? (
+                        <div className="space-y-3">
+                            <BunnyVideoPreview
+                                videoId={student.welcome_video_bunny_id}
+                                status={student.welcome_video_status ?? 'ready'}
+                                thumbnail={null}
+                            />
+                            {student.welcome_video_uploaded_at && (
+                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                    Subido el {formatDate(student.welcome_video_uploaded_at, true)}
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3 px-4 py-6 rounded-xl" style={{ background: 'rgba(56,189,248,0.05)', border: '1px dashed rgba(56,189,248,0.25)' }}>
+                            <MaterialIcon name="videocam_off" size="text-xl" className="text-on-surface-variant" />
+                            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                El estudiante recibirá un recordatorio en su dashboard hasta que lo suba.
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Sección Pagos (existente, preservada) */}

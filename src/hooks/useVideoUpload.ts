@@ -14,7 +14,13 @@ type TusCredentialsResponse = {
     thumbnail_url: string
 }
 
-export function useVideoUpload() {
+export interface UseVideoUploadOptions {
+    /** Endpoint that returns TUS credentials. Defaults to the admin/lesson endpoint. */
+    credentialsEndpoint?: string
+}
+
+export function useVideoUpload(options: UseVideoUploadOptions = {}) {
+    const credentialsEndpoint = options.credentialsEndpoint ?? '/api/upload-video'
     const [progress, setProgress] = useState(0)
     const [status, setStatus] = useState<VideoUploadStatus>('idle')
     const [error, setError] = useState<string | null>(null)
@@ -69,7 +75,7 @@ export function useVideoUpload() {
         setDurationMin(null)
 
         try {
-            const res = await fetch('/api/upload-video', {
+            const res = await fetch(credentialsEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title }),
@@ -114,7 +120,7 @@ export function useVideoUpload() {
             setStatus('failed')
             setError(err instanceof Error ? err.message : 'Error desconocido')
         }
-    }, [pollBunnyStatus])
+    }, [pollBunnyStatus, credentialsEndpoint])
 
     const cancel = useCallback(() => {
         uploadRef.current?.abort().catch(() => {})

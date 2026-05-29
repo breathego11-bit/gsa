@@ -307,7 +307,7 @@ export function SaleDetailClient({ sale: initialSale, backHref = '/dashboard/sal
                                         color: '#7a8094',
                                     }}
                                 >
-                                    MONTO TOTAL
+                                    Facturación
                                 </div>
                                 <div
                                     className="text-[28px] font-semibold"
@@ -349,7 +349,7 @@ export function SaleDetailClient({ sale: initialSale, backHref = '/dashboard/sal
                                         color: '#7a8094',
                                     }}
                                 >
-                                    COBRADO
+                                    Cash collector
                                 </div>
                                 <div
                                     className="text-base font-semibold"

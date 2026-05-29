@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import type { CSSProperties } from 'react'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { NextStepsSection } from '@/components/onboarding/NextStepsSection'
 import { completeOnboarding } from './actions'
 
 export default async function OnboardingPage() {
@@ -12,7 +13,13 @@ export default async function OnboardingPage() {
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { name: true, last_name: true, onboarded_at: true, created_at: true },
+        select: {
+            name: true,
+            last_name: true,
+            onboarded_at: true,
+            created_at: true,
+            welcome_video_uploaded_at: true,
+        },
     })
     if (!user) redirect('/api/auth/clear-session')
     if (user.onboarded_at) redirect('/dashboard')
@@ -49,12 +56,6 @@ export default async function OnboardingPage() {
         { id: 2, label: 'Mira el video de bienvenida', sub: '4 min · esencial para empezar bien', done: false, icon: 'play' as const, active: true },
         { id: 3, label: 'Completa tu perfil', sub: 'Para personalizar tu experiencia', done: false, icon: 'user' as const },
         { id: 4, label: 'Únete a la comunidad', sub: '+1,800 closers activos', done: false, icon: 'message' as const },
-    ]
-
-    const nextSteps = [
-        { kicker: 'SEMANA 01', title: 'Fundamentos del closer consciente', sub: '6 lecciones · 3h totales', icon: 'compass' as const, tint: '#38bdf8' },
-        { kicker: 'SESIÓN EN VIVO', title: 'Onboarding grupal con Iván', sub: 'Próximo: Jueves 14 May · 18:00', icon: 'video' as const, tint: '#818cf8' },
-        { kicker: 'COMUNIDAD', title: 'Canal #bienvenidos', sub: 'Preséntate y conoce a tu cohorte', icon: 'users' as const, tint: '#3b82f6' },
     ]
 
     return (
@@ -160,30 +161,7 @@ export default async function OnboardingPage() {
                             </div>
                         </section>
 
-                        <section style={ob.nextSection}>
-                            <div style={ob.nextHead}>
-                                <div>
-                                    <div style={ob.nextKicker}>QUÉ TE ESPERA</div>
-                                    <h2 style={ob.nextTitle}>Tu camino en los próximos 7 días</h2>
-                                </div>
-                                <span style={ob.nextHint}>
-                                    <Icon name="route" size={12} />
-                                    <span>Acceso disponible al entrar al dashboard</span>
-                                </span>
-                            </div>
-                            <div style={ob.nextGrid}>
-                                {nextSteps.map((s, i) => (
-                                    <article key={i} style={ob.nextCard}>
-                                        <div style={{ ...ob.nextIcon, color: s.tint, borderColor: s.tint + '50', background: s.tint + '14' }}>
-                                            <Icon name={s.icon} size={16} />
-                                        </div>
-                                        <div style={ob.nextKickerSm}>{s.kicker}</div>
-                                        <div style={ob.nextCardTitle}>{s.title}</div>
-                                        <div style={ob.nextCardSub}>{s.sub}</div>
-                                    </article>
-                                ))}
-                            </div>
-                        </section>
+                        <NextStepsSection welcomeVideoUploaded={!!user.welcome_video_uploaded_at} />
                     </div>
 
                     <aside style={ob.right}>

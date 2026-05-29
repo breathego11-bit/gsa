@@ -28,6 +28,13 @@ export function TierScaleBar({ tiers, cashCollected, commission, activeTierIdx }
     const [hovered, setHovered] = useState<number | null>(null)
     if (tiers.length === 0) return null
 
+    const motivationalMessage = (() => {
+        if (tiers.length <= 1) return 'Tu progreso este mes'
+        if (activeTierIdx >= tiers.length - 1) return '¡Este mes la estás rompiendo, vamos con toda!'
+        if (activeTierIdx <= 0) return 'El mes apenas comienza, ¡vamos por más!'
+        return 'Estás haciendo un buen trabajo, ¡sigue así!'
+    })()
+
     // compute "max" for the bar — top of last tier or 1.5× last threshold if open-ended
     const lastTier = tiers[tiers.length - 1]
     const max = lastTier.min_amount > 0 ? lastTier.min_amount * 2 : 8000000
@@ -56,7 +63,7 @@ export function TierScaleBar({ tiers, cashCollected, commission, activeTierIdx }
                         ESCALA DE COMISIÓN
                     </div>
                     <h2 className="text-lg font-semibold m-0" style={{ color: '#dee2f2', letterSpacing: -0.5 }}>
-                        Tu progreso a través de los tiers
+                        {motivationalMessage}
                     </h2>
                 </div>
                 <div className="flex items-stretch gap-3.5">

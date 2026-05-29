@@ -27,6 +27,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 payment_status: true,
                 blocked: true,
                 closer_enabled: true,
+                welcome_video_bunny_id: true,
+                welcome_video_status: true,
+                welcome_video_uploaded_at: true,
             },
         }),
         prisma.enrollment.findMany({
@@ -222,6 +225,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 payment_status: student.payment_status,
                 blocked: student.blocked,
                 closer_enabled: student.closer_enabled,
+                welcome_video_bunny_id: student.welcome_video_bunny_id,
+                welcome_video_status: student.welcome_video_status,
+                welcome_video_uploaded_at: student.welcome_video_uploaded_at?.toISOString() ?? null,
             }}
             stats={{
                 programName,

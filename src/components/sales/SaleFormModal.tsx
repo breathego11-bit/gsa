@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Upload, Trash2 } from 'lucide-react'
+import { Upload, Trash2, Check, AlertTriangle } from 'lucide-react'
+import { PhoneInputWithPrefix } from './PhoneInputWithPrefix'
 import type { SaleDTO } from '@/lib/sales'
 
 interface Props {
@@ -33,6 +34,10 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
     const [installmentCount, setInstallmentCount] = useState('2')
     const [firstInstallmentEur, setFirstInstallmentEur] = useState('')
     const [restInstallmentEur, setRestInstallmentEur] = useState('')
+    // Track whether the user has manually overridden each installment amount.
+    // While "manual" is false, the value is auto-filled from total+count.
+    const [firstIsManual, setFirstIsManual] = useState(false)
+    const [restIsManual, setRestIsManual] = useState(false)
 
     // Date
     const today = new Date().toISOString().slice(0, 10)
@@ -54,6 +59,8 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
         setInstallmentCount('2')
         setFirstInstallmentEur('')
         setRestInstallmentEur('')
+        setFirstIsManual(false)
+        setRestIsManual(false)
         setSaleDate(today)
         setScreenshotUrl(null)
         setError(null)
@@ -121,6 +128,14 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
                 setError('Montos de cuotas inválidos')
                 return
             }
+            const sumCents = firstCents + restCents * (count - 1)
+            if (sumCents !== totalCents) {
+                const fmtEur = (c: number) => `€${(c / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                const diff = totalCents - sumCents
+                const verb = diff > 0 ? 'faltan' : 'sobran'
+                setError(`La suma de las cuotas (${fmtEur(sumCents)}) no coincide con el total (${fmtEur(totalCents)}): ${verb} ${fmtEur(Math.abs(diff))}.`)
+                return
+            }
             body.installment_count = count
             body.first_installment_amount = firstCents
             body.rest_installment_amount = restCents
@@ -148,15 +163,72 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
         }
     }
 
-    // Auto-summary for installments
-    let installmentSummary: string | null = null
-    if (paymentType === 'INSTALLMENTS') {
-        const count = parseInt(installmentCount, 10) || 0
-        const first = parseFloat(firstInstallmentEur || '0') || 0
-        const rest = parseFloat(restInstallmentEur || '0') || 0
-        if (count >= 2 && first > 0 && rest > 0) {
-            const sum = first + rest * (count - 1)
-            installmentSummary = `Total: 1×€${first.toLocaleString('es-ES')} + ${count - 1}×€${rest.toLocaleString('es-ES')} = €${sum.toLocaleString('es-ES')}`
+    // ── Installments: derived values, auto-fill, and validation ──
+    const totalCentsCurrent = Math.round(parseFloat(totalAmountEur || '0') * 100)
+    const countCurrent = parseInt(installmentCount, 10) || 0
+    const firstCentsCurrent = Math.round(parseFloat(firstInstallmentEur || '0') * 100)
+    const restCentsCurrent = Math.round(parseFloat(restInstallmentEur || '0') * 100)
+    const installmentsValid = paymentType === 'INSTALLMENTS' && totalCentsCurrent > 0 && countCurrent >= 2
+
+    // Auto-fill rules:
+    //   - both auto: split evenly, first absorbs the rounding remainder so sum = total exactly.
+    //   - first manual, rest auto: rest = floor((total - first) / (count - 1))
+    //   - rest manual, first auto: first = total - rest * (count - 1)
+    //   - both manual: leave as-is; banner will flag mismatch.
+    useEffect(() => {
+        if (!installmentsValid) return
+
+        const writeIfDifferent = (current: string, nextCents: number, setter: (v: string) => void) => {
+            if (nextCents <= 0) return
+            const next = (nextCents / 100).toFixed(2)
+            if (next !== current) setter(next)
+        }
+
+        if (!firstIsManual && !restIsManual) {
+            const rest = Math.floor(totalCentsCurrent / countCurrent)
+            const first = totalCentsCurrent - rest * (countCurrent - 1)
+            writeIfDifferent(firstInstallmentEur, first, setFirstInstallmentEur)
+            writeIfDifferent(restInstallmentEur, rest, setRestInstallmentEur)
+        } else if (firstIsManual && !restIsManual) {
+            if (firstCentsCurrent > 0 && firstCentsCurrent < totalCentsCurrent) {
+                const rest = Math.floor((totalCentsCurrent - firstCentsCurrent) / (countCurrent - 1))
+                writeIfDifferent(restInstallmentEur, rest, setRestInstallmentEur)
+            }
+        } else if (!firstIsManual && restIsManual) {
+            if (restCentsCurrent > 0) {
+                const first = totalCentsCurrent - restCentsCurrent * (countCurrent - 1)
+                writeIfDifferent(firstInstallmentEur, first, setFirstInstallmentEur)
+            }
+        }
+    }, [
+        installmentsValid,
+        totalCentsCurrent,
+        countCurrent,
+        firstIsManual,
+        restIsManual,
+        firstCentsCurrent,
+        restCentsCurrent,
+        firstInstallmentEur,
+        restInstallmentEur,
+    ])
+
+    // Banner: ok if sum matches, warning if mismatch
+    let installmentBanner: { ok: boolean; text: string } | null = null
+    if (installmentsValid && firstCentsCurrent > 0 && restCentsCurrent > 0) {
+        const sumCents = firstCentsCurrent + restCentsCurrent * (countCurrent - 1)
+        const fmtEur = (cents: number) => `€${(cents / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        if (sumCents === totalCentsCurrent) {
+            installmentBanner = {
+                ok: true,
+                text: `1 × ${fmtEur(firstCentsCurrent)} + ${countCurrent - 1} × ${fmtEur(restCentsCurrent)} = ${fmtEur(sumCents)}`,
+            }
+        } else {
+            const diff = totalCentsCurrent - sumCents
+            const verb = diff > 0 ? 'faltan' : 'sobran'
+            installmentBanner = {
+                ok: false,
+                text: `Suma ${fmtEur(sumCents)} ≠ total ${fmtEur(totalCentsCurrent)} · ${verb} ${fmtEur(Math.abs(diff))}`,
+            }
         }
     }
 
@@ -176,7 +248,7 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
                             <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                         </Field>
                         <Field label="Teléfono" required>
-                            <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                            <PhoneInputWithPrefix value={phone} onChange={setPhone} required />
                         </Field>
                     </div>
                 </Section>
@@ -198,7 +270,17 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
                     </Field>
                     <Field label="Tipo de pago" required>
                         <div className="flex gap-2">
-                            <PaymentToggle active={paymentType === 'SINGLE'} onClick={() => setPaymentType('SINGLE')}>
+                            <PaymentToggle
+                                active={paymentType === 'SINGLE'}
+                                onClick={() => {
+                                    setPaymentType('SINGLE')
+                                    // Reset installment state so the next switch back starts fresh
+                                    setFirstInstallmentEur('')
+                                    setRestInstallmentEur('')
+                                    setFirstIsManual(false)
+                                    setRestIsManual(false)
+                                }}
+                            >
                                 Pago único
                             </PaymentToggle>
                             <PaymentToggle active={paymentType === 'INSTALLMENTS'} onClick={() => setPaymentType('INSTALLMENTS')}>
@@ -213,15 +295,74 @@ export function SaleFormModal({ open, onClose, onCreated }: Props) {
                                 <input className="form-input" type="number" min="2" value={installmentCount} onChange={(e) => setInstallmentCount(e.target.value)} required />
                             </Field>
                             <Field label="1ª cuota (€)" required>
-                                <input className="form-input" type="number" step="0.01" min="0" value={firstInstallmentEur} onChange={(e) => setFirstInstallmentEur(e.target.value)} required />
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={firstInstallmentEur}
+                                    onChange={(e) => {
+                                        const v = e.target.value
+                                        setFirstInstallmentEur(v)
+                                        setFirstIsManual(v.trim() !== '')
+                                    }}
+                                    required
+                                />
                             </Field>
                             <Field label="Cuotas restantes c/u (€)" required>
-                                <input className="form-input" type="number" step="0.01" min="0" value={restInstallmentEur} onChange={(e) => setRestInstallmentEur(e.target.value)} required />
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={restInstallmentEur}
+                                    onChange={(e) => {
+                                        const v = e.target.value
+                                        setRestInstallmentEur(v)
+                                        setRestIsManual(v.trim() !== '')
+                                    }}
+                                    required
+                                />
                             </Field>
-                            {installmentSummary && (
-                                <p className="sm:col-span-3 text-xs" style={{ color: '#9ca3b8' }}>
-                                    {installmentSummary}
-                                </p>
+                            {installmentBanner && (
+                                <div
+                                    className="sm:col-span-3 flex items-start gap-2 px-3 py-2 rounded-lg text-xs"
+                                    style={
+                                        installmentBanner.ok
+                                            ? {
+                                                  background: 'rgba(16,185,129,0.08)',
+                                                  border: '1px solid rgba(16,185,129,0.28)',
+                                                  color: '#34d399',
+                                              }
+                                            : {
+                                                  background: 'rgba(245,158,11,0.08)',
+                                                  border: '1px solid rgba(245,158,11,0.30)',
+                                                  color: '#fbbf24',
+                                              }
+                                    }
+                                >
+                                    {installmentBanner.ok ? (
+                                        <Check size={14} className="shrink-0 mt-px" />
+                                    ) : (
+                                        <AlertTriangle size={14} className="shrink-0 mt-px" />
+                                    )}
+                                    <span>{installmentBanner.text}</span>
+                                </div>
+                            )}
+                            {(firstIsManual || restIsManual) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFirstIsManual(false)
+                                        setRestIsManual(false)
+                                        setFirstInstallmentEur('')
+                                        setRestInstallmentEur('')
+                                    }}
+                                    className="sm:col-span-3 self-start text-[11px] underline"
+                                    style={{ color: '#9ca3b8' }}
+                                >
+                                    Restaurar sugerencia automática (división equitativa)
+                                </button>
                             )}
                         </div>
                     )}

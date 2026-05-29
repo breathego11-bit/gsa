@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { InstallmentBanner } from '@/components/payment/InstallmentBanner'
+import { WelcomeVideoBanner } from '@/components/dashboard/WelcomeVideoBanner'
 import {
     CourseCardRedesigned,
     type CourseCardData,
@@ -134,6 +135,16 @@ export default async function DashboardPage() {
         orderBy: { installment_number: 'asc' },
     })
 
+    // Welcome video reminder: show if not uploaded and snooze (if any) has expired.
+    const me = await prisma.user.findUnique({
+        where: { id: session!.user.id },
+        select: { welcome_video_bunny_id: true, welcome_video_snoozed_until: true, onboarded_at: true },
+    })
+    const showWelcomeVideoBanner =
+        !!me?.onboarded_at &&
+        !me?.welcome_video_bunny_id &&
+        (!me?.welcome_video_snoozed_until || me.welcome_video_snoozed_until <= new Date())
+
     return (
         <div className="space-y-12">
             {/* ── Installment Due Banner ─────────────────── */}
@@ -147,6 +158,9 @@ export default async function DashboardPage() {
                     }))}
                 />
             )}
+
+            {/* ── Welcome Video Reminder ─────────────────── */}
+            {showWelcomeVideoBanner && <WelcomeVideoBanner />}
 
             {/* ── Hero Bento Grid ─────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

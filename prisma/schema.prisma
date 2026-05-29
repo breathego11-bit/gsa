@@ -46,6 +46,12 @@ model User {
   closer_enabled     Boolean   @default(false)
   onboarded_at       DateTime?
 
+  // Welcome video (1-min self-intro). Optional during onboarding; reminded persistently after.
+  welcome_video_bunny_id        String?
+  welcome_video_status          String?   // 'processing' | 'ready' | 'failed'
+  welcome_video_uploaded_at     DateTime?
+  welcome_video_snoozed_until   DateTime?
+
   enrollments        Enrollment[]
   progress           LessonProgress[]
   notes              LessonNote[]

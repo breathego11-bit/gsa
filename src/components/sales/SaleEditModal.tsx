@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Upload, Info } from 'lucide-react'
+import { PhoneInputWithPrefix } from './PhoneInputWithPrefix'
 import type { SaleDTO } from '@/lib/sales'
 
 interface Props {
@@ -135,7 +136,7 @@ export function SaleEditModal({ open, onClose, sale, onUpdated }: Props) {
                             <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                         </Field>
                         <Field label="Teléfono" required>
-                            <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                            <PhoneInputWithPrefix value={phone} onChange={setPhone} required />
                         </Field>
                     </div>
                 </Section>
