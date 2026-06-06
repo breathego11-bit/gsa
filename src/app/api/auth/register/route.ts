@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { sendEmail } from "@/lib/email";
+import { WelcomeEmail } from "@/emails/WelcomeEmail";
 
 export async function POST(req: Request) {
     try {
@@ -91,6 +93,19 @@ export async function POST(req: Request) {
                 data: { used: true, used_by: user.id, used_at: new Date() },
             });
         }
+
+        // Fire-and-forget welcome email. Failure logs but doesn't block account creation.
+        const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo_dark.png`;
+        await sendEmail({
+            to: user.email,
+            subject: 'Bienvenido a Growth Sales Academy',
+            react: WelcomeEmail({
+                firstName: user.name,
+                dashboardUrl: `${appUrl}/dashboard`,
+                logoUrl,
+            }),
+        });
 
         return NextResponse.json({ message: "Account created" }, { status: 201 });
     } catch (error) {

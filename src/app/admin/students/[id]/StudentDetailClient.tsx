@@ -294,7 +294,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
             <header
                 className="flex items-start justify-between gap-5 flex-wrap p-5 rounded-2xl"
                 style={{
-                    background: 'linear-gradient(180deg, rgba(27,31,43,0.55), rgba(14,19,30,0.55))',
+                    background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                     border: '1px solid rgba(129,140,248,0.14)',
                 }}
             >
@@ -325,11 +325,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                                 color: '#fbbf24',
                             }}
                         >
-                            <span
-                                className="w-1.5 h-1.5 rounded-full"
-                                style={{ background: '#fbbf24', boxShadow: '0 0 8px #fbbf24' }}
-                            />
-                            <span>ESTUDIANTE · @{student.username}</span>
+                            
                         </div>
                         <h1
                             className="text-3xl font-semibold m-0 mb-2 inline-flex items-center gap-2.5 flex-wrap"
@@ -437,7 +433,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                     <section
                         className="p-5 rounded-2xl"
                         style={{
-                            background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                            background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                             border: '1px solid rgba(129,140,248,0.14)',
                         }}
                     >
@@ -488,7 +484,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                     <section
                         className="p-5 rounded-2xl"
                         style={{
-                            background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                            background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                             border: '1px solid rgba(129,140,248,0.14)',
                         }}
                     >
@@ -637,7 +633,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                     <section
                         className="p-5 rounded-2xl"
                         style={{
-                            background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                            background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                             border: '1px solid rgba(129,140,248,0.14)',
                         }}
                     >
@@ -660,7 +656,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                     <section
                         className="p-5 rounded-2xl"
                         style={{
-                            background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                            background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                             border: '1px solid rgba(129,140,248,0.14)',
                         }}
                     >
@@ -708,7 +704,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                 <div
                     className="p-5 rounded-2xl"
                     style={{
-                        background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                        background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                         border: '1px solid rgba(129,140,248,0.14)',
                     }}
                 >
@@ -744,7 +740,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                 <div
                     className="p-5 rounded-2xl"
                     style={{
-                        background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                        background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                         border: '1px solid rgba(129,140,248,0.14)',
                     }}
                 >
@@ -840,7 +836,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                 <div
                     className="p-5 rounded-2xl"
                     style={{
-                        background: 'linear-gradient(180deg, rgba(27,31,43,0.5), rgba(14,19,30,0.5))',
+                        background: 'linear-gradient(180deg, rgb(27,31,43), rgb(14,19,30))',
                         border: '1px solid rgba(129,140,248,0.14)',
                     }}
                 >

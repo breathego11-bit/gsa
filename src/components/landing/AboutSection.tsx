@@ -14,16 +14,9 @@ const SLIDES: Slide[] = [
     {
         key: 'ivan',
         title: 'IVÁN ABAD',
-        role: 'Cofundador · Visión y liderazgo comercial',
+        role: 'Fundador · Visión y liderazgo comercial',
         image: '/ivan.PNG',
         alt: 'Retrato de Iván Abad',
-    },
-    {
-        key: 'pau',
-        title: 'PAU OLMOS',
-        role: 'Cofundador · De alumno a socio',
-        image: '/pau.png',
-        alt: 'Retrato de Pau Olmos',
     },
 ]
 
@@ -141,10 +134,8 @@ export function AboutSection() {
                         <p style={paraStyle}>
                             <strong style={strongStyle}>Iván</strong> aporta la visión, la
                             experiencia, el liderazgo comercial y más de 7 años dedicados al mundo
-                            de las ventas. <strong style={strongStyle}>Pau</strong> representa una
-                            parte muy especial de esta historia: empezó como alumno, creció dentro
-                            del proceso, demostró su nivel y hoy construye esta academia mano a
-                            mano como socio. Eso resume perfectamente lo que creemos: que{' '}
+                            de las ventas. Detrás de cada decisión de Growth Sales Academy hay una
+                            convicción muy clara: que{' '}
                             <em style={emStyle}>
                                 cuando alguien recibe la guía correcta y se compromete de verdad,
                                 puede evolucionar hasta convertirse en referente.
@@ -249,15 +240,16 @@ function FoundersCarousel() {
     const [i, setI] = useState(0)
     const [dir, setDir] = useState<1 | -1>(1)
     const [paused, setPaused] = useState(false)
+    const hasMultiple = SLIDES.length > 1
 
     useEffect(() => {
-        if (paused) return
+        if (paused || !hasMultiple) return
         const t = setInterval(() => {
             setDir(1)
             setI((p) => (p + 1) % SLIDES.length)
         }, AUTO_MS)
         return () => clearInterval(t)
-    }, [paused])
+    }, [paused, hasMultiple])
 
     const go = (d: 1 | -1) => {
         setDir(d)
@@ -318,87 +310,93 @@ function FoundersCarousel() {
                 </div>
             ))}
 
-            {/* Top: counter */}
-            <div
-                className="absolute top-3.5 left-3.5 right-3.5 z-[4] flex justify-between items-center pointer-events-none"
-            >
+            {/* Top: counter (solo si hay múltiples) */}
+            {hasMultiple && (
                 <div
-                    className="inline-flex items-baseline gap-[3px] backdrop-blur-md"
-                    style={{
-                        padding: '5px 11px',
-                        borderRadius: 999,
-                        background: 'rgba(8,13,24,0.7)',
-                        border: '1px solid rgba(129,140,248,0.22)',
-                        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-                        fontSize: 10,
-                        letterSpacing: 1,
-                        fontWeight: 600,
-                    }}
+                    className="absolute top-3.5 left-3.5 right-3.5 z-[4] flex justify-between items-center pointer-events-none"
                 >
-                    <span style={{ color: '#38bdf8' }}>{String(i + 1).padStart(2, '0')}</span>
-                    <span style={{ color: '#c4c5d5', opacity: 0.5 }}>/</span>
-                    <span style={{ color: '#c4c5d5' }}>{String(SLIDES.length).padStart(2, '0')}</span>
+                    <div
+                        className="inline-flex items-baseline gap-[3px] backdrop-blur-md"
+                        style={{
+                            padding: '5px 11px',
+                            borderRadius: 999,
+                            background: 'rgba(8,13,24,0.7)',
+                            border: '1px solid rgba(129,140,248,0.22)',
+                            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                            fontSize: 10,
+                            letterSpacing: 1,
+                            fontWeight: 600,
+                        }}
+                    >
+                        <span style={{ color: '#38bdf8' }}>{String(i + 1).padStart(2, '0')}</span>
+                        <span style={{ color: '#c4c5d5', opacity: 0.5 }}>/</span>
+                        <span style={{ color: '#c4c5d5' }}>{String(SLIDES.length).padStart(2, '0')}</span>
+                    </div>
+                    <div
+                        className="backdrop-blur-md"
+                        style={{
+                            padding: '4px 10px',
+                            borderRadius: 999,
+                            background: 'rgba(8,13,24,0.6)',
+                            border: '1px solid rgba(129,140,248,0.22)',
+                            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                            fontSize: 9.5,
+                            letterSpacing: 1.2,
+                            color: '#c4c5d5',
+                        }}
+                    >
+                        ● fundadores
+                    </div>
                 </div>
-                <div
-                    className="backdrop-blur-md"
-                    style={{
-                        padding: '4px 10px',
-                        borderRadius: 999,
-                        background: 'rgba(8,13,24,0.6)',
-                        border: '1px solid rgba(129,140,248,0.22)',
-                        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-                        fontSize: 9.5,
-                        letterSpacing: 1.2,
-                        color: '#c4c5d5',
-                    }}
-                >
-                    ● fundadores
-                </div>
-            </div>
+            )}
 
-            {/* Arrows */}
-            <button
-                aria-label="Foto anterior"
-                onClick={() => go(-1)}
-                className="absolute top-1/2 z-[5] flex items-center justify-center cursor-pointer backdrop-blur-md transition-all hover:scale-105"
-                style={{
-                    left: 14,
-                    transform: 'translateY(-50%)',
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: 'rgba(8,13,24,0.55)',
-                    border: '1px solid rgba(222,226,242,0.25)',
-                    color: '#dee2f2',
-                    padding: 0,
-                    boxShadow: '0 6px 20px rgba(8,13,24,0.4)',
-                }}
-            >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 3L4.5 7 9 11" />
-                </svg>
-            </button>
-            <button
-                aria-label="Foto siguiente"
-                onClick={() => go(1)}
-                className="absolute top-1/2 z-[5] flex items-center justify-center cursor-pointer backdrop-blur-md transition-all hover:scale-105"
-                style={{
-                    right: 14,
-                    transform: 'translateY(-50%)',
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: 'rgba(8,13,24,0.55)',
-                    border: '1px solid rgba(222,226,242,0.25)',
-                    color: '#dee2f2',
-                    padding: 0,
-                    boxShadow: '0 6px 20px rgba(8,13,24,0.4)',
-                }}
-            >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 3l4.5 4L5 11" />
-                </svg>
-            </button>
+            {/* Arrows (solo si hay múltiples) */}
+            {hasMultiple && (
+                <>
+                    <button
+                        aria-label="Foto anterior"
+                        onClick={() => go(-1)}
+                        className="absolute top-1/2 z-[5] flex items-center justify-center cursor-pointer backdrop-blur-md transition-all hover:scale-105"
+                        style={{
+                            left: 14,
+                            transform: 'translateY(-50%)',
+                            width: 36,
+                            height: 36,
+                            borderRadius: '50%',
+                            background: 'rgba(8,13,24,0.55)',
+                            border: '1px solid rgba(222,226,242,0.25)',
+                            color: '#dee2f2',
+                            padding: 0,
+                            boxShadow: '0 6px 20px rgba(8,13,24,0.4)',
+                        }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 3L4.5 7 9 11" />
+                        </svg>
+                    </button>
+                    <button
+                        aria-label="Foto siguiente"
+                        onClick={() => go(1)}
+                        className="absolute top-1/2 z-[5] flex items-center justify-center cursor-pointer backdrop-blur-md transition-all hover:scale-105"
+                        style={{
+                            right: 14,
+                            transform: 'translateY(-50%)',
+                            width: 36,
+                            height: 36,
+                            borderRadius: '50%',
+                            background: 'rgba(8,13,24,0.55)',
+                            border: '1px solid rgba(222,226,242,0.25)',
+                            color: '#dee2f2',
+                            padding: 0,
+                            boxShadow: '0 6px 20px rgba(8,13,24,0.4)',
+                        }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 3l4.5 4L5 11" />
+                        </svg>
+                    </button>
+                </>
+            )}
 
             {/* Bottom caption + dots */}
             <div className="absolute bottom-3.5 left-3.5 right-3.5 z-[4] flex justify-between items-end gap-3">
@@ -440,58 +438,62 @@ function FoundersCarousel() {
                         {SLIDES[i].role}
                     </div>
                 </div>
-                <div
-                    className="flex items-center gap-1.5 backdrop-blur-md"
-                    style={{
-                        padding: '8px 10px',
-                        borderRadius: 999,
-                        background: 'rgba(8,13,24,0.55)',
-                        border: '1px solid rgba(129,140,248,0.22)',
-                    }}
-                >
-                    {SLIDES.map((s, idx) => {
-                        const isActive = idx === i
-                        return (
-                            <button
-                                key={s.key}
-                                aria-label={`Ir a foto ${idx + 1}`}
-                                onClick={() => {
-                                    setDir(idx > i ? 1 : -1)
-                                    setI(idx)
-                                }}
-                                className="border-0 p-0 cursor-pointer transition-all"
-                                style={{
-                                    height: 6,
-                                    width: isActive ? 20 : 6,
-                                    borderRadius: 4,
-                                    background: isActive
-                                        ? 'linear-gradient(90deg, #38bdf8, #818cf8)'
-                                        : 'rgba(222,226,242,0.3)',
-                                    boxShadow: isActive ? '0 0 8px rgba(56,189,248,0.6)' : 'none',
-                                }}
-                            />
-                        )
-                    })}
-                </div>
+                {hasMultiple && (
+                    <div
+                        className="flex items-center gap-1.5 backdrop-blur-md"
+                        style={{
+                            padding: '8px 10px',
+                            borderRadius: 999,
+                            background: 'rgba(8,13,24,0.55)',
+                            border: '1px solid rgba(129,140,248,0.22)',
+                        }}
+                    >
+                        {SLIDES.map((s, idx) => {
+                            const isActive = idx === i
+                            return (
+                                <button
+                                    key={s.key}
+                                    aria-label={`Ir a foto ${idx + 1}`}
+                                    onClick={() => {
+                                        setDir(idx > i ? 1 : -1)
+                                        setI(idx)
+                                    }}
+                                    className="border-0 p-0 cursor-pointer transition-all"
+                                    style={{
+                                        height: 6,
+                                        width: isActive ? 20 : 6,
+                                        borderRadius: 4,
+                                        background: isActive
+                                            ? 'linear-gradient(90deg, #38bdf8, #818cf8)'
+                                            : 'rgba(222,226,242,0.3)',
+                                        boxShadow: isActive ? '0 0 8px rgba(56,189,248,0.6)' : 'none',
+                                    }}
+                                />
+                            )
+                        })}
+                    </div>
+                )}
             </div>
 
-            {/* Progress bar */}
-            <div
-                aria-hidden
-                className="absolute bottom-0 left-0 right-0 z-[3] pointer-events-none"
-                style={{ height: 2, background: 'rgba(222,226,242,0.08)' }}
-            >
+            {/* Progress bar (solo si hay múltiples) */}
+            {hasMultiple && (
                 <div
-                    key={`${i}-${paused ? 'p' : 'r'}`}
-                    style={{
-                        height: '100%',
-                        width: 0,
-                        background: 'linear-gradient(90deg, #38bdf8, #818cf8)',
-                        boxShadow: '0 0 10px #38bdf8',
-                        animation: paused ? 'none' : `somosProgress ${AUTO_MS}ms linear forwards`,
-                    }}
-                />
-            </div>
+                    aria-hidden
+                    className="absolute bottom-0 left-0 right-0 z-[3] pointer-events-none"
+                    style={{ height: 2, background: 'rgba(222,226,242,0.08)' }}
+                >
+                    <div
+                        key={`${i}-${paused ? 'p' : 'r'}`}
+                        style={{
+                            height: '100%',
+                            width: 0,
+                            background: 'linear-gradient(90deg, #38bdf8, #818cf8)',
+                            boxShadow: '0 0 10px #38bdf8',
+                            animation: paused ? 'none' : `somosProgress ${AUTO_MS}ms linear forwards`,
+                        }}
+                    />
+                </div>
+            )}
         </div>
     )
 }

@@ -53,6 +53,10 @@ services:
       - BUNNY_LIBRARY_API_KEY=${BUNNY_LIBRARY_API_KEY}
       - BUNNY_CDN_HOSTNAME=${BUNNY_CDN_HOSTNAME}
       - NEXT_PUBLIC_BUNNY_LIBRARY_ID=${BUNNY_LIBRARY_ID}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
+      - CRON_SECRET=${CRON_SECRET}
     depends_on:
       db:
         condition: service_healthy

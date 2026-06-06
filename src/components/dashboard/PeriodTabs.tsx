@@ -20,7 +20,7 @@ export function PeriodTabs({ active, basePath = '/admin' }: Props) {
         <div
             className="inline-flex p-[3px] rounded-[9px]"
             style={{
-                background: 'rgba(20,25,38,0.6)',
+                background: 'rgb(20,25,38)',
                 border: '1px solid rgba(129,140,248,0.15)',
             }}
         >

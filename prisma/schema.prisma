@@ -235,6 +235,7 @@ model Payment {
   installment_number  Int?      // 1, 2, 3... null for one_time
   installment_plan_id String?   // Groups related installments together
   due_date            DateTime? // When this installment is due
+  reminder_sent_at    DateTime? // When the 7-day reminder email was last sent (null = not yet)
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
 

@@ -29,7 +29,7 @@ export function DashboardKpi({ icon, tint, label, value, trend, sub, spark, prog
         <div
             className="p-5 rounded-2xl border border-outline-variant/15 relative overflow-hidden flex flex-col"
             style={{
-                background: 'linear-gradient(180deg, rgba(20,25,38,0.55), rgba(14,19,30,0.55))',
+                background: 'linear-gradient(180deg, rgb(20,25,38), rgb(14,19,30))',
             }}
         >
             <div className="flex justify-between items-center mb-2.5">

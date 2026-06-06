@@ -32,7 +32,7 @@ export function RecentSalesCard({ sales }: Props) {
         <section
             className="p-[18px] rounded-2xl border border-outline-variant/15 flex flex-col gap-3.5"
             style={{
-                background: 'linear-gradient(180deg, rgba(20,25,38,0.5), rgba(14,19,30,0.5))',
+                background: 'linear-gradient(180deg, rgb(20,25,38), rgb(14,19,30))',
             }}
         >
             <div className="flex justify-between items-end">

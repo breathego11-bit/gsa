@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcryptjs from 'bcryptjs'
+import { sendEmail } from '@/lib/email'
+import { WelcomeEmail } from '@/emails/WelcomeEmail'
 
 export async function GET() {
     const session = await getServerSession(authOptions)
@@ -58,6 +60,19 @@ export async function POST(req: NextRequest) {
             payment_status: 'active',
         },
         select: { id: true, name: true, last_name: true, email: true },
+    })
+
+    // Fire-and-forget welcome email. Failure logs but doesn't block account creation.
+    const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo_dark.png`
+    await sendEmail({
+        to: user.email,
+        subject: 'Bienvenido a Growth Sales Academy',
+        react: WelcomeEmail({
+            firstName: user.name,
+            dashboardUrl: `${appUrl}/admin`,
+            logoUrl,
+        }),
     })
 
     return NextResponse.json(user, { status: 201 })

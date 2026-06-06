@@ -35,7 +35,7 @@ export function CoursesTable({ courses }: Props) {
         <section
             className="rounded-2xl overflow-hidden border border-outline-variant/15"
             style={{
-                background: 'linear-gradient(180deg, rgba(20,25,38,0.5), rgba(14,19,30,0.5))',
+                background: 'linear-gradient(180deg, rgb(20,25,38), rgb(14,19,30))',
             }}
         >
             <div className="px-5 py-[18px] flex justify-between items-end gap-3 flex-wrap border-b border-outline-variant/10">

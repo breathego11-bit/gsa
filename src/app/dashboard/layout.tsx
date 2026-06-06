@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { MainContent } from '@/components/layout/MainContent'
 import { AnimatedBackground } from '@/components/layout/AnimatedBackground'
+import { Watermark } from '@/components/layout/Watermark'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions)
@@ -39,6 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     return (
         <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
+            <Watermark />
             <div className="hidden lg:flex shrink-0 relative z-10">
                 <Sidebar role="STUDENT" closerEnabled={closerEnabled} user={user} badges={badges} />
             </div>

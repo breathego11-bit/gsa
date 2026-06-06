@@ -346,7 +346,7 @@ const ob: Record<string, CSSProperties> = {
     hero: { display: 'flex', flexDirection: 'column', gap: 16 },
     kicker: { display: 'inline-flex', alignItems: 'center', gap: 8, width: 'fit-content', padding: '6px 11px', borderRadius: 999, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.28)', color: '#38bdf8', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10.5, letterSpacing: 1.4 },
     kickerDot: { width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' },
-    title: { fontSize: 'clamp(40px, 5.4vw, 64px)', lineHeight: 1.04, fontWeight: 500, letterSpacing: -1.6, margin: 0, color: '#dee2f2', fontFamily: '"Instrument Serif", "Times New Roman", serif' },
+    title: { fontSize: 'clamp(40px, 5.4vw, 64px)', lineHeight: 1.04, fontWeight: 800, letterSpacing: -1.6, margin: 0, color: '#dee2f2' },
     titleAccent: { background: 'linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'},
     subtitle: { fontSize: 16, lineHeight: 1.6, color: '#9ca3b8', margin: 0, maxWidth: 620 },
     subStrong: { color: '#dee2f2', fontWeight: 500 },
