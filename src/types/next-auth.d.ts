@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import type { CloserType } from "@prisma/client";
 
 declare module "next-auth" {
     interface Session {
@@ -13,6 +14,7 @@ declare module "next-auth" {
             payment_status: string;
             blocked: boolean;
             closer_enabled: boolean;
+            closer_type: CloserType | null;
         };
     }
 
@@ -23,6 +25,7 @@ declare module "next-auth" {
         payment_status?: string;
         blocked?: boolean;
         closer_enabled?: boolean;
+        closer_type?: CloserType | null;
     }
 }
 
@@ -35,5 +38,6 @@ declare module "next-auth/jwt" {
         payment_status?: string;
         blocked?: boolean;
         closer_enabled?: boolean;
+        closer_type?: CloserType | null;
     }
 }

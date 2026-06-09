@@ -2,6 +2,23 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import {
+    DndContext,
+    type DragEndEvent,
+    closestCenter,
+    PointerSensor,
+    KeyboardSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core'
+import {
+    SortableContext,
+    useSortable,
+    arrayMove,
+    verticalListSortingStrategy,
+    sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { FormSchemaBuilder } from '@/components/admin/FormSchemaBuilder'
 import { ExamSchemaBuilder } from '@/components/admin/ExamSchemaBuilder'
 import { BunnyVideoPreview } from '@/components/admin/BunnyVideoPreview'
@@ -71,6 +88,136 @@ export function CourseBuilderClient({ course: initial }: Props) {
     const totalLessons = modules.reduce((s, m) => s + m.lessons.length, 0)
     const totalDuration = modules.reduce((s, m) => s + m.lessons.reduce((ls, l) => ls + (l.duration || 0), 0), 0)
     const hasFinalExam = modules.some(m => m.lessons.some(l => l.is_final_exam))
+
+    // ── DnD setup ──────────────────────────────────────────────────────
+    // Pointer with a small activation distance so a regular click on the row
+    // doesn't accidentally start a drag. Keyboard sensor for accessibility.
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    )
+
+    const [reorderError, setReorderError] = useState<string | null>(null)
+
+    async function persistModulesOrder(snapshot: ModuleData[], nextOrder: ModuleData[]) {
+        const res = await fetch('/api/modules/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                course_id: initial.id,
+                ordered_ids: nextOrder.map((m) => m.id),
+            }),
+        })
+        if (!res.ok) {
+            setModules(snapshot)
+            setReorderError('No se pudo reordenar los módulos. Reintenta.')
+            setTimeout(() => setReorderError(null), 4000)
+        }
+    }
+
+    async function persistLessonsOrder(
+        snapshot: ModuleData[],
+        nextModules: ModuleData[],
+        affectedModuleIds: string[],
+    ) {
+        // Build the updates list: for every lesson in affected modules, send its
+        // current module_id and order. The endpoint validates same-course coherence.
+        const updates = nextModules
+            .filter((m) => affectedModuleIds.includes(m.id))
+            .flatMap((m) =>
+                m.lessons.map((l, idx) => ({
+                    lesson_id: l.id,
+                    module_id: m.id,
+                    order: idx + 1,
+                })),
+            )
+        const res = await fetch('/api/lessons/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates }),
+        })
+        if (!res.ok) {
+            setModules(snapshot)
+            setReorderError('No se pudo reordenar las lecciones. Reintenta.')
+            setTimeout(() => setReorderError(null), 4000)
+        }
+    }
+
+    function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event
+        if (!over) return
+        const activeId = String(active.id)
+        const overId = String(over.id)
+        if (activeId === overId) return
+
+        // ── Module reorder ──
+        if (activeId.startsWith('module:') && overId.startsWith('module:')) {
+            const oldIdx = modules.findIndex((m) => `module:${m.id}` === activeId)
+            const newIdx = modules.findIndex((m) => `module:${m.id}` === overId)
+            if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return
+            const snapshot = modules
+            const next = arrayMove(modules, oldIdx, newIdx)
+            setModules(next)
+            persistModulesOrder(snapshot, next)
+            return
+        }
+
+        // ── Lesson drag (intra- or cross-module) ──
+        if (!activeId.startsWith('lesson:')) return
+        const activeLessonId = activeId.replace('lesson:', '')
+        const sourceModule = modules.find((m) => m.lessons.some((l) => l.id === activeLessonId))
+        if (!sourceModule) return
+        const activeLesson = sourceModule.lessons.find((l) => l.id === activeLessonId)!
+
+        let targetModuleId: string
+        let targetIndex: number
+
+        if (overId.startsWith('lesson:')) {
+            const overLessonId = overId.replace('lesson:', '')
+            const targetModule = modules.find((m) => m.lessons.some((l) => l.id === overLessonId))
+            if (!targetModule) return
+            targetModuleId = targetModule.id
+            targetIndex = targetModule.lessons.findIndex((l) => l.id === overLessonId)
+        } else if (overId.startsWith('module:')) {
+            // Dropped on a module shell → append to end of that module.
+            targetModuleId = overId.replace('module:', '')
+            const targetModule = modules.find((m) => m.id === targetModuleId)
+            if (!targetModule) return
+            targetIndex = targetModule.lessons.length
+        } else {
+            return
+        }
+
+        if (sourceModule.id === targetModuleId) {
+            // Same-module reorder.
+            const idx = sourceModule.lessons.findIndex((l) => l.id === activeLessonId)
+            if (idx === targetIndex) return
+            const snapshot = modules
+            const next = modules.map((m) => {
+                if (m.id !== sourceModule.id) return m
+                return { ...m, lessons: arrayMove(m.lessons, idx, targetIndex) }
+            })
+            setModules(next)
+            persistLessonsOrder(snapshot, next, [sourceModule.id])
+            return
+        }
+
+        // Cross-module move.
+        const snapshot = modules
+        const next = modules.map((m) => {
+            if (m.id === sourceModule.id) {
+                return { ...m, lessons: m.lessons.filter((l) => l.id !== activeLessonId) }
+            }
+            if (m.id === targetModuleId) {
+                const arr = [...m.lessons]
+                arr.splice(targetIndex, 0, activeLesson)
+                return { ...m, lessons: arr }
+            }
+            return m
+        })
+        setModules(next)
+        persistLessonsOrder(snapshot, next, [sourceModule.id, targetModuleId])
+    }
 
     // ── Helpers ──
 
@@ -348,109 +495,156 @@ export function CourseBuilderClient({ course: initial }: Props) {
 
                     {/* Modules Tree */}
                     <div className="space-y-6">
-                        {modules.map((mod, modIdx) => {
-                            const isOpen = expanded.has(mod.id)
-                            const modLessons = mod.lessons
-                            const modDuration = modLessons.reduce((s, l) => s + (l.duration || 0), 0)
+                        {reorderError && (
+                            <div className="px-4 py-2 rounded-lg text-sm bg-red-500/10 border border-red-500/30 text-red-300">
+                                {reorderError}
+                            </div>
+                        )}
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={modules.map((m) => `module:${m.id}`)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {modules.map((mod, modIdx) => {
+                                    const isOpen = expanded.has(mod.id)
+                                    const modLessons = mod.lessons
+                                    const modDuration = modLessons.reduce((s, l) => s + (l.duration || 0), 0)
 
-                            return (
-                                <div key={mod.id} className="bg-surface-container-low rounded-xl lg:rounded-3xl overflow-hidden">
-                                    {/* Module header */}
-                                    <div className="p-4 lg:p-6 flex items-center justify-between border-b border-white/5">
-                                        <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(mod.id)}>
-                                            <span className="material-symbols-outlined text-on-surface-variant hidden lg:inline">drag_indicator</span>
-                                            <span className="material-symbols-outlined text-on-surface-variant transition-transform"
-                                                style={{ transform: isOpen ? 'rotate(0)' : 'rotate(-90deg)' }}>
-                                                expand_more
-                                            </span>
-                                            <div className="min-w-0 flex-1">
-                                                <span className="text-xs font-bold text-blue-400 uppercase tracking-widest block mb-0.5">
-                                                    Módulo {modIdx + 1}
-                                                </span>
-                                                <input type="text" value={mod.title}
-                                                    onChange={e => setModules(prev => prev.map(m => m.id === mod.id ? { ...m, title: e.target.value } : m))}
-                                                    onBlur={e => renameModule(mod.id, e.target.value)}
-                                                    onClick={e => e.stopPropagation()}
-                                                    className="bg-transparent border-none text-lg font-semibold text-on-surface p-0 focus:ring-0 w-full" />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {!isOpen && (
-                                                <span className="text-xs text-on-surface-variant font-medium mr-2">
-                                                    {modLessons.length} {modLessons.length === 1 ? 'Lección' : 'Lecciones'}{modDuration > 0 ? ` • ${fmtDuration(modDuration)}` : ''}
-                                                </span>
-                                            )}
-                                            <button onClick={() => toggleModuleLock(mod.id, !mod.locked)}
-                                                title={mod.locked ? 'Desbloquear módulo' : 'Bloquear módulo (Próximamente)'}
-                                                className={`p-2 hover:bg-surface-container-high rounded-lg transition-colors ${mod.locked ? 'text-amber-400' : 'text-on-surface-variant'}`}>
-                                                <span className="material-symbols-outlined">{mod.locked ? 'lock' : 'lock_open'}</span>
-                                            </button>
-                                            <button onClick={() => addLesson(mod.id)} title="Agregar lección"
-                                                className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors">
-                                                <span className="material-symbols-outlined">add_circle</span>
-                                            </button>
-                                            <button onClick={() => deleteModule(mod.id)} title="Eliminar módulo"
-                                                className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant hover:!text-red-400 transition-colors">
-                                                <span className="material-symbols-outlined">delete</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Lessons */}
-                                    {isOpen && (
-                                        <div className="p-4 space-y-3">
-                                            {modLessons.length === 0 && (
-                                                <p className="text-center text-sm text-on-surface-variant py-6">
-                                                    Sin lecciones aún. Haz clic en <span className="material-symbols-outlined text-sm align-middle">add_circle</span> para agregar.
-                                                </p>
-                                            )}
-                                            {modLessons.map(rawLesson => {
-                                                // Use editLesson for the selected lesson so changes reflect live
-                                                const lesson = (editLesson && rawLesson.id === editLesson.id) ? editLesson : rawLesson
-                                                const isSelected = selectedLessonId === lesson.id
-                                                return (
-                                                    <div key={lesson.id}
-                                                        onClick={() => selectLesson(lesson)}
-                                                        className={`flex items-center justify-between p-3 lg:p-4 rounded-lg lg:rounded-2xl cursor-pointer transition-all group ${
-                                                            isSelected
-                                                                ? 'bg-blue-600/10 border-l-4 border-secondary-container lg:shadow-xl'
-                                                                : 'hover:bg-surface-container-high'
-                                                        }`}>
-                                                        <div className="flex items-center gap-3 lg:gap-4 min-w-0">
-                                                            <span className="material-symbols-outlined text-on-surface-variant/40 group-hover:text-on-surface-variant transition-colors hidden lg:inline">drag_indicator</span>
-                                                            <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                                                                isSelected ? 'bg-secondary-container/20 text-secondary' : 'bg-surface-variant text-on-surface-variant'
-                                                            }`}>
-                                                                <span className="material-symbols-outlined text-lg"
-                                                                    style={lesson.type === 'VIDEO' ? { fontVariationSettings: "'FILL' 1" } : undefined}
-                                                                >{TYPE_ICON[lesson.type] || 'videocam'}</span>
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <h4 className={`text-sm font-medium lg:font-medium truncate ${isSelected ? 'font-bold text-on-surface' : 'text-on-surface'}`}>
-                                                                    {lesson.title}
-                                                                </h4>
-                                                                <p className="text-xs text-on-surface-variant">
-                                                                    {lesson.duration ? `${fmtDuration(lesson.duration)} • ` : ''}
-                                                                    {TYPE_LABEL[lesson.type] || 'Video'}
-                                                                    {lesson.is_final_exam ? ' • Examen Final' : ''}
-                                                                </p>
+                                    return (
+                                        <SortableShell key={mod.id} id={mod.id} prefix="module">
+                                            {({ setNodeRef: setModuleRef, listeners: moduleListeners, attributes: moduleAttrs, style: moduleStyle }) => (
+                                                <div
+                                                    ref={setModuleRef}
+                                                    style={moduleStyle}
+                                                    className="bg-surface-container-low rounded-xl lg:rounded-3xl overflow-hidden"
+                                                >
+                                                    {/* Module header */}
+                                                    <div className="p-4 lg:p-6 flex items-center justify-between border-b border-white/5">
+                                                        <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(mod.id)}>
+                                                            <span
+                                                                {...moduleListeners}
+                                                                {...moduleAttrs}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                title="Arrastrar para reordenar"
+                                                                className="material-symbols-outlined text-on-surface-variant hidden lg:inline cursor-grab active:cursor-grabbing select-none"
+                                                            >drag_indicator</span>
+                                                            <span className="material-symbols-outlined text-on-surface-variant transition-transform"
+                                                                style={{ transform: isOpen ? 'rotate(0)' : 'rotate(-90deg)' }}>
+                                                                expand_more
+                                                            </span>
+                                                            <div className="min-w-0 flex-1">
+                                                                <span className="text-xs font-bold text-blue-400 uppercase tracking-widest block mb-0.5">
+                                                                    Módulo {modIdx + 1}
+                                                                </span>
+                                                                <input type="text" value={mod.title}
+                                                                    onChange={e => setModules(prev => prev.map(m => m.id === mod.id ? { ...m, title: e.target.value } : m))}
+                                                                    onBlur={e => renameModule(mod.id, e.target.value)}
+                                                                    onClick={e => e.stopPropagation()}
+                                                                    className="bg-transparent border-none text-lg font-semibold text-on-surface p-0 focus:ring-0 w-full" />
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2 lg:gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity shrink-0">
-                                                            <span className="material-symbols-outlined text-sm text-secondary lg:hidden" onClick={e => { e.stopPropagation(); selectLesson(lesson) }}>edit</span>
-                                                            <button onClick={e => { e.stopPropagation(); deleteLesson(mod.id, lesson.id) }}
-                                                                className="p-1 lg:p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:!text-red-400 transition-colors">
-                                                                <span className="material-symbols-outlined text-sm">delete</span>
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            {!isOpen && (
+                                                                <span className="text-xs text-on-surface-variant font-medium mr-2">
+                                                                    {modLessons.length} {modLessons.length === 1 ? 'Lección' : 'Lecciones'}{modDuration > 0 ? ` • ${fmtDuration(modDuration)}` : ''}
+                                                                </span>
+                                                            )}
+                                                            <button onClick={() => toggleModuleLock(mod.id, !mod.locked)}
+                                                                title={mod.locked ? 'Desbloquear módulo' : 'Bloquear módulo (Próximamente)'}
+                                                                className={`p-2 hover:bg-surface-container-high rounded-lg transition-colors ${mod.locked ? 'text-amber-400' : 'text-on-surface-variant'}`}>
+                                                                <span className="material-symbols-outlined">{mod.locked ? 'lock' : 'lock_open'}</span>
+                                                            </button>
+                                                            <button onClick={() => addLesson(mod.id)} title="Agregar lección"
+                                                                className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors">
+                                                                <span className="material-symbols-outlined">add_circle</span>
+                                                            </button>
+                                                            <button onClick={() => deleteModule(mod.id)} title="Eliminar módulo"
+                                                                className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant hover:!text-red-400 transition-colors">
+                                                                <span className="material-symbols-outlined">delete</span>
                                                             </button>
                                                         </div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        })}
+
+                                                    {/* Lessons */}
+                                                    {isOpen && (
+                                                        <div className="p-4 space-y-3">
+                                                            {modLessons.length === 0 && (
+                                                                <p className="text-center text-sm text-on-surface-variant py-6">
+                                                                    Sin lecciones aún. Haz clic en <span className="material-symbols-outlined text-sm align-middle">add_circle</span> para agregar.
+                                                                </p>
+                                                            )}
+                                                            <SortableContext
+                                                                items={modLessons.map((l) => `lesson:${l.id}`)}
+                                                                strategy={verticalListSortingStrategy}
+                                                            >
+                                                                {modLessons.map(rawLesson => {
+                                                                    // Use editLesson for the selected lesson so changes reflect live
+                                                                    const lesson = (editLesson && rawLesson.id === editLesson.id) ? editLesson : rawLesson
+                                                                    const isSelected = selectedLessonId === lesson.id
+                                                                    return (
+                                                                        <SortableShell key={lesson.id} id={lesson.id} prefix="lesson">
+                                                                            {({ setNodeRef: setLessonRef, listeners: lessonListeners, attributes: lessonAttrs, style: lessonStyle }) => (
+                                                                                <div
+                                                                                    ref={setLessonRef}
+                                                                                    style={lessonStyle}
+                                                                                    onClick={() => selectLesson(lesson)}
+                                                                                    className={`flex items-center justify-between p-3 lg:p-4 rounded-lg lg:rounded-2xl cursor-pointer transition-all group ${
+                                                                                        isSelected
+                                                                                            ? 'bg-blue-600/10 border-l-4 border-secondary-container lg:shadow-xl'
+                                                                                            : 'hover:bg-surface-container-high'
+                                                                                    }`}>
+                                                                                    <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+                                                                                        <span
+                                                                                            {...lessonListeners}
+                                                                                            {...lessonAttrs}
+                                                                                            onClick={(e) => e.stopPropagation()}
+                                                                                            title="Arrastrar para reordenar"
+                                                                                            className="material-symbols-outlined text-on-surface-variant/40 group-hover:text-on-surface-variant transition-colors hidden lg:inline cursor-grab active:cursor-grabbing select-none"
+                                                                                        >drag_indicator</span>
+                                                                                        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                                                                                            isSelected ? 'bg-secondary-container/20 text-secondary' : 'bg-surface-variant text-on-surface-variant'
+                                                                                        }`}>
+                                                                                            <span className="material-symbols-outlined text-lg"
+                                                                                                style={lesson.type === 'VIDEO' ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                                                                                            >{TYPE_ICON[lesson.type] || 'videocam'}</span>
+                                                                                        </div>
+                                                                                        <div className="min-w-0">
+                                                                                            <h4 className={`text-sm font-medium lg:font-medium truncate ${isSelected ? 'font-bold text-on-surface' : 'text-on-surface'}`}>
+                                                                                                {lesson.title}
+                                                                                            </h4>
+                                                                                            <p className="text-xs text-on-surface-variant">
+                                                                                                {lesson.duration ? `${fmtDuration(lesson.duration)} • ` : ''}
+                                                                                                {TYPE_LABEL[lesson.type] || 'Video'}
+                                                                                                {lesson.is_final_exam ? ' • Examen Final' : ''}
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 lg:gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity shrink-0">
+                                                                                        <span className="material-symbols-outlined text-sm text-secondary lg:hidden" onClick={e => { e.stopPropagation(); selectLesson(lesson) }}>edit</span>
+                                                                                        <button onClick={e => { e.stopPropagation(); deleteLesson(mod.id, lesson.id) }}
+                                                                                            className="p-1 lg:p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:!text-red-400 transition-colors">
+                                                                                            <span className="material-symbols-outlined text-sm">delete</span>
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </SortableShell>
+                                                                    )
+                                                                })}
+                                                            </SortableContext>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </SortableShell>
+                                    )
+                                })}
+                            </SortableContext>
+                        </DndContext>
 
                         {/* Add Module */}
                         <button onClick={addModule}
@@ -806,5 +1000,49 @@ export function CourseBuilderClient({ course: initial }: Props) {
                 </div>
             </footer>
         </div>
+    )
+}
+
+/* ─ Sortable wrapper (render-prop) ────────────────────────────────────
+   Thin shell around useSortable. Caller decides which prefix to use so
+   handleDragEnd can route correctly (module: vs lesson:) and gets back
+   the props to wire into the DOM (setNodeRef + style on the outer
+   element, listeners + attributes on the drag handle ONLY). */
+
+interface SortableHandleProps {
+    setNodeRef: (el: HTMLElement | null) => void
+    listeners: ReturnType<typeof useSortable>['listeners']
+    attributes: ReturnType<typeof useSortable>['attributes']
+    style: React.CSSProperties
+    isDragging: boolean
+}
+
+function SortableShell({
+    id,
+    prefix,
+    children,
+}: {
+    id: string
+    prefix: 'module' | 'lesson'
+    children: (handle: SortableHandleProps) => React.ReactNode
+}) {
+    const sortable = useSortable({ id: `${prefix}:${id}` })
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(sortable.transform),
+        transition: sortable.transition,
+        opacity: sortable.isDragging ? 0.4 : 1,
+        zIndex: sortable.isDragging ? 50 : 'auto',
+        position: 'relative',
+    }
+    return (
+        <>
+            {children({
+                setNodeRef: sortable.setNodeRef,
+                listeners: sortable.listeners,
+                attributes: sortable.attributes,
+                style,
+                isDragging: sortable.isDragging,
+            })}
+        </>
     )
 }

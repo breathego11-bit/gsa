@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getBunnyVideoStatus } from '@/lib/bunny'
+import { hasActivePayment, hasUniversalCourseAccess } from '@/lib/access'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
@@ -47,23 +48,36 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
         redirect(`/course/${lesson.module.course_id}`)
     }
 
-    // Check payment and enrollment
+    // Check payment + course access
+    // - CRM_AND_COURSES closers get universal access without Enrollment
+    // - Regular students require Enrollment
+    // - CRM_ONLY closers are denied (no course access at all)
     if (session.user.role !== 'ADMIN') {
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            select: { payment_status: true, blocked: true },
-        })
-        if (user?.payment_status !== 'active' || user?.blocked) redirect('/payment')
-
-        const enrollment = await prisma.enrollment.findUnique({
-            where: {
-                user_id_course_id: {
-                    user_id: session.user.id,
-                    course_id: lesson.module.course_id,
-                },
+            select: {
+                role: true,
+                payment_status: true,
+                blocked: true,
+                closer_enabled: true,
+                closer_type: true,
             },
         })
-        if (!enrollment) redirect(`/course/${lesson.module.course_id}`)
+        if (!user) redirect('/auth')
+        if (user.blocked || !hasActivePayment(user)) redirect('/payment')
+
+        if (!hasUniversalCourseAccess(user)) {
+            // CRM_ONLY closers fall here and get bounced to the course page.
+            const enrollment = await prisma.enrollment.findUnique({
+                where: {
+                    user_id_course_id: {
+                        user_id: session.user.id,
+                        course_id: lesson.module.course_id,
+                    },
+                },
+            })
+            if (!enrollment) redirect(`/course/${lesson.module.course_id}`)
+        }
     }
 
     // Note

@@ -69,9 +69,10 @@ export async function GET(req: NextRequest) {
     const closerFilter = url.searchParams.get('closer_id')
     const search = url.searchParams.get('search')?.trim()
 
-    // 1. List of closers (for the dropdown — always full list, not filtered)
+    // 1. List of closers (for the dropdown — always full list, not filtered).
+    //    Matches the runtime isCloser() definition: enabled AND type assigned.
     const closers = await prisma.user.findMany({
-        where: { closer_enabled: true },
+        where: { closer_enabled: true, closer_type: { not: null } },
         select: { id: true, name: true, last_name: true },
         orderBy: [{ name: 'asc' }, { last_name: 'asc' }],
     })

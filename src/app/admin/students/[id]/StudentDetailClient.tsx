@@ -23,10 +23,12 @@ import {
     Clock,
     X,
     ArrowRight,
+    Gift,
 } from 'lucide-react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { BunnyVideoPreview } from '@/components/admin/BunnyVideoPreview'
 import type { CourseEnrollmentProgress } from '@/types'
+import type { CloserType } from '@prisma/client'
 
 interface StudentInfo {
     id: string
@@ -40,6 +42,7 @@ interface StudentInfo {
     payment_status: string
     blocked: boolean
     closer_enabled: boolean
+    closer_type: CloserType | null
     welcome_video_bunny_id: string | null
     welcome_video_status: string | null
     welcome_video_uploaded_at: string | null
@@ -116,6 +119,7 @@ const paymentStatusLabels: Record<string, { label: string; color: string }> = {
     active: { label: 'Activo', color: 'bg-emerald-500/20 text-emerald-400' },
     past_due: { label: 'Pago pendiente', color: 'bg-amber-500/20 text-amber-400' },
     cancelled: { label: 'Cancelado', color: 'bg-red-500/20 text-red-400' },
+    complimentary: { label: 'Cortesía', color: 'bg-amber-500/15 text-amber-400' },
 }
 
 type ToastTone = 'success' | 'danger' | 'neutral'
@@ -133,7 +137,8 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
 
     const [blocked, setBlocked] = useState(student.blocked)
     const [closerEnabled, setCloserEnabled] = useState(student.closer_enabled)
-    const [busyToggle, setBusyToggle] = useState<'block' | 'closer' | 'delete' | null>(null)
+    const [closerType, setCloserType] = useState<CloserType | null>(student.closer_type)
+    const [busyToggle, setBusyToggle] = useState<'block' | 'closer' | 'delete' | 'closer_type' | null>(null)
 
     const [toast, setToast] = useState<ToastState | null>(null)
     const [confirm, setConfirm] = useState<ConfirmKind | null>(null)
@@ -196,13 +201,17 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
     async function applyCloserChange(next: boolean) {
         setBusyToggle('closer')
         try {
+            // When enabling, default to CRM_AND_COURSES (matches existing closer semantics).
+            // Admin can change it afterwards with the type selector.
+            const desiredType: CloserType | null = next ? (closerType ?? 'CRM_AND_COURSES') : null
             const res = await fetch(`/api/admin/students/${student.id}/closer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ closer_enabled: next }),
+                body: JSON.stringify({ closer_enabled: next, closer_type: desiredType }),
             })
             if (res.ok) {
                 setCloserEnabled(next)
+                setCloserType(desiredType)
                 showToast(
                     next
                         ? {
@@ -222,6 +231,37 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
         } finally {
             setBusyToggle(null)
             setConfirm(null)
+        }
+    }
+
+    async function changeCloserType(next: CloserType) {
+        if (next === closerType || busyToggle === 'closer_type') return
+        const prev = closerType
+        setCloserType(next) // optimistic
+        setBusyToggle('closer_type')
+        try {
+            const res = await fetch(`/api/admin/students/${student.id}/closer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ closer_type: next }),
+            })
+            if (res.ok) {
+                showToast({
+                    tone: 'success',
+                    icon: <TrendingUp size={15} />,
+                    title: 'Tipo de closer actualizado',
+                    body:
+                        next === 'CRM_AND_COURSES'
+                            ? `${fullName} ahora tiene acceso completo a la formación.`
+                            : `${fullName} ahora sólo verá el CRM y el Método.`,
+                })
+            } else {
+                setCloserType(prev) // revert on error
+            }
+        } catch {
+            setCloserType(prev)
+        } finally {
+            setBusyToggle(null)
         }
     }
 
@@ -579,48 +619,122 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
 
                         {closerEnabled && (
                             <div
-                                className="mt-3.5 p-3.5 rounded-xl flex items-start gap-3"
+                                className="mt-3.5 p-3.5 rounded-xl flex flex-col gap-3"
                                 style={{
                                     background:
                                         'linear-gradient(135deg, rgba(56,189,248,0.08), rgba(129,140,248,0.05))',
                                     border: '1px solid rgba(56,189,248,0.25)',
                                 }}
                             >
-                                <div
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                                    style={{
-                                        background: 'rgba(56,189,248,0.18)',
-                                        border: '1px solid rgba(56,189,248,0.4)',
-                                        color: '#38bdf8',
-                                    }}
-                                >
-                                    <CheckCircle2 size={14} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[13px] font-semibold mb-1" style={{ color: '#dee2f2' }}>
-                                        CRM de ventas habilitado
-                                    </div>
+                                <div className="flex items-start gap-3">
                                     <div
-                                        className="text-[12.5px] mb-2"
-                                        style={{ color: '#9ca3b8', lineHeight: 1.5 }}
-                                    >
-                                        El alumno verá una nueva sección{' '}
-                                        <strong style={{ color: '#38bdf8' }}>&quot;Ventas&quot;</strong> en su sidebar y podrá
-                                        registrar nuevas ventas, gestionar cuotas y subir capturas como evidencia.
-                                    </div>
-                                    <Link
-                                        href="/dashboard/sales"
-                                        className="inline-flex items-center gap-1.5 text-[11.5px]"
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                                         style={{
+                                            background: 'rgba(56,189,248,0.18)',
+                                            border: '1px solid rgba(56,189,248,0.4)',
                                             color: '#38bdf8',
-                                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-                                            letterSpacing: 0.3,
-                                            textDecoration: 'none',
                                         }}
                                     >
-                                        Ver cómo lo verá el alumno
-                                        <ArrowRight size={11} />
-                                    </Link>
+                                        <CheckCircle2 size={14} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[13px] font-semibold mb-1" style={{ color: '#dee2f2' }}>
+                                            CRM de ventas habilitado
+                                        </div>
+                                        <div
+                                            className="text-[12.5px] mb-2"
+                                            style={{ color: '#9ca3b8', lineHeight: 1.5 }}
+                                        >
+                                            El alumno verá una nueva sección{' '}
+                                            <strong style={{ color: '#38bdf8' }}>&quot;Ventas&quot;</strong> en su sidebar y podrá
+                                            registrar nuevas ventas, gestionar cuotas y subir capturas como evidencia.
+                                        </div>
+                                        <Link
+                                            href="/dashboard/sales"
+                                            className="inline-flex items-center gap-1.5 text-[11.5px]"
+                                            style={{
+                                                color: '#38bdf8',
+                                                fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                                                letterSpacing: 0.3,
+                                                textDecoration: 'none',
+                                            }}
+                                        >
+                                            Ver cómo lo verá el alumno
+                                            <ArrowRight size={11} />
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                {/* Selector de tipo de closer */}
+                                <div
+                                    className="pt-3 flex flex-col gap-2"
+                                    style={{ borderTop: '1px dashed rgba(56,189,248,0.25)' }}
+                                >
+                                    <div
+                                        className="text-[10.5px] font-bold uppercase"
+                                        style={{
+                                            color: '#9ca3b8',
+                                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                                            letterSpacing: 1.2,
+                                        }}
+                                    >
+                                        Tipo de closer
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {([
+                                            {
+                                                value: 'CRM_ONLY' as const,
+                                                title: 'CRM only',
+                                                desc: 'Sólo CRM + Método. Sin acceso a cursos.',
+                                            },
+                                            {
+                                                value: 'CRM_AND_COURSES' as const,
+                                                title: 'CRM + Formación',
+                                                desc: 'CRM + Método + todos los cursos publicados.',
+                                            },
+                                        ]).map((opt) => {
+                                            const active = closerType === opt.value
+                                            const disabled = busyToggle === 'closer_type'
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => changeCloserType(opt.value)}
+                                                    disabled={disabled}
+                                                    className="text-left px-3 py-2.5 rounded-lg transition-all disabled:opacity-50"
+                                                    style={{
+                                                        background: active
+                                                            ? 'linear-gradient(135deg, rgba(56,189,248,0.18), rgba(129,140,248,0.12))'
+                                                            : 'rgba(8,13,24,0.4)',
+                                                        border: active
+                                                            ? '1px solid rgba(56,189,248,0.55)'
+                                                            : '1px solid rgba(129,140,248,0.18)',
+                                                        cursor: disabled ? 'not-allowed' : 'pointer',
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="flex items-center justify-between mb-1"
+                                                    >
+                                                        <span
+                                                            className="text-[12.5px] font-semibold"
+                                                            style={{ color: active ? '#dee2f2' : '#c4c5d5' }}
+                                                        >
+                                                            {opt.title}
+                                                        </span>
+                                                        {active && (
+                                                            <CheckCircle2 size={13} style={{ color: '#38bdf8' }} />
+                                                        )}
+                                                    </div>
+                                                    <div
+                                                        className="text-[11.5px]"
+                                                        style={{ color: '#9ca3b8', lineHeight: 1.4 }}
+                                                    >
+                                                        {opt.desc}
+                                                    </div>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -820,6 +934,34 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                                 ))}
                             </div>
                         </>
+                    ) : student.payment_status === 'complimentary' ? (
+                        <div
+                            className="flex items-start gap-3 p-4 rounded-xl"
+                            style={{
+                                background: 'rgba(245,158,11,0.06)',
+                                border: '1px solid rgba(245,158,11,0.25)',
+                            }}
+                        >
+                            <div
+                                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                style={{
+                                    background: 'rgba(245,158,11,0.15)',
+                                    border: '1px solid rgba(245,158,11,0.35)',
+                                    color: '#fbbf24',
+                                }}
+                            >
+                                <Gift size={16} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-[13px] font-semibold mb-1" style={{ color: '#fbbf24' }}>
+                                    Acceso de cortesía
+                                </div>
+                                <div className="text-[12.5px]" style={{ color: '#c4c5d5', lineHeight: 1.5 }}>
+                                    Este estudiante tiene acceso gratuito a la plataforma (regalo desde una invitación).
+                                    No se generaron registros de pago — no debe nada y no se le cobrará.
+                                </div>
+                            </div>
+                        </div>
                     ) : (
                         <p className="text-sm py-4 text-center" style={{ color: 'var(--text-secondary)' }}>
                             Este estudiante no ha realizado pagos.

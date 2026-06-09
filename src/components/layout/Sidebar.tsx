@@ -21,6 +21,7 @@ import {
     ChevronRight,
     type LucideIcon,
 } from 'lucide-react'
+import type { CloserType } from '@prisma/client'
 
 type Role = 'STUDENT' | 'ADMIN'
 
@@ -56,6 +57,7 @@ export interface SidebarBadges {
 interface SidebarProps {
     role: Role
     closerEnabled?: boolean
+    closerType?: CloserType | null
     user: UserBrief
     badges?: SidebarBadges
 }
@@ -120,21 +122,34 @@ function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
     ]
 }
 
-function buildStudentGroups(closerEnabled: boolean, badges: SidebarBadges = {}): NavGroup[] {
-    const principal: NavGroup = {
-        label: 'PRINCIPAL',
-        items: [
+function buildStudentGroups(
+    closerEnabled: boolean,
+    closerType: CloserType | null,
+    badges: SidebarBadges = {},
+): NavGroup[] {
+    // Matrix:
+    //   regular student            (closer_enabled=false)         → Dashboard, Cursos, Método, Perfil
+    //   CRM_ONLY closer            (enabled=true, CRM_ONLY)       → Método, Perfil, Ventas (NO Dashboard/Cursos)
+    //   CRM_AND_COURSES closer     (enabled=true, full)           → Dashboard, Cursos, Método, Perfil, Ventas
+    const isCloser = closerEnabled && closerType !== null
+    const hasCourseAccess = !isCloser || closerType === 'CRM_AND_COURSES'
+
+    const principalItems: NavItem[] = []
+    if (hasCourseAccess) {
+        principalItems.push(
             { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, kbd: '1' },
             { href: '/dashboard/courses', label: 'Cursos', Icon: BookOpen, kbd: '2' },
-            { href: '/dashboard/method', label: 'Método', Icon: Compass, kbd: '3' },
-            { href: '/dashboard/profile', label: 'Perfil', Icon: UserIcon, kbd: '4' },
-        ],
+        )
     }
-    if (!closerEnabled) return [principal]
+    principalItems.push(
+        { href: '/dashboard/method', label: 'Método', Icon: Compass, kbd: '3' },
+        { href: '/dashboard/profile', label: 'Perfil', Icon: UserIcon, kbd: '4' },
+    )
 
-    return [
-        principal,
-        {
+    const groups: NavGroup[] = [{ label: 'PRINCIPAL', items: principalItems }]
+
+    if (isCloser) {
+        groups.push({
             label: 'VENTAS',
             items: [
                 {
@@ -147,16 +162,19 @@ function buildStudentGroups(closerEnabled: boolean, badges: SidebarBadges = {}):
                             : undefined,
                 },
             ],
-        },
-    ]
+        })
+    }
+
+    return groups
 }
 
-export function Sidebar({ role, closerEnabled = false, user, badges }: SidebarProps) {
+export function Sidebar({ role, closerEnabled = false, closerType = null, user, badges }: SidebarProps) {
     const pathname = usePathname()
     const isAdmin = role === 'ADMIN'
+    const isCloser = closerEnabled && closerType !== null
     const groups = isAdmin
         ? buildAdminGroups(badges)
-        : buildStudentGroups(closerEnabled, badges)
+        : buildStudentGroups(closerEnabled, closerType, badges)
 
     const [collapsed, setCollapsed] = useState(false)
     const [hydrated, setHydrated] = useState(false)
@@ -321,8 +339,8 @@ export function Sidebar({ role, closerEnabled = false, user, badges }: SidebarPr
                 ))}
             </nav>
 
-            {/* Quick action — only for closers */}
-            {role === 'STUDENT' && closerEnabled && (
+            {/* Quick action — only for closers (both types) */}
+            {role === 'STUDENT' && isCloser && (
                 <div className={collapsed ? 'px-1.5 pt-1.5 pb-3' : 'px-3 pt-1.5 pb-3'}>
                     <Link
                         href="/dashboard/sales"

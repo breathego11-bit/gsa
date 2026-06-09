@@ -83,6 +83,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     }
 
+    // CRM-only closers can't buy the academy plan — they're not enrolling as students.
+    // (They CAN still pay specific installments via the paymentId flow above if they
+    // were created with a paid invitation.)
+    if (session.user.closer_type === 'CRM_ONLY') {
+        return NextResponse.json(
+            { error: 'Tu rol (Closer · CRM only) no incluye la formación. Habla con un admin si necesitas acceso completo.' },
+            { status: 403 },
+        )
+    }
+
     if (user.payment_status === 'active') {
         return NextResponse.json({ error: 'Already paid' }, { status: 400 })
     }

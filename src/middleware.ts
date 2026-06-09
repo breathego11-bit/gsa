@@ -1,6 +1,16 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
+// Paths under /dashboard/* that a CRM_ONLY closer IS allowed to access.
+// Everything else under /dashboard, /lesson, and /course is denied for them.
+function isAllowedForCrmOnly(pathname: string): boolean {
+    return (
+        pathname.startsWith("/dashboard/sales") ||
+        pathname.startsWith("/dashboard/method") ||
+        pathname.startsWith("/dashboard/profile")
+    );
+}
+
 export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     const { pathname } = req.nextUrl;
@@ -41,6 +51,20 @@ export async function middleware(req: NextRequest) {
     ) {
         if (!token) {
             return NextResponse.redirect(new URL("/auth", req.url));
+        }
+    }
+
+    // CRM_ONLY closers: confined to their CRM, Método and Profile.
+    // Blocks them from /dashboard (root), /dashboard/courses*, /lesson/*, and
+    // /course/* (public preview) so they can't accidentally enroll or pay.
+    if (token?.role === "STUDENT" && token?.closer_enabled === true && token?.closer_type === "CRM_ONLY") {
+        const blockedDashboardRoot = pathname === "/dashboard";
+        const blockedDashboardSub = pathname.startsWith("/dashboard/") && !isAllowedForCrmOnly(pathname);
+        const blockedLesson = pathname.startsWith("/lesson");
+        const blockedCoursePreview = pathname.startsWith("/course/");
+
+        if (blockedDashboardRoot || blockedDashboardSub || blockedLesson || blockedCoursePreview) {
+            return NextResponse.redirect(new URL("/dashboard/sales", req.url));
         }
     }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { CloserType } from '@prisma/client'
 import { MobileSidebar, type SidebarBadges } from './MobileSidebar'
 import { BottomNav } from './BottomNav'
 
@@ -16,11 +17,12 @@ interface UserBrief {
 interface Props {
     role: Role
     closerEnabled?: boolean
+    closerType?: CloserType | null
     user: UserBrief
     badges?: SidebarBadges
 }
 
-export function MobileNav({ role, closerEnabled = false, user, badges }: Props) {
+export function MobileNav({ role, closerEnabled = false, closerType = null, user, badges }: Props) {
     const [drawerOpen, setDrawerOpen] = useState(false)
 
     return (
@@ -30,6 +32,7 @@ export function MobileNav({ role, closerEnabled = false, user, badges }: Props) 
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 closerEnabled={closerEnabled}
+                closerType={closerType}
                 user={user}
                 badges={badges}
             />

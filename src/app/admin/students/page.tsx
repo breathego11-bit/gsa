@@ -78,6 +78,18 @@ export default async function AdminStudentsPage() {
                                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400">
                                                     Activo
                                                 </span>
+                                            ) : student.payment_status === 'complimentary' ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400">
+                                                    Cortesía
+                                                </span>
+                                            ) : student.payment_status === 'past_due' ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400">
+                                                    Pago pendiente
+                                                </span>
+                                            ) : student.payment_status === 'cancelled' ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400">
+                                                    Cancelado
+                                                </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-white/5 text-on-surface-variant">
                                                     Sin pago

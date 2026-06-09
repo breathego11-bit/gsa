@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getPeriodRange, type PeriodPreset } from '@/lib/sales-period'
 import { commission, getCommissionTiers, getCloserCashCollected } from '@/lib/commission'
+import { canAccessCRM } from '@/lib/access'
 import type { SaleDTO, SalesMetrics, CreateSaleInput } from '@/lib/sales'
 import type { Sale, SaleInstallment } from '@prisma/client'
 
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const isAdmin = session.user.role === 'ADMIN'
-    if (!isAdmin && !session.user.closer_enabled) {
+    if (!canAccessCRM(session.user)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -96,7 +97,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!session.user.closer_enabled && session.user.role !== 'ADMIN') {
+    if (!canAccessCRM(session.user)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

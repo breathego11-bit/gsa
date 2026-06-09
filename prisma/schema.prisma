@@ -24,6 +24,11 @@ enum PaymentType {
   INSTALLMENTS
 }
 
+enum CloserType {
+  CRM_ONLY          // Sólo CRM + Método. Sin acceso a cursos.
+  CRM_AND_COURSES   // CRM + Método + acceso universal a todos los cursos publicados.
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String
@@ -43,7 +48,8 @@ model User {
   payment_status     String    @default("none")   // none | active | past_due | cancelled
   stripe_customer_id String?   @unique
   blocked            Boolean   @default(false)
-  closer_enabled     Boolean   @default(false)
+  closer_enabled     Boolean    @default(false)
+  closer_type        CloserType?            // null cuando closer_enabled = false; obligatorio cuando true
   onboarded_at       DateTime?
 
   // Welcome video (1-min self-intro). Optional during onboarding; reminded persistently after.
@@ -291,16 +297,18 @@ model SaleInstallment {
 }
 
 model Invitation {
-  id           String    @id @default(cuid())
+  id           String      @id @default(cuid())
   created_by   String
-  payment_type String    // one_time | installment
-  amount_paid  Int       // cents already paid externally
-  installments Json?     // [{ number, amount, dueDate }] pending installments
-  used         Boolean   @default(false)
+  payment_type String      // one_time | installment
+  amount_paid  Int         // cents already paid externally (0 if is_free)
+  installments Json?       // [{ number, amount, dueDate }] pending installments
+  used         Boolean     @default(false)
   used_by      String?
   used_at      DateTime?
   expires_at   DateTime?
-  created_at   DateTime  @default(now())
+  closer_type  CloserType? // null = invitación de estudiante regular
+  is_free      Boolean     @default(false)  // true = no genera Payment records al redimir
+  created_at   DateTime    @default(now())
 
   creator      User      @relation("InvitationCreator", fields: [created_by], references: [id])
   redeemer     User?     @relation("InvitationRedeemer", fields: [used_by], references: [id])

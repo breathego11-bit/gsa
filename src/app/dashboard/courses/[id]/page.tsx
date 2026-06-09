@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import { getBunnyThumbnailUrl } from '@/lib/bunny'
+import { hasUniversalCourseAccess } from '@/lib/access'
 import { CourseDetailClient } from './CourseDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -40,12 +41,20 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
 
     if (!course) notFound()
 
-    // Check enrollment (admins bypass)
+    // Check course access (admins + CRM_AND_COURSES closers bypass enrollment)
     if (session.user.role !== 'ADMIN') {
-        const enrollment = await prisma.enrollment.findUnique({
-            where: { user_id_course_id: { user_id: session.user.id, course_id: id } },
+        const me = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true, closer_enabled: true, closer_type: true, payment_status: true },
         })
-        if (!enrollment) redirect(`/course/${id}`)
+        if (!me) redirect('/auth')
+
+        if (!hasUniversalCourseAccess(me)) {
+            const enrollment = await prisma.enrollment.findUnique({
+                where: { user_id_course_id: { user_id: session.user.id, course_id: id } },
+            })
+            if (!enrollment) redirect(`/course/${id}`)
+        }
     }
 
     // Get progress for this user across all lessons in this course

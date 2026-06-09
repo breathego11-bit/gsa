@@ -13,13 +13,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
     if (!session) redirect('/auth')
 
     const closerEnabled = session.user.closer_enabled ?? false
+    const closerType = session.user.closer_type ?? null
+    const isCloser = closerEnabled && closerType !== null
 
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
     const [salesCount, user] = await Promise.all([
-        closerEnabled
+        isCloser
             ? prisma.sale.count({
                   where: {
                       closer_id: session.user.id,
@@ -35,16 +37,28 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
     if (!user) redirect('/api/auth/clear-session')
 
-    const badges = closerEnabled ? { salesCount } : {}
+    const badges = isCloser ? { salesCount } : {}
 
     return (
         <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
             <Watermark />
             <div className="hidden lg:flex shrink-0 relative z-10">
-                <Sidebar role="STUDENT" closerEnabled={closerEnabled} user={user} badges={badges} />
+                <Sidebar
+                    role="STUDENT"
+                    closerEnabled={closerEnabled}
+                    closerType={closerType}
+                    user={user}
+                    badges={badges}
+                />
             </div>
-            <MobileNav role="STUDENT" closerEnabled={closerEnabled} user={user} badges={badges} />
+            <MobileNav
+                role="STUDENT"
+                closerEnabled={closerEnabled}
+                closerType={closerType}
+                user={user}
+                badges={badges}
+            />
             <MainContent
                 wrapperClassName="p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto"
                 fullBleedPaths={['/dashboard/method', '/dashboard/sales']}

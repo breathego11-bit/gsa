@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
                     payment_status: user.payment_status,
                     blocked: user.blocked,
                     closer_enabled: user.closer_enabled,
+                    closer_type: user.closer_type,
                 };
             }
         })
@@ -60,6 +61,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.payment_status = (token.payment_status as string) || 'none';
                 session.user.blocked = (token.blocked as boolean) ?? false;
                 session.user.closer_enabled = (token.closer_enabled as boolean) ?? false;
+                session.user.closer_type = token.closer_type ?? null;
             }
             return session;
         },
@@ -72,11 +74,12 @@ export const authOptions: NextAuthOptions = {
                 token.payment_status = (user as any).payment_status ?? 'none';
                 token.blocked = (user as any).blocked ?? false;
                 token.closer_enabled = (user as any).closer_enabled ?? false;
+                token.closer_type = (user as any).closer_type ?? null;
                 return token;
             }
 
             // Subsequent calls: refresh dynamic fields from DB so admin toggles
-            // (closer_enabled, blocked, role, payment_status) propagate without re-login.
+            // (closer_enabled, closer_type, blocked, role, payment_status) propagate without re-login.
             if (token.id) {
                 const fresh = await prisma.user.findUnique({
                     where: { id: token.id as string },
@@ -87,6 +90,7 @@ export const authOptions: NextAuthOptions = {
                         payment_status: true,
                         blocked: true,
                         closer_enabled: true,
+                        closer_type: true,
                     },
                 });
                 if (!fresh) {
@@ -100,6 +104,7 @@ export const authOptions: NextAuthOptions = {
                 token.payment_status = fresh.payment_status;
                 token.blocked = fresh.blocked;
                 token.closer_enabled = fresh.closer_enabled;
+                token.closer_type = fresh.closer_type;
             }
             return token;
         }

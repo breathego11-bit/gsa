@@ -38,6 +38,16 @@ export async function POST(req: Request) {
 
         const hashedPassword = await bcryptjs.hash(password, 10);
 
+        // Derive payment + closer fields from invitation (if any).
+        // - is_free invites → payment_status = 'complimentary', NO Payment records created.
+        // - paid invites → payment_status = 'active', completed Payment + pending installments created.
+        // - closer_type from invitation flips closer_enabled = true automatically.
+        const paymentStatus = invitation
+            ? (invitation.is_free ? 'complimentary' : 'active')
+            : 'none';
+        const closerEnabled = invitation?.closer_type != null;
+        const closerType = invitation?.closer_type ?? null;
+
         const user = await prisma.user.create({
             data: {
                 name,
@@ -47,12 +57,14 @@ export async function POST(req: Request) {
                 phone,
                 password: hashedPassword,
                 role: 'STUDENT',
-                payment_status: invitation ? 'active' : 'none',
+                payment_status: paymentStatus,
+                closer_enabled: closerEnabled,
+                closer_type: closerType,
             }
         });
 
-        // If invitation, create payment records and mark as used
-        if (invitation) {
+        // Payment records — only if invitation is paid (skip when is_free).
+        if (invitation && !invitation.is_free) {
             const planId = crypto.randomUUID();
 
             // Create completed payment for amount already paid
@@ -86,8 +98,10 @@ export async function POST(req: Request) {
                     });
                 }
             }
+        }
 
-            // Mark invitation as used
+        // Mark invitation as used (regardless of free/paid)
+        if (invitation) {
             await prisma.invitation.update({
                 where: { id: invitation.id },
                 data: { used: true, used_by: user.id, used_at: new Date() },

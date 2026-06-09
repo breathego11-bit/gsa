@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { hasActivePayment } from '@/lib/access'
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
@@ -11,13 +12,22 @@ export async function POST(req: NextRequest) {
         const { course_id } = await req.json()
         if (!course_id) return NextResponse.json({ error: 'course_id is required' }, { status: 400 })
 
+        // CRM-only closers never get course access. Hard-block at the API even
+        // though middleware already filters their UI routes — defense in depth.
+        if (session.user.closer_type === 'CRM_ONLY') {
+            return NextResponse.json(
+                { error: 'Tu rol (Closer · CRM only) no incluye acceso a los cursos. Habla con un admin para ampliar tu acceso.' },
+                { status: 403 },
+            )
+        }
+
         // Check payment status (admins bypass)
         if (session.user.role !== 'ADMIN') {
             const user = await prisma.user.findUnique({
                 where: { id: session.user.id },
                 select: { payment_status: true, blocked: true },
             })
-            if (user?.payment_status !== 'active' || user?.blocked) {
+            if (!user || user.blocked || !hasActivePayment(user)) {
                 return NextResponse.json({ error: 'Payment required' }, { status: 402 })
             }
         }
