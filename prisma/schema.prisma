@@ -29,6 +29,43 @@ enum CloserType {
   CRM_AND_COURSES   // CRM + Método + acceso universal a todos los cursos publicados.
 }
 
+enum LeadStatus {
+  NUEVO
+  CONTACTADO
+  AGENDADO
+  DESCARTADO
+}
+
+enum LeadSituation {
+  NO_TRABAJANDO
+  MAS_INGRESOS          // tiene trabajo, quiere más ingresos
+  QUIERE_REMOTO         // tiene trabajo, quiere remoto
+  EMPRENDE_INESTABLE    // emprende, ingresos inestables
+  VENDE_PROFESIONALIZAR // vende, quiere profesionalizarse
+  YA_CLOSER             // ya closer, quiere mejorar
+  OTRA
+}
+
+enum LeadUrgency {
+  AHORA
+  EN_3_MESES
+  EN_6_MESES_O_MAS
+  NO_SE
+  SOLO_INFORMARSE
+}
+
+enum LeadInvestment {
+  SIN_RECURSOS
+  DE_500_A_1000
+  DE_1000_A_2000
+  SIN_IMPEDIMENTO
+}
+
+enum CalendarProvider {
+  GOOGLE
+  // MICROSOFT  // Fase 2
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String
@@ -68,6 +105,13 @@ model User {
   created_invitations   Invitation[] @relation("InvitationCreator")
   redeemed_invitations  Invitation[] @relation("InvitationRedeemer")
   sales                 Sale[]
+  assigned_leads        Lead[]       @relation("LeadAssignee")
+
+  // Lead booking / Google Calendar (Fase 1 del motor de agendamiento)
+  lead_booking_enabled  Boolean              @default(false)             // entra al round-robin de leads
+  booking_timezone      String               @default("America/Bogota")  // zona FIJA de su disponibilidad
+  working_hours         Json?                                            // ventana de atención por día; null → default L–V 09–18
+  calendars             CalendarConnection[] @relation("UserCalendars")
 }
 
 model Course {
@@ -331,4 +375,67 @@ model Testimonial {
   updated_at    DateTime @updatedAt
 
   @@index([published, order])
+}
+
+model Lead {
+  id              String         @id @default(cuid())
+
+  // Contacto
+  full_name       String
+  whatsapp        String         // SIEMPRE string (prefijos +, espacios, ceros a la izquierda)
+  email           String
+  instagram       String
+  country         String
+
+  // Cualificación
+  situation       LeadSituation
+  desired_change  String         @db.Text   // "cambio"
+  objectives      String         @db.Text   // "objetivos como closer"
+  cafe_vision     String         @db.Text   // "café 6 meses después…"
+  urgency         LeadUrgency
+  investment      LeadInvestment
+
+  // Reunión (agendada vía Google Calendar conectada a la landing)
+  meeting_at      DateTime?                 // start del evento (RFC3339 → timestamptz): instante absoluto
+  meeting_tz_iana String?                   // start.timeZone del evento: "America/Bogota" (IANA limpio)
+  google_event_id String?        @unique    // id del evento en Google Calendar (enlazar / evitar duplicados)
+  google_event_url String?                  // htmlLink del evento
+  meeting_link    String?                   // Google Meet (hangoutLink / conferenceData)
+
+  // CRM
+  status          LeadStatus     @default(NUEVO)
+  source          String         @default("landing-survey")
+  assigned_to     String?
+  assigned_at     DateTime?
+
+  // Metadatos
+  submitted_at    DateTime?                 // "enviado_en" del cliente (epoch ms del navegador)
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  assignee        User?          @relation("LeadAssignee", fields: [assigned_to], references: [id], onDelete: SetNull)
+
+  @@index([status, created_at])
+  @@index([assigned_to])
+  @@index([email])
+}
+
+model CalendarConnection {
+  id             String           @id @default(cuid())
+  user_id        String
+  provider       CalendarProvider @default(GOOGLE)
+  account_email  String                          // email de la cuenta de Google conectada
+  calendar_id    String           @default("primary")
+  refresh_token  String           @db.Text       // CIFRADO en reposo (AES-256-GCM)
+  access_token   String?          @db.Text       // cache cifrado; se renueva con el refresh
+  token_expiry   DateTime?
+  scopes         String           @db.Text
+  status         String           @default("active")  // active | error | revoked
+  connected_at   DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+
+  user           User             @relation("UserCalendars", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, provider])
+  @@index([status])
 }

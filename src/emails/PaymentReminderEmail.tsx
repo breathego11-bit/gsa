@@ -27,7 +27,7 @@ export function PaymentReminderEmail({
 
     return (
         <EmailLayout
-            preview={`Recordatorio: tu cuota #${installmentNumber} vence el ${dueLabel}`}
+            preview="Puedes completar el pago desde tu panel antes de la fecha límite."
             logoUrl={logoUrl}
         >
             {/* Banner */}
@@ -40,8 +40,15 @@ export function PaymentReminderEmail({
             <Section style={card}>
                 <Heading as="h2" style={h2}>{greeting}</Heading>
                 <Text style={p}>
-                    Te escribimos para recordarte amistosamente que tu próxima cuota está por vencer.
-                    Asegura tu acceso continuo al programa completando el pago a tiempo.
+                    Te escribimos para recordarte que tu próxima cuota de{' '}
+                    <strong style={strong}>Growth Sales Academy</strong> está próxima a vencer.
+                </Text>
+                <Text style={p}>
+                    Para mantener tu acceso activo al programa y continuar avanzando sin interrupciones,
+                    puedes completar el pago desde tu panel antes de la fecha límite.
+                </Text>
+                <Text style={p}>
+                    A continuación tienes el resumen de tu cuota:
                 </Text>
 
                 {/* Resumen de la cuota */}
@@ -72,10 +79,16 @@ export function PaymentReminderEmail({
                 </Section>
 
                 <Text style={pMuted}>
-                    Al hacer clic entrarás a tu panel donde podrás completar el pago de forma segura.
-                    Si el botón no funciona, copia este enlace:
+                    Al hacer clic entrarás a tu panel, donde podrás completar el pago de forma segura.
+                    <br />
+                    <br />
+                    Si el botón no funciona, copia y pega este enlace en tu navegador:
                     <br />
                     <Link href={paymentUrl} style={link}>{paymentUrl}</Link>
+                </Text>
+
+                <Text style={pClosing}>
+                    Si tienes alguna duda con tu pago, responde a este correo y te ayudaremos a revisarlo.
                 </Text>
             </Section>
         </EmailLayout>
@@ -206,4 +219,18 @@ const link: React.CSSProperties = {
     color: '#38bdf8',
     wordBreak: 'break-all',
     textDecoration: 'underline',
+}
+
+const strong: React.CSSProperties = {
+    color: '#38bdf8',
+    fontWeight: 600,
+}
+
+const pClosing: React.CSSProperties = {
+    margin: '20px 0 0',
+    paddingTop: 16,
+    borderTop: '1px dashed rgba(129,140,248,0.15)',
+    fontSize: 13,
+    lineHeight: 1.55,
+    color: '#9ca3b8',
 }

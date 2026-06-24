@@ -15,7 +15,7 @@ const SLIDES: Slide[] = [
         key: 'ivan',
         title: 'IVÁN ABAD',
         role: 'Fundador · Visión y liderazgo comercial',
-        image: '/ivan.PNG',
+        image: '/ivan.JPEG',
         alt: 'Retrato de Iván Abad',
     },
 ]

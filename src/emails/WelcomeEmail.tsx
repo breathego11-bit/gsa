@@ -14,20 +14,30 @@ export function WelcomeEmail({ firstName, dashboardUrl, logoUrl }: Props) {
         <EmailLayout preview="Bienvenido a Growth Sales Academy" logoUrl={logoUrl}>
             {/* Banner */}
             <Section style={banner}>
-                <Text style={bannerKicker}>● BIENVENIDO A LA ACADEMIA</Text>
-                <Heading style={bannerTitle}>Tu transformación empieza hoy</Heading>
+                <Text style={bannerKicker}>● BIENVENIDO A GROWTH SALES ACADEMY</Text>
+                <Heading style={bannerTitle}>Aquí comienza tu transformación</Heading>
             </Section>
 
             {/* Card */}
             <Section style={card}>
                 <Heading as="h2" style={h2}>{greeting}</Heading>
                 <Text style={p}>
-                    Acabas de dar el primer paso para convertirte en un <strong style={strong}>closer
-                    consciente</strong>. Tu cuenta en Growth Sales Academy está activa y lista para empezar.
+                    Bienvenido a <strong style={strong}>Growth Sales Academy</strong>.
                 </Text>
                 <Text style={p}>
-                    Entra al panel para ver el video de bienvenida, completar tu perfil y empezar con los
-                    primeros módulos del programa.
+                    Acabas de dar el primer paso para desarrollar una de las habilidades más importantes
+                    para tu vida profesional: aprender a vender con claridad, estructura y confianza.
+                </Text>
+                <Text style={p}>
+                    Tu cuenta ya está activa y lista para empezar.
+                </Text>
+                <Text style={p}>
+                    Dentro de la academia podrás acceder a tus módulos, ver el vídeo de bienvenida,
+                    completar tu perfil y comenzar con las primeras clases del programa.
+                </Text>
+                <Text style={p}>
+                    Mi recomendación es que no consumas esta formación como simple contenido. Entra con
+                    mentalidad de práctica, toma notas y aplica cada clase a conversaciones reales.
                 </Text>
 
                 <Section style={ctaWrap}>

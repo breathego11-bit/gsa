@@ -13,6 +13,7 @@ import {
     BarChart3,
     Settings,
     MailPlus,
+    Inbox,
     ShieldCheck,
     Compass,
     TrendingUp,
@@ -52,6 +53,7 @@ export interface SidebarBadges {
     invitationsPending?: number
     monthCashCents?: number
     salesCount?: number
+    leadsNew?: number
 }
 
 interface SidebarProps {
@@ -85,6 +87,15 @@ function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
         {
             label: 'GESTIÓN',
             items: [
+                {
+                    href: '/admin/leads',
+                    label: 'Leads',
+                    Icon: Inbox,
+                    badge:
+                        typeof badges.leadsNew === 'number' && badges.leadsNew > 0
+                            ? { kind: 'notif', value: badges.leadsNew }
+                            : undefined,
+                },
                 {
                     href: '/admin/students',
                     label: 'Estudiantes',

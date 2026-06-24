@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    const [studentsCount, invitationsPending, monthCashAgg, user] = await Promise.all([
+    const [studentsCount, invitationsPending, monthCashAgg, leadsNew, user] = await Promise.all([
         prisma.user.count({ where: { role: 'STUDENT' } }),
         prisma.invitation.count({ where: { used: false } }),
         prisma.saleInstallment.aggregate({
@@ -27,6 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             },
             _sum: { amount: true },
         }),
+        prisma.lead.count({ where: { status: 'NUEVO' } }),
         prisma.user.findUnique({
             where: { id: session.user.id },
             select: { name: true, last_name: true, email: true, profile_image: true },
@@ -39,6 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         studentsCount,
         invitationsPending,
         monthCashCents: monthCashAgg._sum.amount ?? 0,
+        leadsNew,
     }
 
     return (

@@ -12,3 +12,7 @@ growthsalessacademy.com {
         max_size 25MB
     }
 }
+
+aplica.growthsalessacademy.com {
+    reverse_proxy landing:3000
+}

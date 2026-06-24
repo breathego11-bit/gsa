@@ -43,7 +43,7 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://gsa_user:gsa_password@db:5432/gsa_db?schema=public
       - NEXTAUTH_URL=https://growthsalessacademy.com
-      - NEXTAUTH_SECRET=generate_a_strong_secret_here
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
@@ -57,6 +57,12 @@ services:
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
       - CRON_SECRET=${CRON_SECRET}
+      # Leads + Google Calendar booking
+      - LEADS_API_KEY=${LEADS_API_KEY}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - GOOGLE_OAUTH_REDIRECT_URI=https://growthsalessacademy.com/api/integrations/google/callback
+      - CALENDAR_TOKEN_ENC_KEY=${CALENDAR_TOKEN_ENC_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -105,9 +111,17 @@ services:
       - gsa_uploads:/srv/uploads:ro
     depends_on:
       - app
+    networks:
+      - default
+      - gsa_shared   # para alcanzar el contenedor de la landing (repo aparte)
 
 volumes:
   gsa_pgdata:
   gsa_uploads:
   gsa_caddy_data:
   gsa_caddy_config:
+
+networks:
+  # Red compartida con la landing. Nombre fijo para que su compose la use como external.
+  gsa_shared:
+    name: gsa_shared

@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
         const result = await sendEmail({
             to: p.user.email,
-            subject: `Recordatorio: tu cuota vence en 7 días`,
+            subject: 'Tu próxima cuota vence en 7 días',
             react: PaymentReminderEmail({
                 firstName: p.user.name,
                 installmentNumber: p.installment_number,

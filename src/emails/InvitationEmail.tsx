@@ -19,40 +19,37 @@ export function InvitationEmail({
 }: Props) {
     const greeting = inviteeName ? `Hola, ${inviteeName}` : 'Hola'
 
+    const inviteBody = (
+        <>
+            <Text style={p}>
+                Has sido invitado a formar parte del equipo comercial de{' '}
+                <strong style={brandStrong}>Growth Sales Academy</strong> como Closer.
+            </Text>
+            <Text style={p}>
+                Desde tu cuenta podrás acceder al panel interno, revisar tus oportunidades,
+                gestionar tus ventas y llevar el control de tus comisiones dentro del sistema.
+            </Text>
+        </>
+    )
+
+    // Same copy across all variants per client direction (jun 2026).
+    // If en el futuro quieren diferenciar estudiante vs closer otra vez, basta
+    // con desdoblar este objeto en variantes con kicker/title/body distintos.
     const COPY = {
         student: {
-            kicker: '● TE INVITAMOS',
-            title: 'Te damos la bienvenida a Growth Sales Academy',
-            body: (
-                <>
-                    Has sido invitado a unirte a <strong style={brandStrong}>Growth Sales Academy</strong>,
-                    la academia donde formamos closers conscientes con ingresos reales y transformación real.
-                    Al completar el registro tendrás acceso inmediato a tu plan de formación.
-                </>
-            ),
+            kicker: '● INVITACIÓN COMO CLOSER',
+            title: 'Te invitamos a unirte como Closer del equipo',
+            body: inviteBody,
         },
         crm_only: {
             kicker: '● INVITACIÓN COMO CLOSER',
             title: 'Te invitamos a unirte como Closer del equipo',
-            body: (
-                <>
-                    Has sido invitado a integrarte al equipo de closers de{' '}
-                    <strong style={brandStrong}>Growth Sales Academy</strong>. Tendrás acceso al CRM de
-                    ventas para registrar tus deals, gestionar comisiones y a la sección del Método.
-                </>
-            ),
+            body: inviteBody,
         },
         crm_and_courses: {
             kicker: '● INVITACIÓN COMO CLOSER',
             title: 'Te invitamos a unirte como Closer del equipo',
-            body: (
-                <>
-                    Has sido invitado a integrarte al equipo de closers de{' '}
-                    <strong style={brandStrong}>Growth Sales Academy</strong>, con acceso completo a la
-                    formación de la academia y al CRM de ventas para registrar tus deals y gestionar
-                    tus comisiones.
-                </>
-            ),
+            body: inviteBody,
         },
     } as const
 
@@ -76,10 +73,10 @@ export function InvitationEmail({
             {/* Card */}
             <Section style={card}>
                 <Heading as="h2" style={h2}>{greeting}</Heading>
-                <Text style={p}>{copy.body}</Text>
+                {copy.body}
 
                 <Text style={p}>
-                    Para activar tu cuenta y empezar, completa tu registro con tu nombre y contraseña
+                    Para comenzar, solo tienes que activar tu cuenta creando tu usuario y contraseña
                     desde el botón de abajo.
                 </Text>
 
