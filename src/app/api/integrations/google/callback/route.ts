@@ -13,7 +13,10 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams
-    const back = (status: string) => NextResponse.redirect(new URL(`/admin/leads?google=${status}`, req.url))
+    // Base pública para el redirect: detrás de Caddy, req.url trae la dirección interna
+    // del contenedor (0.0.0.0:3000), así que usamos NEXTAUTH_URL (el dominio real).
+    const baseUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin
+    const back = (status: string) => NextResponse.redirect(new URL(`/admin/leads?google=${status}`, baseUrl))
 
     const error = sp.get('error')
     if (error) return back('denied')
