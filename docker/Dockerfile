@@ -23,7 +23,9 @@ RUN npx prisma generate
 ARG NEXT_PUBLIC_BUNNY_LIBRARY_ID
 ENV NEXT_PUBLIC_BUNNY_LIBRARY_ID=$NEXT_PUBLIC_BUNNY_LIBRARY_ID
 
-# Build Next.js
+# Build Next.js — más heap para Node (el VPS es chico). El type-check/lint se saltan
+# vía next.config (ya se validan en CI), que es lo que provocaba el OOM.
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # Production image, copy all the files and run next
