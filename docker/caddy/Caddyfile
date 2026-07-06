@@ -16,3 +16,7 @@ growthsalessacademy.com {
 aplica.growthsalessacademy.com {
     reverse_proxy landing:3000
 }
+
+vsl.growthsalessacademy.com {
+    reverse_proxy vsl:3000
+}
