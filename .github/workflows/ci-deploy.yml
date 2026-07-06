@@ -62,7 +62,8 @@ jobs:
             GOOGLE_OAUTH_CLIENT_SECRET=$GOOGLE_OAUTH_CLIENT_SECRET
             CALENDAR_TOKEN_ENC_KEY=$CALENDAR_TOKEN_ENC_KEY
             EOF
-            docker compose up -d --build app
+            docker compose build --no-cache app
+            docker compose up -d app
             docker compose run --rm migrate
             docker compose run --rm --entrypoint sh migrate -c "npx prisma db seed"
         env:
