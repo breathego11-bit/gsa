@@ -42,7 +42,8 @@ jobs:
           envs: STRIPE_SECRET_KEY,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,STRIPE_WEBHOOK_SECRET,BUNNY_API_KEY,BUNNY_LIBRARY_ID,BUNNY_LIBRARY_API_KEY,BUNNY_CDN_HOSTNAME,RESEND_API_KEY,EMAIL_FROM,EMAIL_REPLY_TO,CRON_SECRET,NEXTAUTH_SECRET,LEADS_API_KEY,GOOGLE_OAUTH_CLIENT_ID,GOOGLE_OAUTH_CLIENT_SECRET,CALENDAR_TOKEN_ENC_KEY
           script: |
             cd /opt/gsa
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             cd docker
             cat > .env << EOF
             STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
