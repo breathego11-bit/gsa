@@ -53,7 +53,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <MobileNav role="ADMIN" user={user} badges={badges} />
             <MainContent
                 wrapperClassName="p-6 md:p-8 pb-28 lg:pb-8 max-w-7xl mx-auto"
-                fullBleedPaths={['/admin/method', '/admin/sales', '/admin/settings']}
+                fullBleedPaths={['/admin/method', '/admin/sales', '/admin/settings', '/admin/coach$']}
             >
                 {children}
             </MainContent>

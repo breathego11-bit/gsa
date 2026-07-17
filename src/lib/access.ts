@@ -61,3 +61,10 @@ export function canAccessMethod(_u: AccessUser): boolean {
 export function canAccessStudentDashboard(u: AccessUser): boolean {
     return u.role === 'ADMIN' || u.closer_type === 'CRM_AND_COURSES' || (u.role === 'STUDENT' && !isCloser(u))
 }
+
+/** Sidebar item "Coach IA" + rutas /api/coach/*.
+ *  Decisión del cliente: cualquier usuario que haya pagado (active o complimentary),
+ *  más closers y admins (staff). */
+export function canAccessCoach(u: AccessUser): boolean {
+    return u.role === 'ADMIN' || isCloser(u) || hasActivePayment(u)
+}

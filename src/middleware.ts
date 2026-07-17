@@ -7,6 +7,7 @@ function isAllowedForCrmOnly(pathname: string): boolean {
     return (
         pathname.startsWith("/dashboard/sales") ||
         pathname.startsWith("/dashboard/method") ||
+        pathname.startsWith("/dashboard/coach") ||
         pathname.startsWith("/dashboard/profile")
     );
 }

@@ -16,6 +16,8 @@ import {
     Inbox,
     ShieldCheck,
     Compass,
+    Sparkles,
+    ClipboardList,
     TrendingUp,
     Plus,
     ChevronLeft,
@@ -82,6 +84,7 @@ function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
                 { href: '/admin', label: 'Dashboard', Icon: BarChart3, kbd: '1' },
                 { href: '/admin/courses', label: 'Cursos', Icon: BookOpen, kbd: '2' },
                 { href: '/admin/method', label: 'Método', Icon: Compass, kbd: '3' },
+                { href: '/admin/coach', label: 'Coach IA', Icon: Sparkles },
             ],
         },
         {
@@ -105,6 +108,7 @@ function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
                             ? { kind: 'count', value: badges.studentsCount }
                             : undefined,
                 },
+                { href: '/admin/coach/alumnos', label: 'Coach · Alumnos', Icon: ClipboardList },
                 {
                     href: '/admin/sales',
                     label: 'Ventas',
@@ -154,7 +158,8 @@ function buildStudentGroups(
     }
     principalItems.push(
         { href: '/dashboard/method', label: 'Método', Icon: Compass, kbd: '3' },
-        { href: '/dashboard/profile', label: 'Perfil', Icon: UserIcon, kbd: '4' },
+        { href: '/dashboard/coach', label: 'Coach IA', Icon: Sparkles, kbd: '4' },
+        { href: '/dashboard/profile', label: 'Perfil', Icon: UserIcon, kbd: '5' },
     )
 
     const groups: NavGroup[] = [{ label: 'PRINCIPAL', items: principalItems }]
@@ -203,7 +208,9 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
     }, [collapsed, hydrated])
 
     const isActive = (href: string) => {
-        if (href === '/admin' || href === '/dashboard') return pathname === href
+        if (href === '/admin' || href === '/dashboard' || href === '/admin/coach') return pathname === href
+        // "Coach · Alumnos" cubre toda el área de gestión del coach (alumnos, uso, ajustes)
+        if (href === '/admin/coach/alumnos') return pathname.startsWith('/admin/coach/')
         return pathname.startsWith(href)
     }
 

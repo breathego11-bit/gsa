@@ -112,6 +112,10 @@ model User {
   booking_timezone      String               @default("America/Bogota")  // zona FIJA de su disponibilidad
   working_hours         Json?                                            // ventana de atención por día; null → default L–V 09–18
   calendars             CalendarConnection[] @relation("UserCalendars")
+
+  // GSA Coach IA — historial de evaluaciones de llamadas
+  coach_conversations   CoachConversation[]
+  coach_usage           CoachUsage[]
 }
 
 model Course {
@@ -438,4 +442,61 @@ model CalendarConnection {
 
   @@unique([user_id, provider])
   @@index([status])
+}
+
+// GSA Coach IA — una conversación por "sesión de entrenamiento" del alumno.
+model CoachConversation {
+  id         String   @id @default(cuid())
+  user_id    String
+  title      String   @default("Nueva llamada")   // derivado del primer mensaje del alumno
+  call_type  String?                               // cierre | discovery | seguimiento | ... (Coach-ia.md §15)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user     User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages CoachMessage[]
+
+  @@index([user_id, updated_at])
+}
+
+model CoachMessage {
+  id              String   @id @default(cuid())
+  conversation_id String
+  role            String                       // 'user' | 'assistant'
+  content         String   @db.Text
+  created_at      DateTime @default(now())
+
+  conversation CoachConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+}
+
+// Ajustes del Coach IA editables por Iván desde la web (singleton). Las instrucciones
+// adicionales se AÑADEN al método base (Coach-ia.md), sin reemplazarlo.
+model CoachSetting {
+  id                 String   @id @default("singleton")
+  extra_instructions String?  @db.Text
+  updated_at         DateTime @updatedAt
+  updated_by         String?
+}
+
+// GSA Coach IA — registro REAL de consumo por cada llamada a la API de OpenAI.
+// Los tokens vienen del `usage` que devuelve OpenAI (lo que factura); el costo se
+// calcula con la tabla de precios (src/lib/coach/pricing.ts) y se guarda como snapshot.
+model CoachUsage {
+  id                  String   @id @default(cuid())
+  user_id             String
+  conversation_id     String?
+  model               String
+  is_evaluation       Boolean  @default(false)   // evaluación (gpt-4o) vs seguimiento (mini)
+  input_tokens        Int      @default(0)
+  output_tokens       Int      @default(0)
+  cached_input_tokens Int      @default(0)
+  cost_usd            Decimal  @db.Decimal(12, 6)
+  created_at          DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
 }

@@ -61,7 +61,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             />
             <MainContent
                 wrapperClassName="p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto"
-                fullBleedPaths={['/dashboard/method', '/dashboard/sales']}
+                fullBleedPaths={['/dashboard/method', '/dashboard/sales', '/dashboard/coach']}
             >
                 {children}
             </MainContent>
