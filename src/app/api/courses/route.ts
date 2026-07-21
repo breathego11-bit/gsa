@@ -38,6 +38,10 @@ export async function POST(req: NextRequest) {
             ? included_items.filter((s) => typeof s === 'string' && s.trim().length > 0)
             : null
 
+        // Nuevos cursos van al final del catálogo (order = max + 1) para la división por cuotas.
+        const last = await prisma.course.findFirst({ orderBy: { order: 'desc' }, select: { order: true } })
+        const nextOrder = (last?.order ?? -1) + 1
+
         const course = await prisma.course.create({
             data: {
                 title,
@@ -46,6 +50,7 @@ export async function POST(req: NextRequest) {
                 hero_image: hero_image || null,
                 price: price ? Number(price) : null,
                 published: false,
+                order: nextOrder,
                 included_items: items && items.length > 0 ? items : undefined,
                 instructors: ids.length
                     ? { create: ids.map((user_id, idx) => ({ user_id, order: idx })) }

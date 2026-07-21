@@ -34,6 +34,8 @@ export interface DashboardCourseData {
     isEnrolled: boolean
     progressPercent: number
     progressCompleted: number
+    installmentLocked: boolean
+    unlockAtInstallment: number
 }
 
 interface Props {
@@ -165,6 +167,30 @@ export function DashboardCoursesClient({ courses, hasPaid }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {filteredCourses.map((course, idx) => {
                         const cardData = toCardData(course)
+
+                        // Curso en un tramo aún no pagado → tarjeta con candado, no clicable.
+                        if (course.installmentLocked) {
+                            return (
+                                <CourseCardRedesigned
+                                    key={course.id}
+                                    course={cardData}
+                                    index={idx}
+                                    customCta={
+                                        <div
+                                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold cursor-not-allowed"
+                                            style={{
+                                                background: 'rgba(251,191,36,0.10)',
+                                                border: '1px solid rgba(251,191,36,0.35)',
+                                                color: '#fbbf24',
+                                            }}
+                                        >
+                                            <MaterialIcon name="lock" size="text-sm" />
+                                            Disponible al pagar la cuota {course.unlockAtInstallment}
+                                        </div>
+                                    }
+                                />
+                            )
+                        }
 
                         if (course.isEnrolled) {
                             const ctaLabel =

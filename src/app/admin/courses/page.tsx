@@ -10,7 +10,8 @@ export default async function AdminCoursesPage() {
                 select: { user_id: true },
             },
         },
-        orderBy: { created_at: 'desc' },
+        // Orden del catálogo (define los tramos de desbloqueo por cuotas).
+        orderBy: [{ order: 'asc' }, { created_at: 'asc' }],
     })
 
     const mapped = courses.map((c) => ({

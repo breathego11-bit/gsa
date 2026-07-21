@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import { getBunnyThumbnailUrl } from '@/lib/bunny'
 import { hasUniversalCourseAccess } from '@/lib/access'
+import { loadInstallmentGate, isItemLocked, itemUnlockInstallment, OPEN_GATE, type InstallmentGate } from '@/lib/installments'
 import { CourseDetailClient } from './CourseDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -42,6 +43,7 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
     if (!course) notFound()
 
     // Check course access (admins + CRM_AND_COURSES closers bypass enrollment)
+    let gate: InstallmentGate = OPEN_GATE
     if (session.user.role !== 'ADMIN') {
         const me = await prisma.user.findUnique({
             where: { id: session.user.id },
@@ -54,6 +56,22 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
                 where: { user_id_course_id: { user_id: session.user.id, course_id: id } },
             })
             if (!enrollment) redirect(`/course/${id}`)
+        }
+
+        gate = await loadInstallmentGate(session.user.id, me)
+
+        // Desbloqueo por cuotas: si este curso está en un tramo del catálogo aún no pagado,
+        // no debe abrirse — de vuelta a la lista de cursos.
+        if (gate.applies) {
+            const catalog = await prisma.course.findMany({
+                where: { published: true },
+                orderBy: [{ order: 'asc' }, { created_at: 'asc' }],
+                select: { id: true },
+            })
+            const courseIdx = catalog.findIndex((c) => c.id === id)
+            if (courseIdx !== -1 && isItemLocked(courseIdx, catalog.length, gate)) {
+                redirect('/dashboard/courses')
+            }
         }
     }
 
@@ -80,7 +98,10 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
     let currentLessonDuration: number | null = null
     let currentLessonType: string | null = null
 
-    for (const m of course.modules) {
+    for (let mi = 0; mi < course.modules.length; mi++) {
+        // No proponer como "siguiente" una lección de un módulo bloqueado por cuotas.
+        if (isItemLocked(mi, course.modules.length, gate)) continue
+        const m = course.modules[mi]
         for (let i = 0; i < m.lessons.length; i++) {
             const l = m.lessons[i]
             if (!completedSet.has(l.id)) {
@@ -152,7 +173,9 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
     }
 
     // Map modules with per-module progress
-    const modulesView = course.modules.map((m) => {
+    const modulesView = course.modules.map((m, mi) => {
+        const installmentLocked = isItemLocked(mi, course.modules.length, gate)
+        const unlockAtInstallment = itemUnlockInstallment(mi, course.modules.length, gate)
         const moduleLessons = m.lessons.map((l) => ({
             id: l.id,
             title: l.title,
@@ -173,6 +196,8 @@ export default async function DashboardCoursePage({ params }: { params: Promise<
             title: m.title,
             order: m.order,
             locked: m.locked,
+            installmentLocked,
+            unlockAtInstallment,
             lessons: moduleLessons,
             completedCount: moduleCompletedCount,
             progress: moduleProgress,

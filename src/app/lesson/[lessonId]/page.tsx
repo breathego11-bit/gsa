@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getBunnyVideoStatus } from '@/lib/bunny'
 import { hasActivePayment, hasUniversalCourseAccess } from '@/lib/access'
+import { isCourseModuleUnlocked } from '@/lib/installments'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
@@ -77,6 +78,15 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                 },
             })
             if (!enrollment) redirect(`/course/${lesson.module.course_id}`)
+
+            // Desbloqueo por cuotas: curso/módulo en un tramo aún no pagado → al detalle del curso.
+            const unlocked = await isCourseModuleUnlocked(
+                session.user.id,
+                user,
+                lesson.module.course_id,
+                lesson.module_id,
+            )
+            if (!unlocked) redirect(`/dashboard/courses/${lesson.module.course_id}`)
         }
     }
 

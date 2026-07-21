@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkCourseApproval } from '@/lib/courseApproval'
+import { isLessonUnlockedForUser } from '@/lib/installments'
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
         // Check lesson type — FORM and EXAM must use their specific endpoints
         const lesson = await prisma.lesson.findUnique({
             where: { id: lesson_id },
-            select: { type: true, module: { select: { course_id: true } } },
+            select: { type: true, module_id: true, module: { select: { course_id: true } } },
         })
         if (!lesson) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
 
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest) {
                 where: { user_id_course_id: { user_id: session.user.id, course_id: lesson.module.course_id } },
             })
             if (!enrollment) return NextResponse.json({ error: 'Not enrolled' }, { status: 403 })
+
+            // Desbloqueo por cuotas: no permitir completar lecciones de tramos no pagados
+            const unlocked = await isLessonUnlockedForUser(session.user.id, lesson.module.course_id, lesson.module_id)
+            if (!unlocked) return NextResponse.json({ error: 'Contenido bloqueado hasta pagar la cuota correspondiente' }, { status: 403 })
         }
 
         if (lesson.type === 'FORM' || lesson.type === 'EXAM') {

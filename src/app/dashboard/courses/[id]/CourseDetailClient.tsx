@@ -73,6 +73,8 @@ type ModuleView = {
     title: string
     order: number
     locked: boolean
+    installmentLocked: boolean
+    unlockAtInstallment: number
     lessons: LessonView[]
     completedCount: number
     progress: number
@@ -865,7 +867,8 @@ function ModuleAccordion({
     open: boolean
     onToggle: () => void
 }) {
-    const isLocked = mod.locked
+    const isInstallmentLocked = mod.installmentLocked
+    const isLocked = mod.locked || isInstallmentLocked
     const isComplete = mod.progress === 100 && mod.lessons.length > 0
     return (
         <article
@@ -902,9 +905,14 @@ function ModuleAccordion({
                         <h3 className="text-base font-semibold text-on-surface tracking-tight m-0">
                             {mod.title}
                         </h3>
-                        {isLocked && (
+                        {mod.locked && (
                             <Pill color="#fbbf24" bg="rgba(251,191,36,0.12)" border="rgba(251,191,36,0.3)">
                                 <MaterialIcon name="lock" size="text-xs" /> PRÓXIMAMENTE
+                            </Pill>
+                        )}
+                        {!mod.locked && isInstallmentLocked && (
+                            <Pill color="#fbbf24" bg="rgba(251,191,36,0.12)" border="rgba(251,191,36,0.3)">
+                                <MaterialIcon name="lock" size="text-xs" /> DISPONIBLE AL PAGAR CUOTA {mod.unlockAtInstallment}
                             </Pill>
                         )}
                         {!isLocked && isComplete && (

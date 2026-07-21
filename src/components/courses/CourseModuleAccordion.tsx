@@ -26,6 +26,10 @@ interface ModuleData {
     title: string
     order: number
     lessons: LessonData[]
+    /** Bloqueado por cuotas: aún no se pagó el tramo que lo desbloquea. */
+    locked?: boolean
+    /** Nº de cuota que lo desbloquea (para el mensaje). */
+    unlockAtInstallment?: number
 }
 
 interface CourseModuleAccordionProps {
@@ -66,6 +70,9 @@ export function CourseModuleAccordion({ modules, isEnrolled }: CourseModuleAccor
             {modules.map((mod) => {
                 const isOpen = expanded.has(mod.id)
                 const totalMin = moduleDuration(mod.lessons)
+                // Un módulo bloqueado por cuotas se muestra como candado aunque el alumno esté inscrito.
+                const moduleLocked = Boolean(mod.locked)
+                const lessonsClickable = isEnrolled && !moduleLocked
 
                 return (
                     <div
@@ -86,8 +93,17 @@ export function CourseModuleAccordion({ modules, isEnrolled }: CourseModuleAccor
                                 }`}>
                                     {String(mod.order).padStart(2, '0')}
                                 </div>
-                                <div className={!isEnrolled ? 'opacity-60' : ''}>
-                                    <h3 className="font-bold text-lg text-on-surface">{mod.title}</h3>
+                                <div className={!isEnrolled || moduleLocked ? 'opacity-60' : ''}>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="font-bold text-lg text-on-surface">{mod.title}</h3>
+                                        {moduleLocked && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+                                                style={{ color: '#fbbf24', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)' }}>
+                                                <MaterialIcon name="lock" size="text-xs" />
+                                                {mod.unlockAtInstallment ? `Cuota ${mod.unlockAtInstallment}` : 'Bloqueado'}
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-on-surface-variant">
                                         {mod.lessons.length} {mod.lessons.length === 1 ? 'Lección' : 'Lecciones'}
                                         {totalMin > 0 && ` • ${totalMin} Minutos`}
@@ -110,7 +126,7 @@ export function CourseModuleAccordion({ modules, isEnrolled }: CourseModuleAccor
                                 {mod.lessons.map((lesson) => {
                                     const completed = Array.isArray(lesson.progress) && lesson.progress[0]?.completed
 
-                                    if (!isEnrolled) {
+                                    if (!lessonsClickable) {
                                         return (
                                             <div
                                                 key={lesson.id}

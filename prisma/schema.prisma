@@ -126,6 +126,7 @@ model Course {
   hero_image  String?
   price       Float?
   published     Boolean   @default(false)
+  order         Int       @default(0)   // Orden global del catálogo (división por tramos de cuotas)
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
@@ -149,6 +150,8 @@ model Course {
   instructors CourseInstructor[]
   modules     Module[]
   enrollments Enrollment[]
+
+  @@index([order])
 }
 
 model CourseInstructor {

@@ -7,6 +7,7 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { EnrollButton } from '@/components/courses/EnrollButton'
 import { CourseModuleAccordion } from '@/components/courses/CourseModuleAccordion'
 import { getBunnyThumbnailUrl } from '@/lib/bunny'
+import { loadInstallmentGate, isItemLocked, itemUnlockInstallment, OPEN_GATE, type InstallmentGate } from '@/lib/installments'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: Promise<{ courseId: string }> }): Promise<Metadata> {
@@ -72,6 +73,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
 
     let isEnrolled = false
     let hasPaid = false
+    let gate: InstallmentGate = OPEN_GATE
     if (session) {
         if (session.user.role === 'ADMIN') {
             isEnrolled = true
@@ -85,13 +87,39 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                 }),
                 prisma.user.findUnique({
                     where: { id: session.user.id },
-                    select: { payment_status: true, blocked: true },
+                    select: { role: true, closer_enabled: true, closer_type: true, payment_status: true, blocked: true },
                 }),
             ])
             isEnrolled = !!enrollment
             hasPaid = user?.payment_status === 'active' && !user?.blocked
+            if (user) gate = await loadInstallmentGate(session.user.id, user)
         }
     }
+
+    // Desbloqueo por cuotas: ¿este curso está en un tramo del catálogo aún no pagado?
+    let courseInstallmentLocked = false
+    let courseUnlockAt = 0
+    if (gate.applies) {
+        const catalog = await prisma.course.findMany({
+            where: { published: true },
+            orderBy: [{ order: 'asc' }, { created_at: 'asc' }],
+            select: { id: true },
+        })
+        const courseIdx = catalog.findIndex((c) => c.id === courseId)
+        if (courseIdx !== -1) {
+            courseInstallmentLocked = isItemLocked(courseIdx, catalog.length, gate)
+            courseUnlockAt = itemUnlockInstallment(courseIdx, catalog.length, gate)
+        }
+    }
+
+    // Lock por módulo: curso bloqueado ⇒ todos; si no, según el tramo del módulo dentro del curso.
+    const moduleLocks = course.modules.map((_m, mi) => {
+        const locked = courseInstallmentLocked || isItemLocked(mi, course.modules.length, gate)
+        const unlockAt = courseInstallmentLocked
+            ? courseUnlockAt
+            : itemUnlockInstallment(mi, course.modules.length, gate)
+        return { locked, unlockAt }
+    })
 
     // Compute progress
     const allLessons = course.modules.flatMap((m) => m.lessons)
@@ -107,11 +135,19 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
     const minutes = totalDurationMin % 60
     const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`
 
-    // First incomplete lesson for "Continue Learning"
-    const firstIncomplete = allLessons.find((l) => {
-        const p = (l as typeof l & { progress: Array<{ completed: boolean }> }).progress
-        return !Array.isArray(p) || !p[0]?.completed
-    })
+    // First incomplete lesson for "Continue Learning" — salta módulos bloqueados por cuotas.
+    let firstIncomplete: (typeof allLessons)[number] | undefined
+    for (let mi = 0; mi < course.modules.length; mi++) {
+        if (moduleLocks[mi]?.locked) continue
+        const found = course.modules[mi].lessons.find((l) => {
+            const p = (l as typeof l & { progress: Array<{ completed: boolean }> }).progress
+            return !Array.isArray(p) || !p[0]?.completed
+        })
+        if (found) {
+            firstIncomplete = found
+            break
+        }
+    }
 
     return (
         <div className="min-h-screen bg-surface">
@@ -245,10 +281,12 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                     </div>
                                 ) : (
                                     <CourseModuleAccordion
-                                        modules={course.modules.map((mod) => ({
+                                        modules={course.modules.map((mod, mi) => ({
                                             id: mod.id,
                                             title: mod.title,
                                             order: mod.order,
+                                            locked: moduleLocks[mi]?.locked,
+                                            unlockAtInstallment: moduleLocks[mi]?.unlockAt,
                                             lessons: mod.lessons.map((l) => ({
                                                 id: l.id,
                                                 title: l.title,

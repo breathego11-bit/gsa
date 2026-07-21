@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkCourseApproval } from '@/lib/courseApproval'
+import { isLessonUnlockedForUser } from '@/lib/installments'
 
 interface ExamQuestion {
     id: string
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
             where: { id: lesson_id },
             select: {
                 type: true,
+                module_id: true,
                 exam_schema: true,
                 passing_score: true,
                 max_attempts: true,
@@ -45,6 +47,12 @@ export async function POST(req: NextRequest) {
         })
         if (!enrollment && session.user.role !== 'ADMIN') {
             return NextResponse.json({ error: 'Not enrolled' }, { status: 403 })
+        }
+
+        // Desbloqueo por cuotas: no permitir enviar exámenes de tramos no pagados
+        if (session.user.role !== 'ADMIN') {
+            const unlocked = await isLessonUnlockedForUser(session.user.id, lesson.module.course_id, lesson.module_id)
+            if (!unlocked) return NextResponse.json({ error: 'Contenido bloqueado hasta pagar la cuota correspondiente' }, { status: 403 })
         }
 
         // Check attempt limit

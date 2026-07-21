@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { deleteBunnyVideo } from '@/lib/bunny'
+import { isLessonUnlockedForUser } from '@/lib/installments'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -31,6 +32,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
                 },
             })
             if (!enrollment) return NextResponse.json({ error: 'Not enrolled' }, { status: 403 })
+
+            // Desbloqueo por cuotas: lección de un tramo aún no pagado
+            const unlocked = await isLessonUnlockedForUser(session.user.id, lesson.module.course_id, lesson.module_id)
+            if (!unlocked) return NextResponse.json({ error: 'Contenido bloqueado hasta pagar la cuota correspondiente' }, { status: 403 })
         }
 
         // Get siblings for navigation

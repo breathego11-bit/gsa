@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { loadInstallmentGate, isItemLocked, itemUnlockInstallment } from '@/lib/installments'
 import { DashboardCoursesClient, type DashboardCourseData } from './DashboardCoursesClient'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,8 @@ export default async function DashboardCoursesPage() {
                     },
                 },
             },
-            orderBy: { created_at: 'desc' },
+            // Orden del catálogo: define los tramos de desbloqueo por cuotas.
+            orderBy: [{ order: 'asc' }, { created_at: 'asc' }],
         }),
         prisma.enrollment.findMany({
             where: { user_id: userId },
@@ -37,14 +39,22 @@ export default async function DashboardCoursesPage() {
         }),
         prisma.user.findUnique({
             where: { id: userId },
-            select: { payment_status: true, blocked: true },
+            select: { role: true, closer_enabled: true, closer_type: true, payment_status: true, blocked: true },
         }),
     ])
 
     const enrolledCourseIds = new Set(enrollments.map((e) => e.course_id))
     const hasPaid = user?.payment_status === 'active' && !user?.blocked
 
-    const coursesData: DashboardCourseData[] = courses.map((course) => {
+    // Gate de cuotas: divide el catálogo en tramos según cuotas pagadas.
+    const gate = user
+        ? await loadInstallmentGate(userId, user)
+        : { applies: false, total: 0, paid: 0 }
+    const totalCourses = courses.length
+
+    const coursesData: DashboardCourseData[] = courses.map((course, idx) => {
+        const installmentLocked = isItemLocked(idx, totalCourses, gate)
+        const unlockAtInstallment = itemUnlockInstallment(idx, totalCourses, gate)
         const allLessons = course.modules.flatMap((m) => m.lessons)
         const lessonCount = allLessons.length
         const totalDurationMinutes = allLessons.reduce(
@@ -90,6 +100,8 @@ export default async function DashboardCoursesPage() {
             isEnrolled,
             progressPercent,
             progressCompleted,
+            installmentLocked,
+            unlockAtInstallment,
         }
     })
 
