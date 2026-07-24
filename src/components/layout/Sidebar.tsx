@@ -19,6 +19,7 @@ import {
     Sparkles,
     ClipboardList,
     TrendingUp,
+    Wallet,
     Plus,
     ChevronLeft,
     ChevronRight,
@@ -116,6 +117,15 @@ function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
                     badge:
                         typeof badges.monthCashCents === 'number' && badges.monthCashCents > 0
                             ? { kind: 'money', value: fmtMoneyShort(badges.monthCashCents) }
+                            : undefined,
+                },
+                {
+                    href: '/admin/my-sales',
+                    label: 'Mis ventas',
+                    Icon: Wallet,
+                    badge:
+                        typeof badges.salesCount === 'number' && badges.salesCount > 0
+                            ? { kind: 'count', value: badges.salesCount }
                             : undefined,
                 },
                 { href: '/admin/team', label: 'Equipo', Icon: ShieldCheck, kbd: '4' },
@@ -357,11 +367,11 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                 ))}
             </nav>
 
-            {/* Quick action — only for closers (both types) */}
-            {role === 'STUDENT' && isCloser && (
+            {/* Quick action — closers (both types) + admins (act as seller) */}
+            {(isAdmin || (role === 'STUDENT' && isCloser)) && (
                 <div className={collapsed ? 'px-1.5 pt-1.5 pb-3' : 'px-3 pt-1.5 pb-3'}>
                     <Link
-                        href="/dashboard/sales"
+                        href={isAdmin ? '/admin/my-sales' : '/dashboard/sales'}
                         title="Nueva venta"
                         aria-label="Nueva venta"
                         className={`w-full flex items-center rounded-xl text-[13px] font-semibold cursor-pointer ${

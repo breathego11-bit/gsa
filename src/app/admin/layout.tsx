@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    const [studentsCount, invitationsPending, monthCashAgg, leadsNew, user] = await Promise.all([
+    const [studentsCount, invitationsPending, monthCashAgg, leadsNew, mySalesCount, user] = await Promise.all([
         prisma.user.count({ where: { role: 'STUDENT' } }),
         prisma.invitation.count({ where: { used: false } }),
         prisma.saleInstallment.aggregate({
@@ -28,6 +28,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             _sum: { amount: true },
         }),
         prisma.lead.count({ where: { status: 'NUEVO' } }),
+        // Admin's own sales this month → badge for "Mis ventas"
+        prisma.sale.count({
+            where: {
+                closer_id: session.user.id,
+                sale_date: { gte: monthStart, lte: monthEnd },
+            },
+        }),
         prisma.user.findUnique({
             where: { id: session.user.id },
             select: { name: true, last_name: true, email: true, profile_image: true },
@@ -41,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         invitationsPending,
         monthCashCents: monthCashAgg._sum.amount ?? 0,
         leadsNew,
+        salesCount: mySalesCount,
     }
 
     return (
@@ -53,7 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <MobileNav role="ADMIN" user={user} badges={badges} />
             <MainContent
                 wrapperClassName="p-6 md:p-8 pb-28 lg:pb-8 max-w-7xl mx-auto"
-                fullBleedPaths={['/admin/method', '/admin/sales', '/admin/settings', '/admin/coach$']}
+                fullBleedPaths={['/admin/method', '/admin/sales', '/admin/my-sales', '/admin/settings', '/admin/coach$']}
             >
                 {children}
             </MainContent>

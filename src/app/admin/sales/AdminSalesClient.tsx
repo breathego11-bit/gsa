@@ -26,6 +26,7 @@ interface CloserDTO {
     id: string
     name: string
     last_name: string
+    is_admin: boolean
 }
 
 interface AdminSaleDTO {
@@ -388,7 +389,7 @@ export function AdminSalesClient() {
                                 CLOSER
                             </div>
                             <div className="text-[13px]" style={{ color: '#dee2f2' }}>
-                                {closerObj ? `${closerObj.name} ${closerObj.last_name}` : 'Todos los closers'}
+                                {closerObj ? `${closerObj.name} ${closerObj.last_name}${closerObj.is_admin ? ' · Admin' : ''}` : 'Todos los closers'}
                             </div>
                         </div>
                         <ChevronDown size={13} />
@@ -439,7 +440,7 @@ export function AdminSalesClient() {
                                         }}
                                         active={c.id === closerId}
                                         avatar={<CloserAvatar name={c.name} last_name={c.last_name} id={c.id} />}
-                                        label={`${c.name} ${c.last_name}`}
+                                        label={`${c.name} ${c.last_name}${c.is_admin ? ' · Admin' : ''}`}
                                     />
                                 ))}
                                 {data.closers.length === 0 && (

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { CourseCard } from '@/components/courses/CourseCard'
+import { hasActivePayment } from '@/lib/access'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +39,7 @@ export default async function CoursesPage() {
             }),
         ])
         enrolledCourseIds = enrollments.map((e) => e.course_id)
-        hasPaid = user?.role === 'ADMIN' || (user?.payment_status === 'active' && !user?.blocked)
+        hasPaid = user?.role === 'ADMIN' || (!!user && hasActivePayment(user) && !user.blocked)
     }
 
     return (

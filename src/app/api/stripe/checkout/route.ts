@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getStripe, getPricing, computeInstallments } from '@/lib/stripe'
+import { hasActivePayment } from '@/lib/access'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
         )
     }
 
-    if (user.payment_status === 'active') {
+    if (hasActivePayment(user)) {
         return NextResponse.json({ error: 'Already paid' }, { status: 400 })
     }
 

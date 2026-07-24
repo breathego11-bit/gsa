@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { EnrollButton } from '@/components/courses/EnrollButton'
 import { CourseModuleAccordion } from '@/components/courses/CourseModuleAccordion'
+import { hasActivePayment } from '@/lib/access'
 import { getBunnyThumbnailUrl } from '@/lib/bunny'
 import { loadInstallmentGate, isItemLocked, itemUnlockInstallment, OPEN_GATE, type InstallmentGate } from '@/lib/installments'
 import type { Metadata } from 'next'
@@ -91,7 +92,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                 }),
             ])
             isEnrolled = !!enrollment
-            hasPaid = user?.payment_status === 'active' && !user?.blocked
+            hasPaid = !!user && hasActivePayment(user) && !user.blocked
             if (user) gate = await loadInstallmentGate(session.user.id, user)
         }
     }

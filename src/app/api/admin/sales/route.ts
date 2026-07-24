@@ -13,6 +13,7 @@ interface CloserDTO {
     id: string
     name: string
     last_name: string
+    is_admin: boolean
 }
 
 interface AdminSaleDTO {
@@ -69,13 +70,30 @@ export async function GET(req: NextRequest) {
     const closerFilter = url.searchParams.get('closer_id')
     const search = url.searchParams.get('search')?.trim()
 
-    // 1. List of closers (for the dropdown — always full list, not filtered).
-    //    Matches the runtime isCloser() definition: enabled AND type assigned.
-    const closers = await prisma.user.findMany({
-        where: { closer_enabled: true, closer_type: { not: null } },
-        select: { id: true, name: true, last_name: true },
-        orderBy: [{ name: 'asc' }, { last_name: 'asc' }],
-    })
+    // 1. Seller list for the dropdown (also used to resolve the "top closer").
+    //    - Closers: full list, matches the runtime isCloser() definition (enabled AND type).
+    //    - Admins: only those who have registered at least one sale, so they're
+    //      filterable and can surface as top seller. Flagged with is_admin for the UI.
+    const [enabledClosers, adminSellers] = await Promise.all([
+        prisma.user.findMany({
+            where: { closer_enabled: true, closer_type: { not: null } },
+            select: { id: true, name: true, last_name: true },
+            orderBy: [{ name: 'asc' }, { last_name: 'asc' }],
+        }),
+        prisma.user.findMany({
+            where: { role: 'ADMIN', sales: { some: {} } },
+            select: { id: true, name: true, last_name: true },
+            orderBy: [{ name: 'asc' }, { last_name: 'asc' }],
+        }),
+    ])
+
+    // Merge + dedupe by id (an admin flagged as closer only appears once, as admin).
+    const closersById = new Map<string, CloserDTO>()
+    for (const c of enabledClosers) closersById.set(c.id, { ...c, is_admin: false })
+    for (const a of adminSellers) closersById.set(a.id, { ...a, is_admin: true })
+    const closers: CloserDTO[] = Array.from(closersById.values()).sort(
+        (x, y) => x.name.localeCompare(y.name) || x.last_name.localeCompare(y.last_name),
+    )
 
     // 2. Build sale where clause
     const where: Record<string, unknown> = {

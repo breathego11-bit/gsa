@@ -18,6 +18,7 @@ import {
     Sparkles,
     ClipboardList,
     TrendingUp,
+    Wallet,
     Plus,
     X,
     type LucideIcon,
@@ -102,6 +103,15 @@ function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
                     badge:
                         typeof badges.monthCashCents === 'number' && badges.monthCashCents > 0
                             ? { kind: 'money', value: fmtMoneyShort(badges.monthCashCents) }
+                            : undefined,
+                },
+                {
+                    href: '/admin/my-sales',
+                    label: 'Mis ventas',
+                    Icon: Wallet,
+                    badge:
+                        typeof badges.salesCount === 'number' && badges.salesCount > 0
+                            ? { kind: 'count', value: badges.salesCount }
                             : undefined,
                 },
                 { href: '/admin/team', label: 'Equipo', Icon: ShieldCheck, kbd: '4' },
@@ -324,11 +334,11 @@ export function MobileSidebar({
                     ))}
                 </nav>
 
-                {/* Quick action — only for closers (both types) */}
-                {role === 'STUDENT' && isCloser && (
+                {/* Quick action — closers (both types) + admins (act as seller) */}
+                {(isAdmin || (role === 'STUDENT' && isCloser)) && (
                     <div className="px-3 pt-1.5 pb-3">
                         <Link
-                            href="/dashboard/sales"
+                            href={isAdmin ? '/admin/my-sales' : '/dashboard/sales'}
                             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer"
                             style={{
                                 background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',

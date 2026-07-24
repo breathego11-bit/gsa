@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getPricing, computeInstallments } from '@/lib/stripe'
 import Link from 'next/link'
 import { CheckoutButton } from '@/components/payment/CheckoutButton'
+import { hasActivePayment } from '@/lib/access'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ export default async function PaymentPage() {
         )
     }
 
-    if (user?.payment_status === 'active') redirect('/dashboard')
+    if (user && hasActivePayment(user)) redirect('/dashboard')
 
     const pricing = await getPricing()
     const installments = computeInstallments(pricing)

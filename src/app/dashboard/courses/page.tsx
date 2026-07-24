@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { loadInstallmentGate, isItemLocked, itemUnlockInstallment } from '@/lib/installments'
+import { hasActivePayment } from '@/lib/access'
 import { DashboardCoursesClient, type DashboardCourseData } from './DashboardCoursesClient'
 
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,7 @@ export default async function DashboardCoursesPage() {
     ])
 
     const enrolledCourseIds = new Set(enrollments.map((e) => e.course_id))
-    const hasPaid = user?.payment_status === 'active' && !user?.blocked
+    const hasPaid = !!user && hasActivePayment(user) && !user.blocked
 
     // Gate de cuotas: divide el catálogo en tramos según cuotas pagadas.
     const gate = user
