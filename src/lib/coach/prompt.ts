@@ -7,7 +7,7 @@ export const COACH_MODEL = process.env.OPENAI_MODEL || 'gpt-4o'
 export const COACH_MODEL_LIGHT = process.env.OPENAI_MODEL_LIGHT || 'gpt-4o-mini'
 
 /** Longitud máxima de una transcripción pegada (caracteres). */
-export const COACH_MAX_INPUT_CHARS = Number(process.env.COACH_MAX_INPUT_CHARS ?? 32000)
+export const COACH_MAX_INPUT_CHARS = Number(process.env.COACH_MAX_INPUT_CHARS ?? 100000)
 
 /** Tope de tokens de salida (la respuesta §19 completa cabe de sobra). */
 export const COACH_MAX_OUTPUT_TOKENS = Number(process.env.COACH_MAX_OUTPUT_TOKENS ?? 2500)
