@@ -157,6 +157,24 @@ export function CoachClient({
     const urlSynced = useRef(initialMessages.length > 0)
     const scrollRef = useRef<HTMLDivElement>(null)
 
+    // Historial optimista: al iniciar/continuar un chat la conversación aparece en el
+    // sidebar al instante, sin refrescar. Se fusiona sobre la lista del servidor (que
+    // se reconcilia sola en el siguiente fetch) — el overlay solo cambia orden/título.
+    const [optimisticConvs, setOptimisticConvs] = useState<Record<string, CoachConversationBrief>>({})
+
+    const conversationList = useMemo(() => {
+        const map = new Map<string, CoachConversationBrief>()
+        for (const c of conversations) map.set(c.id, c)
+        for (const id of Object.keys(optimisticConvs)) {
+            const o = optimisticConvs[id]
+            const base = map.get(id)
+            // Conversación existente: conserva su título, solo la sube (updated_at).
+            // Conversación nueva: aún no está en el server → usa la entrada optimista.
+            map.set(id, base ? { ...base, updated_at: o.updated_at } : o)
+        }
+        return Array.from(map.values()).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    }, [conversations, optimisticConvs])
+
     const transport = useMemo(
         () =>
             new DefaultChatTransport({
@@ -186,6 +204,18 @@ export function CoachClient({
             : ''
         sendMessage({ text: prefix + text })
         setInput('')
+        // Muestra la conversación en el historial de inmediato (título = primer mensaje).
+        setOptimisticConvs((prev) => ({
+            ...prev,
+            [activeConversationId]: {
+                id: activeConversationId,
+                title:
+                    prev[activeConversationId]?.title ??
+                    conversations.find((c) => c.id === activeConversationId)?.title ??
+                    (text.slice(0, 60) || 'Nueva llamada'),
+                updated_at: new Date().toISOString(),
+            },
+        }))
         // Fija la conversación nueva en la URL: refrescar la conserva y aparece en el historial.
         if (!urlSynced.current) {
             urlSynced.current = true
@@ -218,12 +248,12 @@ export function CoachClient({
                     HISTORIAL
                 </div>
                 <div className="flex-1 overflow-y-auto px-2 pb-3 flex flex-col gap-0.5">
-                    {conversations.length === 0 && (
+                    {conversationList.length === 0 && (
                         <div className="px-3 py-2 text-[12px]" style={{ color: '#5a6178' }}>
                             Aún no has evaluado ninguna llamada.
                         </div>
                     )}
-                    {conversations.map((conv) => {
+                    {conversationList.map((conv) => {
                         const active = conv.id === activeConversationId
                         return (
                             <Link
@@ -335,10 +365,15 @@ export function CoachClient({
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e)
+                                    // Enter envía; Shift+Enter salta de línea. isComposing evita
+                                    // enviar a mitad de composición de acentos/IME.
+                                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                        e.preventDefault()
+                                        submit(e)
+                                    }
                                 }}
                                 rows={3}
-                                placeholder="Pega aquí la transcripción de tu llamada… (⌘/Ctrl + Enter para enviar)"
+                                placeholder="Pega aquí la transcripción de tu llamada… (Enter para enviar · Shift+Enter para salto de línea)"
                                 className="flex-1 resize-none bg-transparent outline-none text-[13.5px] px-2 py-1.5 max-h-52"
                                 style={{ color: '#dee2f2' }}
                             />

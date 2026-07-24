@@ -44,26 +44,41 @@ export default async function CoachPage({
         updated_at: conv.updated_at.toISOString(),
     }))
 
-    // Conversación activa: la de la URL (si es del alumno) o una nueva.
+    // Conversación activa. Se HONRA el id `c` de la URL tal cual, aunque todavía no
+    // esté persistido: al crear un chat nuevo hay una carrera entre el POST que lo
+    // guarda y el router.replace(?c=…). Si se re-generara un id aquí, los mensajes
+    // siguientes irían a otra conversación (chats que se juntan / mensajes perdidos).
+    // Solo se descarta el `c` si pertenece a OTRO usuario. Sin `c` → chat nuevo.
     let activeConversationId: string = randomUUID()
     let initialMessages: CoachUIMessage[] = []
 
-    if (c && conversations.some((conv) => conv.id === c)) {
-        activeConversationId = c
-        const dbMessages = await prisma.coachMessage.findMany({
-            where: { conversation_id: c },
-            orderBy: { created_at: 'asc' },
-            select: { id: true, role: true, content: true },
+    if (c) {
+        const owner = await prisma.coachConversation.findUnique({
+            where: { id: c },
+            select: { user_id: true },
         })
-        initialMessages = dbMessages.map((m) => ({
-            id: m.id,
-            role: m.role === 'assistant' ? 'assistant' : 'user',
-            parts: [{ type: 'text', text: m.content }],
-        }))
+        if (!owner || owner.user_id === u.id) {
+            activeConversationId = c
+            if (owner) {
+                const dbMessages = await prisma.coachMessage.findMany({
+                    where: { conversation_id: c },
+                    orderBy: { created_at: 'asc' },
+                    select: { id: true, role: true, content: true },
+                })
+                initialMessages = dbMessages.map((m) => ({
+                    id: m.id,
+                    role: m.role === 'assistant' ? 'assistant' : 'user',
+                    parts: [{ type: 'text', text: m.content }],
+                }))
+            }
+        }
     }
 
     return (
+        // key: al cambiar de conversación se remonta el chat para que useChat
+        // recargue los mensajes correctos y no arrastre los del chat anterior.
         <CoachClient
+            key={activeConversationId}
             basePath="/dashboard/coach"
             activeConversationId={activeConversationId}
             initialMessages={initialMessages}

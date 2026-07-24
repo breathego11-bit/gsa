@@ -80,8 +80,26 @@ export async function POST(req: Request) {
         )
     }
 
+    // Título limpio para el historial: quita el prefijo meta "(Tipo de llamada …)"
+    // que el cliente antepone, para que coincida con lo que se muestra en el sidebar.
+    const conversationTitle =
+        userText.replace(/^\(Tipo de llamada[^)]*\)\s*/, '').slice(0, 60) || 'Nueva llamada'
+
     // Persistir el turno del alumno ANTES de streamear (upsert de la conversación).
     const conversationId = body.conversationId
+
+    // Integridad + seguridad: nunca escribir en una conversación de OTRO usuario
+    // (el id lo controla el cliente). Si existe y no es suya → 403.
+    if (conversationId) {
+        const owner = await prisma.coachConversation.findUnique({
+            where: { id: conversationId },
+            select: { user_id: true },
+        })
+        if (owner && owner.user_id !== u.id) {
+            return new Response('Forbidden', { status: 403 })
+        }
+    }
+
     try {
         if (conversationId) {
             await prisma.coachConversation.upsert({
@@ -89,7 +107,7 @@ export async function POST(req: Request) {
                 create: {
                     id: conversationId,
                     user_id: u.id,
-                    title: userText.slice(0, 60) || 'Nueva llamada',
+                    title: conversationTitle,
                     call_type: body.callType ?? null,
                 },
                 update: { updated_at: new Date() },
