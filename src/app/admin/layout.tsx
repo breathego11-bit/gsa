@@ -52,7 +52,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }
 
     return (
-        <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
+        <div className="flex h-[100svh] lg:h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
             <Watermark />
             <div className="hidden lg:flex shrink-0 relative z-10">
@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
             <MobileNav role="ADMIN" user={user} badges={badges} />
             <MainContent
-                wrapperClassName="p-6 md:p-8 pb-28 lg:pb-8 max-w-7xl mx-auto"
+                wrapperClassName="p-4 sm:p-6 md:p-8 pb-28 lg:pb-8 max-w-7xl mx-auto"
                 fullBleedPaths={['/admin/method', '/admin/sales', '/admin/my-sales', '/admin/settings', '/admin/coach$']}
             >
                 {children}

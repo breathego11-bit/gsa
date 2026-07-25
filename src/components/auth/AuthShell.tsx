@@ -195,7 +195,7 @@ export function AuthShell() {
                     <form style={au.form} onSubmit={handleSubmit}>
                         {mode === 'register' && (
                             <>
-                                <div style={au.fieldRow}>
+                                <div style={au.fieldRow} className="auth-field-row">
                                     <Field label="Nombre" placeholder="Iván" name="name" required />
                                     <Field label="Apellido" placeholder="Abad" name="last_name" required />
                                 </div>

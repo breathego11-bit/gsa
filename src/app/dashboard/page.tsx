@@ -177,7 +177,7 @@ export default async function DashboardPage() {
                                 : 'Empieza tu camino de aprendizaje inscribiéndote en un curso.'}
                         </p>
                     </div>
-                    <div className="relative z-10 flex gap-6 sm:gap-12 mt-8">
+                    <div className="relative z-10 flex flex-wrap gap-x-6 gap-y-4 sm:gap-12 mt-8">
                         <div>
                             <p className="text-[10px] uppercase tracking-[0.15em] font-bold text-blue-500 mb-1">Inscripciones</p>
                             <p className="text-2xl sm:text-3xl font-black text-on-surface">{coursesWithProgress.length}</p>
@@ -194,7 +194,7 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Next Lesson Card */}
-                <div className="rounded-xl bg-surface-container-high p-8 flex flex-col justify-between border border-white/5">
+                <div className="rounded-xl bg-surface-container-high p-5 sm:p-8 flex flex-col justify-between border border-white/5">
                     {nextLesson ? (
                         <>
                             <div>
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
                 </div>
 
                 {coursesWithProgress.length === 0 ? (
-                    <div className="bg-surface-container-low rounded-xl p-16 text-center">
+                    <div className="bg-surface-container-low rounded-xl p-8 sm:p-16 text-center">
                         <MaterialIcon name="school" size="text-5xl" className="text-on-surface-variant mb-4" />
                         <h3 className="text-lg font-bold text-on-surface mb-2">
                             Aún no estás inscrito en ningún curso
@@ -354,7 +354,7 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Skill Mastery (decorative) */}
-                <div className="lg:col-span-2 bg-surface-container-low rounded-xl p-8 border border-white/5">
+                <div className="lg:col-span-2 bg-surface-container-low rounded-xl p-5 sm:p-8 border border-white/5">
                     <h3 className="text-xl font-bold tracking-tight text-on-surface mb-8">Dominio de Habilidades</h3>
                     <div className="space-y-6">
                         {[

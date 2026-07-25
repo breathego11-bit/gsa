@@ -1,5 +1,5 @@
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
 import { Providers } from '@/components/layout/Providers'
 
@@ -19,6 +19,18 @@ export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
     title: 'GSA — Growth Sales Academy',
     description: 'Plataforma de formación en ventas de alto rendimiento.',
+}
+
+/*
+ * `viewportFit: 'cover'` es lo que hace que `env(safe-area-inset-*)` deje de
+ * resolver a 0px en iPhone con notch. Sin esto, las utilidades `.pb-bottom-nav`
+ * y `.bottom-above-nav` de globals.css no protegen el home indicator.
+ * No se define `maximumScale` ni `userScalable`: el zoom debe seguir permitido.
+ */
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

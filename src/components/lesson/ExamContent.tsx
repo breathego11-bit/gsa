@@ -65,7 +65,7 @@ export function ExamContent({
     // ── Already passed ──
     if (hasPassed) {
         return (
-            <div className="glass-card rounded-2xl border border-outline-variant p-8">
+            <div className="glass-card rounded-2xl border border-outline-variant p-4 sm:p-8">
                 <div className="flex flex-col items-center text-center space-y-4">
                     <div className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center">
                         <MaterialIcon name="emoji_events" size="text-5xl" className="text-emerald-400" />
@@ -90,7 +90,7 @@ export function ExamContent({
     // ── Pre-exam info screen ──
     if (state === 'pre') {
         return (
-            <div className="glass-card rounded-2xl border border-outline-variant p-8">
+            <div className="glass-card rounded-2xl border border-outline-variant p-4 sm:p-8">
                 <div className="flex flex-col items-center text-center space-y-6">
                     <div className="w-16 h-16 rounded-full bg-blue-accent/15 flex items-center justify-center">
                         <MaterialIcon name="quiz" size="text-4xl" className="text-blue-accent" />

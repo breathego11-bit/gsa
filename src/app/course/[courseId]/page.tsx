@@ -155,9 +155,12 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
             {/* ── Nav ─────────────────────────────────────── */}
             <nav className="fixed top-0 w-full z-50 glass-header shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
                 <div className="flex justify-between items-center px-4 sm:px-8 h-20 w-full max-w-[1440px] mx-auto">
+                    {/* La marca a `text-xl` mide ~204px pero, como flex-item, se comprimía a
+                      * su min-content (88px, "Academy") y envolvía a 3 líneas = 84px dentro
+                      * de un `h-20` de 80px: se salía del nav. El logo sigue enlazando a /. */}
                     <Link href="/" className="flex items-center gap-3">
                         <img src="/logo_dark.png" alt="GSA" className="h-9 w-auto" />
-                        <span className="text-xl font-bold tracking-tighter text-slate-100">
+                        <span className="hidden sm:inline text-xl font-bold tracking-tighter text-slate-100">
                             Growth Sales Academy
                         </span>
                     </Link>
@@ -172,9 +175,12 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                             Comunidad
                         </Link>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <MaterialIcon name="search" className="text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
-                        <MaterialIcon name="notifications" className="text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
+                    {/* Los dos iconos son decorativos (sin onClick ni href) y consumían 80px
+                      * del ancho: con "Ingresar" el nav pedía ~394px y desbordaba el viewport,
+                      * haciendo que TODA la página se desplazara lateralmente. */}
+                    <div className="flex items-center gap-3 sm:gap-6">
+                        <MaterialIcon name="search" className="hidden sm:inline-block text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
+                        <MaterialIcon name="notifications" className="hidden sm:inline-block text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
                         {session ? (
                             <Link
                                 href={session.user.role === 'ADMIN' ? '/admin' : '/dashboard'}
@@ -236,7 +242,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                                 <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter text-on-surface max-w-3xl">
                                     {course.title}
                                 </h1>
-                                <p className="text-on-surface-variant text-lg leading-relaxed max-w-2xl text-justify">
+                                <p className="text-on-surface-variant text-lg leading-relaxed max-w-2xl text-left sm:text-justify">
                                     {course.description}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-6 text-on-surface-variant pt-2">
@@ -305,7 +311,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                         </div>
 
                         {/* Sidebar */}
-                        <aside className="lg:col-span-4 space-y-8">
+                        <aside className="lg:col-span-4 space-y-8 order-first lg:order-none">
                             {/* Progress Card (enrolled) */}
                             {isEnrolled && (
                                 <div className="bg-surface-container rounded-2xl p-8 shadow-2xl relative overflow-hidden">
@@ -438,7 +444,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                             © {new Date().getFullYear()} Growth Sales Academy. Todos los derechos reservados.
                         </p>
                     </div>
-                    <div className="flex gap-8">
+                    <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:gap-8">
                         <Link href="#" className="text-sm text-slate-500 hover:text-blue-400 transition-colors">Política de Privacidad</Link>
                         <Link href="#" className="text-sm text-slate-500 hover:text-blue-400 transition-colors">Términos de Servicio</Link>
                         <Link href="#" className="text-sm text-slate-500 hover:text-blue-400 transition-colors">Soporte</Link>

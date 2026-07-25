@@ -964,27 +964,32 @@ function ModuleAccordion({
                 </div>
             </button>
 
+            {/* Mismo caso que CourseModuleAccordion: el `maxHeight: lecciones * 88` no
+              * contempla que los títulos envuelvan y recortaba las últimas lecciones del
+              * módulo sin scroll. `grid-template-rows` mide el contenido real. */}
             <div
-                className="overflow-hidden transition-all duration-300 px-4"
+                className="grid transition-[grid-template-rows,opacity] duration-300 ease-out px-4"
                 style={{
-                    maxHeight: open ? `${mod.lessons.length * 88 + 32}px` : '0px',
+                    gridTemplateRows: open ? '1fr' : '0fr',
                     opacity: open ? 1 : 0,
                     pointerEvents: open ? 'auto' : 'none',
                 }}
             >
-                <div
-                    className="flex flex-col pt-1 pb-3.5"
-                    style={{ borderTop: '1px dashed rgba(129,140,248,0.12)' }}
-                >
-                    {mod.lessons.map((lesson, i) => (
-                        <LessonRow
-                            key={lesson.id}
-                            lesson={lesson}
-                            index={i + 1}
-                            total={mod.lessons.length}
-                            moduleLocked={isLocked}
-                        />
-                    ))}
+                <div className="overflow-hidden min-h-0">
+                    <div
+                        className="flex flex-col pt-1 pb-3.5"
+                        style={{ borderTop: '1px dashed rgba(129,140,248,0.12)' }}
+                    >
+                        {mod.lessons.map((lesson, i) => (
+                            <LessonRow
+                                key={lesson.id}
+                                lesson={lesson}
+                                index={i + 1}
+                                total={mod.lessons.length}
+                                moduleLocked={isLocked}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
         </article>

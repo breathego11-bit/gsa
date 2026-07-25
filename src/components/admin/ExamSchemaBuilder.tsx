@@ -199,12 +199,14 @@ export function ExamSchemaBuilder({ value, onChange }: ExamSchemaBuilderProps) {
                                             value={opt}
                                             onChange={(e) => updateOption(qIndex, optIndex, e.target.value)}
                                             placeholder={`Opción ${String.fromCharCode(65 + optIndex)}`}
-                                            className="form-input text-sm flex-1"
+                                            className="form-input text-sm flex-1 min-w-0"
                                             style={isCorrect ? { borderColor: 'var(--success)', background: 'rgba(16,185,129,0.05)' } : undefined}
                                         />
 
+                                        {/* El badge es redundante en móvil: el botón de la izquierda
+                                          * ya muestra el check verde. Liberarlo da ~62px al input. */}
                                         {isCorrect && (
-                                            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                                            <span className="hidden sm:inline shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
                                                 Correcta
                                             </span>
                                         )}

@@ -113,14 +113,17 @@ export function AdminCoursesClient({ courses: initialCourses }: { courses: Cours
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            {/* El `.section-title` es text-2xl (~200px) y el botón ~150px: 350px sobre los
+              * 327px útiles a 375px. Sin `shrink-0` el botón se comprimía y su etiqueta se
+              * partía en dos líneas, descuadrando el `items-center`. */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="section-title">Gestión de cursos</h1>
                     <p className="section-subtitle">
                         {courses.length} {courses.length === 1 ? 'curso' : 'cursos'} en total
                     </p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)} icon={<Plus size={16} />}>
+                <Button onClick={() => setCreateOpen(true)} icon={<Plus size={16} />} className="w-full sm:w-auto justify-center shrink-0">
                     Nuevo curso
                 </Button>
             </div>

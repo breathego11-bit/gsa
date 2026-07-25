@@ -250,7 +250,7 @@ export function AdminSalesClient() {
     }
 
     return (
-        <div className="px-6 md:px-8 py-7 pb-24 lg:pb-12 max-w-[1480px] mx-auto flex flex-col gap-5">
+        <div className="px-4 sm:px-6 md:px-8 py-7 pb-bottom-nav lg:pb-12 max-w-[1480px] mx-auto flex flex-col gap-5">
             {/* Breadcrumb */}
             <nav
                 className="inline-flex items-center gap-2 text-xs"
@@ -671,7 +671,63 @@ export function AdminSalesClient() {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/*
+                          * Vista de tarjetas para móvil/tablet.
+                          * La tabla pide `minWidth: 1100`, así que a 375px se veía el 34% y
+                          * había que arrastrar 725px para llegar a "Acciones". No se ocultan
+                          * columnas con `hidden md:table-cell` porque el <tfoot> usa
+                          * `colSpan={3}` y `colSpan={2}` fijos y quedarían descuadrados.
+                          * Mismo patrón que CoursesTable.tsx.
+                          */}
+                        <div className="lg:hidden flex flex-col gap-2 px-3 pb-3">
+                            {sortedSales.map((sale) => (
+                                <SaleCard key={sale.id} sale={sale} />
+                            ))}
+                            {sortedSales.length > 0 && (
+                                <div
+                                    className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 rounded-xl mt-1"
+                                    style={{
+                                        background: 'rgba(8,13,24,0.5)',
+                                        border: '1px solid rgba(129,140,248,0.18)',
+                                    }}
+                                >
+                                    <span
+                                        className="inline-flex items-center gap-2"
+                                        style={{
+                                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                                            fontSize: 10.5,
+                                            letterSpacing: 1,
+                                            color: '#dee2f2',
+                                        }}
+                                    >
+                                        <Sigma size={12} />
+                                        <span>TOTALES · {data.metrics.sales_count}</span>
+                                    </span>
+                                    <span className="flex flex-col items-end">
+                                        <span
+                                            className="text-sm font-semibold"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #34d399, #38bdf8)',
+                                                WebkitBackgroundClip: 'text',
+                                                WebkitTextFillColor: 'transparent',
+                                                backgroundClip: 'text',
+                                                letterSpacing: -0.3,
+                                            }}
+                                        >
+                                            {fmt(data.metrics.total_cash_collected)}
+                                        </span>
+                                        <span className="text-[10.5px]" style={{ color: '#7a8094' }}>
+                                            de {fmt(data.metrics.total_contracted)} · comisiones{' '}
+                                            <span style={{ color: '#a78bfa' }}>
+                                                {fmt(data.metrics.total_commissions)}
+                                            </span>
+                                        </span>
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="overflow-x-auto hidden lg:block">
                             <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 1100 }}>
                                 <thead>
                                     <tr>
@@ -1005,6 +1061,72 @@ function KpiCard({
                 </div>
             )}
         </div>
+    )
+}
+
+/**
+ * Equivalente móvil de `SaleRow`. Muestra lo que de verdad se consulta desde el
+ * teléfono (closer, cliente, cobrado/total y fecha) y enlaza al detalle, donde está
+ * todo lo demás. La tabla completa sigue disponible desde `lg` hacia arriba.
+ */
+function SaleCard({ sale }: { sale: AdminSaleDTO }) {
+    const pct = sale.total_amount > 0 ? sale.cash_collected / sale.total_amount : 0
+    const completo = pct >= 1
+    const fullName = `${sale.customer_first_name} ${sale.customer_last_name}`.trim()
+
+    return (
+        <Link
+            href={`/admin/sales/${sale.id}`}
+            className="flex flex-col gap-2.5 px-3.5 py-3 rounded-xl"
+            style={{
+                background: 'rgba(8,13,24,0.4)',
+                border: '1px solid rgba(129,140,248,0.12)',
+                textDecoration: 'none',
+            }}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <CloserAvatar
+                        name={sale.closer_name}
+                        last_name={sale.closer_last_name}
+                        id={sale.closer_id}
+                    />
+                    <div className="min-w-0">
+                        <div className="text-sm font-medium truncate" style={{ color: '#dee2f2' }}>
+                            {fullName}
+                        </div>
+                        <div className="text-[11px] truncate" style={{ color: '#7a8094' }}>
+                            {sale.closer_name} {sale.closer_last_name}
+                        </div>
+                    </div>
+                </div>
+                <div className="text-right shrink-0">
+                    <div className="text-sm font-semibold" style={{ color: '#dee2f2', letterSpacing: -0.2 }}>
+                        {fmt(sale.cash_collected)}
+                    </div>
+                    <div className="text-[10.5px]" style={{ color: '#7a8094' }}>
+                        de {fmt(sale.total_amount)}
+                    </div>
+                </div>
+            </div>
+
+            <div className="h-1 rounded overflow-hidden" style={{ background: 'rgba(129,140,248,0.1)' }}>
+                <div
+                    className="h-full rounded"
+                    style={{
+                        width: `${Math.min(pct, 1) * 100}%`,
+                        background: completo
+                            ? 'linear-gradient(90deg, #34d399, #38bdf8)'
+                            : 'linear-gradient(90deg, #38bdf8, #818cf8)',
+                    }}
+                />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-[11px]" style={{ color: '#7a8094' }}>
+                <span className="truncate">{sale.package_name}</span>
+                <span className="shrink-0">{formatDate(sale.sale_date)}</span>
+            </div>
+        </Link>
     )
 }
 

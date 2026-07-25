@@ -112,7 +112,7 @@ function ScorecardCard({ data }: { data: Scorecard }) {
                     const ratio = it.max ? it.score / it.max : 0
                     return (
                         <div key={it.label} className="flex items-center gap-2.5">
-                            <span className="text-[11.5px] w-40 shrink-0 truncate" style={{ color: '#aab3c7' }}>
+                            <span className="text-[11.5px] w-24 sm:w-40 shrink-0 truncate" style={{ color: '#aab3c7' }}>
                                 {it.label}
                             </span>
                             <div
@@ -294,7 +294,62 @@ export function CoachClient({
                             Pega la transcripción de tu llamada y te la corrijo como lo haría Iván.
                         </div>
                     </div>
+
+                    {/* El aside del historial es `hidden md:flex`, así que por debajo de 768px
+                      * no había forma de abrir una conversación anterior ni de empezar una
+                      * nueva salvo escribiendo la URL `?c=<id>` a mano. */}
+                    <Link
+                        href={basePath}
+                        aria-label="Nueva llamada"
+                        title="Nueva llamada"
+                        className="md:hidden ml-auto shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
+                        style={{ background: ACCENT, color: '#fff', textDecoration: 'none' }}
+                    >
+                        <Plus size={16} />
+                    </Link>
                 </header>
+
+                {/* Historial en móvil (el aside equivalente es `hidden md:flex`) */}
+                {conversationList.length > 0 && (
+                    <details
+                        className="md:hidden shrink-0"
+                        style={{ borderBottom: '1px solid rgba(129,140,248,0.1)', background: 'rgba(8,13,24,0.4)' }}
+                    >
+                        <summary
+                            className="px-5 py-2.5 text-[11px] cursor-pointer list-none"
+                            style={{
+                                fontFamily: 'JetBrains Mono, monospace',
+                                letterSpacing: 1.2,
+                                color: '#7a8094',
+                            }}
+                        >
+                            HISTORIAL · {conversationList.length}
+                        </summary>
+                        <div className="max-h-56 overflow-y-auto px-2 pb-3 flex flex-col gap-0.5">
+                            {conversationList.map((conv) => {
+                                const active = conv.id === activeConversationId
+                                return (
+                                    <Link
+                                        key={conv.id}
+                                        href={`${basePath}?c=${conv.id}`}
+                                        className="flex items-start gap-2 px-2.5 py-2 rounded-lg text-[12.5px]"
+                                        style={{
+                                            background: active ? 'rgba(56,189,248,0.12)' : 'transparent',
+                                            border: active
+                                                ? '1px solid rgba(56,189,248,0.28)'
+                                                : '1px solid transparent',
+                                            color: active ? '#fff' : '#9ca3b8',
+                                            textDecoration: 'none',
+                                        }}
+                                    >
+                                        <MessageSquare size={13} className="mt-0.5 shrink-0" style={{ color: '#7a8094' }} />
+                                        <span className="line-clamp-2">{conv.title}</span>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    </details>
+                )}
 
                 {/* Mensajes */}
                 <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
@@ -332,10 +387,18 @@ export function CoachClient({
                     </div>
                 )}
 
-                {/* Composer */}
+                {/*
+                  * Composer.
+                  * `/dashboard/coach` y `/admin/coach` son rutas full-bleed, así que no
+                  * reciben el `pb-28` del wrapper de MainContent. Sin el `pb-bottom-nav`
+                  * el textarea y el botón de enviar quedan literalmente debajo del
+                  * BottomNav: la función principal de la pantalla es inutilizable en móvil.
+                  * La clase `coach-composer` es además el gancho de globals.css que
+                  * sube los campos a 16px y evita el zoom automático de iOS.
+                  */}
                 <form
                     onSubmit={submit}
-                    className="shrink-0 px-4 md:px-8 py-4"
+                    className="coach-composer shrink-0 px-4 md:px-8 py-4 pb-bottom-nav lg:pb-4"
                     style={{ borderTop: '1px solid rgba(129,140,248,0.1)', background: 'rgba(10,16,32,0.6)' }}
                 >
                     <div className="max-w-3xl mx-auto">
@@ -405,7 +468,7 @@ export function MessageBubble({ role, text }: { role: string; text: string }) {
         return (
             <div className="flex justify-end">
                 <div
-                    className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-sm text-[13.5px] whitespace-pre-wrap"
+                    className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-sm text-[13.5px] whitespace-pre-wrap break-words"
                     style={{ background: 'rgba(56,189,248,0.14)', border: '1px solid rgba(56,189,248,0.25)', color: '#eaf2ff' }}
                 >
                     {text}

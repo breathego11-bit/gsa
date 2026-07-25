@@ -6,6 +6,10 @@ import { prisma } from '@/lib/prisma'
 import { NextStepsSection } from '@/components/onboarding/NextStepsSection'
 import { completeOnboarding } from './actions'
 
+// Video de bienvenida alojado en Bunny Stream
+const WELCOME_VIDEO_LIBRARY_ID = '637035'
+const WELCOME_VIDEO_ID = '98f9fb4c-2cb7-42df-9c47-26e028e26142'
+
 export default async function OnboardingPage() {
     const session = await getServerSession(authOptions)
     if (!session) redirect('/auth')
@@ -53,20 +57,26 @@ export default async function OnboardingPage() {
 
     const checklist = [
         { id: 1, label: 'Pago confirmado', sub: 'Ya tienes acceso completo a GSA', done: true, icon: 'check' as const },
-        { id: 2, label: 'Mira el video de bienvenida', sub: '4 min · esencial para empezar bien', done: false, icon: 'play' as const, active: true },
+        { id: 2, label: 'Mira el video de bienvenida', sub: 'Esencial para empezar bien', done: false, icon: 'play' as const, active: true },
         { id: 3, label: 'Completa tu perfil', sub: 'Para personalizar tu experiencia', done: false, icon: 'user' as const },
         { id: 4, label: 'Únete a la comunidad', sub: '+1,800 closers activos', done: false, icon: 'message' as const },
     ]
 
     return (
         <div style={ob.page}>
-            <style>{`@keyframes gsa-pulseRing { 0% { transform: scale(1); opacity: .6; } 70% { transform: scale(1.8); opacity: 0; } 100% { transform: scale(1.8); opacity: 0; } }`}</style>
             <div style={ob.glowA} />
             <div style={ob.glowB} />
             <div style={ob.grid} />
 
-            <main style={ob.main}>
-                <div style={ob.layout}>
+            {/*
+              * Las clases son el gancho para las media queries de globals.css: el layout
+              * vive en `style` inline (ob.layout = `1.5fr 400px`) y un inline no admite
+              * media queries. Sin esto, a 375px la columna izquierda colapsa a 0px y el
+              * aside termina 133px fuera del viewport, con `overflow:hidden` en el
+              * contenedor — el botón "Ir al dashboard" quedaba inalcanzable.
+              */}
+            <main style={ob.main} className="onboarding-main">
+                <div style={ob.layout} className="onboarding-layout">
                     <div style={ob.left}>
                         <section style={ob.hero}>
                             <div style={ob.kicker}>
@@ -96,10 +106,6 @@ export default async function OnboardingPage() {
                                 </div>
                                 <div style={ob.videoHeaderRight}>
                                     <span style={ob.videoChip}>
-                                        <Icon name="clock" size={11} />
-                                        <span>4:12</span>
-                                    </span>
-                                    <span style={ob.videoChip}>
                                         <Icon name="hd" size={11} />
                                         <span>HD</span>
                                     </span>
@@ -107,51 +113,21 @@ export default async function OnboardingPage() {
                             </div>
 
                             <div style={ob.videoFrame}>
-                                {/* Placeholder. Drop /public/onboarding-welcome.mp4 and replace this block with a <video> element. */}
-                                <div style={ob.videoBg}>
-                                    <div style={ob.videoBgGlow} />
-                                    <div style={ob.videoBgPattern} />
-                                </div>
+                                <iframe
+                                    src={`https://iframe.mediadelivery.net/embed/${WELCOME_VIDEO_LIBRARY_ID}/${WELCOME_VIDEO_ID}?autoplay=false&preload=true&responsive=true`}
+                                    title="Video de bienvenida a GSA"
+                                    loading="lazy"
+                                    style={ob.videoIframe}
+                                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                                    allowFullScreen
+                                />
+                            </div>
 
-                                <div style={ob.playBtn} aria-label="Video pronto disponible">
-                                    <span style={ob.playBtnRing} />
-                                    <span style={ob.playBtnRing2} />
-                                    <svg width="34" height="34" viewBox="0 0 24 24" fill="#0a1020">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-
-                                <div style={ob.comingSoon}>
-                                    <span style={ob.comingDot} />
-                                    <span>PRÓXIMAMENTE</span>
-                                </div>
-
-                                <div style={ob.videoControls}>
-                                    <span style={ob.vcBtn}><Icon name="play" size={14} /></span>
-                                    <div style={ob.vcTrack}>
-                                        <div style={ob.vcTrackFill} />
-                                        <div style={ob.vcTrackBuffer} />
-                                    </div>
-                                    <span style={ob.vcTime}>0:00 / 4:12</span>
-                                    <span style={ob.vcBtn}><Icon name="volume" size={14} /></span>
-                                    <span style={ob.vcBtn}><Icon name="settings" size={14} /></span>
-                                    <span style={ob.vcBtn}><Icon name="expand" size={14} /></span>
-                                </div>
-
-                                <div style={ob.videoInstructor}>
-                                    <div style={ob.instructorAvatar}>IA</div>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={ob.instructorName}>Iván Abad</div>
-                                        <div style={ob.instructorRole}>Founder · GSA · Lección 0</div>
-                                    </div>
-                                    <div style={ob.chapters}>
-                                        <span style={ob.chapterLabel}>3 capítulos</span>
-                                        <div style={ob.chapterDots}>
-                                            <span style={{ ...ob.cdot, ...ob.cdotActive }} />
-                                            <span style={ob.cdot} />
-                                            <span style={ob.cdot} />
-                                        </div>
-                                    </div>
+                            <div style={ob.instructorBar}>
+                                <div style={ob.instructorAvatar}>IA</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={ob.instructorName}>Iván Abad</div>
+                                    <div style={ob.instructorRole}>Founder · GSA · Lección 0</div>
                                 </div>
                             </div>
 
@@ -359,34 +335,13 @@ const ob: Record<string, CSSProperties> = {
     videoHeaderRight: { display: 'flex', gap: 6 },
     videoChip: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 6, background: 'rgba(27,31,43,0.6)', border: '1px solid rgba(129,140,248,0.16)', color: '#9ca3b8', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10.5, letterSpacing: 0.3 },
 
-    videoFrame: { position: 'relative', aspectRatio: '16 / 9', background: 'linear-gradient(135deg, #0f1729 0%, #050913 100%)', borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(129,140,248,0.18)', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.05) inset' },
-    videoBg: { position: 'absolute', inset: 0, overflow: 'hidden' },
-    videoBgGlow: { position: 'absolute', top: '40%', left: '50%', width: 500, height: 500, transform: 'translate(-50%, -50%)', background: 'radial-gradient(circle, rgba(56,189,248,0.25) 0%, transparent 60%)', filter: 'blur(50px)' },
-    videoBgPattern: { position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(56,189,248,0.18) 1px, transparent 0)', backgroundSize: '32px 32px', maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' },
+    videoFrame: { position: 'relative', aspectRatio: '16 / 9', background: '#000', borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(129,140,248,0.18)', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.05) inset' },
+    videoIframe: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 },
 
-    playBtn: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg, #fff, #e8e9f3)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingLeft: 6, boxShadow: '0 20px 60px -10px rgba(56,189,248,0.6), 0 0 0 1px rgba(255,255,255,0.2) inset' },
-    playBtnRing: { position: 'absolute', inset: -14, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.18)', animation: 'gsa-pulseRing 2.6s ease-out infinite' },
-    playBtnRing2: { position: 'absolute', inset: -28, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.08)', animation: 'gsa-pulseRing 2.6s ease-out 0.7s infinite' },
-
-    comingSoon: { position: 'absolute', top: 18, left: 18, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 999, background: 'rgba(8,13,24,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(56,189,248,0.35)', color: '#38bdf8', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10.5, letterSpacing: 1.4 },
-    comingDot: { width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' },
-
-    videoControls: { position: 'absolute', bottom: 80, left: 18, right: 18, display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(8,13,24,0.55)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.08)' },
-    vcBtn: { width: 28, height: 28, borderRadius: 6, color: '#dee2f2', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
-    vcTrack: { flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)', position: 'relative', overflow: 'hidden' },
-    vcTrackFill: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '0%', background: 'linear-gradient(90deg, #38bdf8, #818cf8)' },
-    vcTrackBuffer: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '15%', background: 'rgba(255,255,255,0.15)' },
-    vcTime: { fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, color: '#9ca3b8', minWidth: 70, textAlign: 'right' },
-
-    videoInstructor: { position: 'absolute', bottom: 18, left: 18, right: 18, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(8,13,24,0.65)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.06)' },
+    instructorBar: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(27,31,43,0.4)', border: '1px solid rgba(129,140,248,0.12)' },
     instructorAvatar: { width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #38bdf8, #818cf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: '"JetBrains Mono", ui-monospace, monospace' },
     instructorName: { fontSize: 13.5, fontWeight: 600, color: '#dee2f2' },
     instructorRole: { fontSize: 11, color: '#9ca3b8', marginTop: 2, fontFamily: '"JetBrains Mono", ui-monospace, monospace', letterSpacing: 0.3 },
-    chapters: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
-    chapterLabel: { fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, color: '#7a8094', letterSpacing: 0.4 },
-    chapterDots: { display: 'flex', gap: 4 },
-    cdot: { width: 14, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.18)' },
-    cdotActive: { background: 'linear-gradient(90deg, #38bdf8, #818cf8)', boxShadow: '0 0 6px #38bdf8' },
 
     transcriptHint: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 10px', alignSelf: 'flex-start', color: '#7a8094', fontSize: 11.5, fontFamily: '"JetBrains Mono", ui-monospace, monospace', letterSpacing: 0.3 },
 

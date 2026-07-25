@@ -120,15 +120,24 @@ export function MethodContent() {
                 70% { transform: scale(1.8); opacity: 0; }
                 100% { transform: scale(1.8); opacity: 0; }
             }
-            .gsa-thread-inner { padding: 32px 16px; max-width: 100%; margin: 0 auto; position: relative; z-index: 1; }
+            /* El padding-bottom de 128px reserva el hueco del BottomNav: /dashboard/method
+               y /admin/method son rutas full-bleed, así que no reciben el pb-28 del wrapper. */
+            .gsa-thread-inner { padding: 32px 16px 128px; max-width: 100%; margin: 0 auto; position: relative; z-index: 1; }
             @media (min-width: 900px) {
-                .gsa-thread-inner { padding: 40px 24px 60px 240px; max-width: 1280px; }
+                .gsa-thread-inner { padding: 40px 24px 128px 240px; max-width: 1280px; }
             }
             @media (min-width: 1024px) {
+                .gsa-thread-inner { padding-bottom: 60px; }
                 .gsa-thread-nav { left: 272px !important; }
             }
             @media (max-width: 900px) {
                 .gsa-thread-nav { display: none !important; }
+                /* El timeline en zig-zag se apila: el grid de 2 columnas dejaba tarjetas
+                   de ~171px con títulos de 22px, y el conector en curva no tiene sentido
+                   cuando las fases van una debajo de otra. */
+                .gsa-phase { grid-template-columns: 1fr !important; }
+                .gsa-card { grid-column: 1 !important; margin-left: 0 !important; margin-right: 0 !important; }
+                .gsa-zig { display: none !important; }
             }
         `
         document.head.appendChild(s)
@@ -312,6 +321,7 @@ export function MethodContent() {
                                     ref={(el) => {
                                         phaseRefs.current[i] = el
                                     }}
+                                    className="gsa-phase"
                                     style={{
                                         ...thread.phase,
                                         ...(i % 2 === 1
@@ -330,6 +340,7 @@ export function MethodContent() {
                                     <button
                                         type="button"
                                         onClick={() => toggle(i)}
+                                        className="gsa-card"
                                         style={{
                                             ...thread.card,
                                             ...(isActive ? thread.cardActive : {}),
@@ -455,6 +466,7 @@ function ZigConnector({
     }`
     return (
         <svg
+            className="gsa-zig"
             style={{
                 position: 'absolute',
                 top: 'calc(100% - 8px)',

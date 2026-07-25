@@ -5,7 +5,7 @@ export default function LessonLoading() {
             <div className="h-16" style={{ background: 'var(--bg-surface)' }} />
             <div className="pt-16 flex flex-1">
                 {/* Main content */}
-                <div className="flex-1 p-8 max-w-5xl mx-auto space-y-8">
+                <div className="flex-1 p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
                     <div className="aspect-video rounded-2xl" style={{ background: 'var(--bg-raised)' }} />
                     <div className="space-y-3">
                         <div className="h-4 w-24 rounded-full" style={{ background: 'var(--bg-raised)' }} />

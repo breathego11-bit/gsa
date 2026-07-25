@@ -466,7 +466,9 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
             </header>
 
             {/* Grid principal */}
-            <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)' }}>
+            {/* 1 columna hasta `lg`: a 768px la principal quedaba en ~430px y los grids
+              * anidados (ToggleRow, selector de closer) ya no caben ahí. */}
+            <div className="grid gap-5 grid-cols-1 lg:[grid-template-columns:minmax(0,1.5fr)_minmax(0,1fr)]">
                 {/* Main column */}
                 <div className="flex flex-col gap-5 min-w-0">
                     {/* Stats card */}
@@ -1111,10 +1113,8 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
             {toast && (
                 <div
                     role="status"
-                    className="fixed z-50 flex items-start gap-3 p-3.5 rounded-2xl"
+                    className="fixed z-50 flex items-start gap-3 p-3.5 rounded-2xl bottom-above-nav lg:bottom-6 right-4 lg:right-6"
                     style={{
-                        bottom: 24,
-                        right: 24,
                         width: 380,
                         maxWidth: 'calc(100vw - 48px)',
                         background:
@@ -1508,7 +1508,7 @@ function ConfirmDialog({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 pb-bottom-nav lg:pb-6"
             style={{ background: 'rgba(8,13,24,0.85)', backdropFilter: 'blur(8px)' }}
             onClick={() => !busy && onCancel()}
         >

@@ -126,10 +126,12 @@ export default async function CoachUsoPage() {
                     <table className="w-full text-[13px]" style={{ borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ color: '#7a8094' }}>
+                                {/* Rol y Tokens se ocultan en móvil: Persona, Llamadas y Costo
+                                    son las tres columnas por las que se consulta esta tabla. */}
                                 <th className="text-left font-medium px-3 py-2">Persona</th>
-                                <th className="text-left font-medium px-3 py-2">Rol</th>
+                                <th className="hidden sm:table-cell text-left font-medium px-3 py-2">Rol</th>
                                 <th className="text-right font-medium px-3 py-2">Llamadas</th>
-                                <th className="text-right font-medium px-3 py-2">Tokens</th>
+                                <th className="hidden sm:table-cell text-right font-medium px-3 py-2">Tokens</th>
                                 <th className="text-right font-medium px-3 py-2">Costo</th>
                             </tr>
                         </thead>
@@ -140,7 +142,7 @@ export default async function CoachUsoPage() {
                                         {row.user ? `${row.user.name} ${row.user.last_name}` : 'Usuario eliminado'}
                                         <div className="text-[10.5px]" style={{ color: '#5a6178' }}>{row.user?.email}</div>
                                     </td>
-                                    <td className="px-3 py-2.5">
+                                    <td className="hidden sm:table-cell px-3 py-2.5">
                                         <span
                                             className="text-[10px] px-1.5 py-0.5 rounded"
                                             style={{
@@ -153,7 +155,7 @@ export default async function CoachUsoPage() {
                                         </span>
                                     </td>
                                     <td className="px-3 py-2.5 text-right" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#c7cede' }}>{row.calls}</td>
-                                    <td className="px-3 py-2.5 text-right" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#c7cede' }}>{n0(row.inTok + row.outTok)}</td>
+                                    <td className="hidden sm:table-cell px-3 py-2.5 text-right" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#c7cede' }}>{n0(row.inTok + row.outTok)}</td>
                                     <td className="px-3 py-2.5 text-right font-semibold" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#34d399' }}>{usd(row.cost)}</td>
                                 </tr>
                             ))}

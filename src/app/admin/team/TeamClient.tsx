@@ -69,14 +69,14 @@ export function TeamClient() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="section-title">Equipo</h1>
                     <p className="section-subtitle">Administradores e instructores de la academia</p>
                 </div>
                 <button
                     onClick={() => setShowForm(!showForm)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-container to-secondary-container text-white font-bold text-sm hover:shadow-lg active:scale-95 transition-all"
+                    className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-container to-secondary-container text-white font-bold text-sm hover:shadow-lg active:scale-95 transition-all"
                 >
                     <MaterialIcon name="person_add" size="text-lg" />
                     Nuevo admin

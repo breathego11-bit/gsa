@@ -50,7 +50,8 @@ export default async function CoursesPage() {
                     <div className="flex items-center gap-8">
                         <Link href="/" className="flex items-center gap-3">
                             <img src="/logo_dark.png" alt="GSA" className="h-9 w-auto" />
-                            <span className="text-xl font-bold tracking-tighter text-slate-100">
+                            {/* Ver /course/[courseId]: a 375px envolvía a 3 líneas y rebasaba el h-20. */}
+                            <span className="hidden sm:inline text-xl font-bold tracking-tighter text-slate-100">
                                 Growth Sales Academy
                             </span>
                         </Link>
@@ -213,7 +214,7 @@ export default async function CoursesPage() {
                             © {new Date().getFullYear()} Growth Sales Academy. Todos los derechos reservados.
                         </p>
                     </div>
-                    <div className="flex gap-8">
+                    <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:gap-8">
                         <Link href="#" className="text-sm text-slate-500 hover:text-blue-400 transition-colors">
                             Política de Privacidad
                         </Link>

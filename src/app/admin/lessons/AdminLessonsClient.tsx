@@ -86,13 +86,13 @@ export function AdminLessonsClient({ courses, modules, lessons: initialLessons, 
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="section-title">Gestión de lecciones</h1>
                     <p className="section-subtitle">Administra el contenido de cada módulo</p>
                 </div>
                 {selectedModuleId && (
-                    <Button onClick={() => setCreateOpen(true)} icon={<Plus size={16} />}>
+                    <Button onClick={() => setCreateOpen(true)} icon={<Plus size={16} />} className="w-full sm:w-auto justify-center shrink-0">
                         Nueva lección
                     </Button>
                 )}
@@ -148,6 +148,13 @@ export function AdminLessonsClient({ courses, modules, lessons: initialLessons, 
                             </p>
                         </div>
                     ) : (
+                        /*
+                         * El wrapper con `overflow-x-auto` es imprescindible: el contenedor
+                         * padre es `overflow-hidden`, así que sin él el exceso no se puede
+                         * arrastrar — se RECORTA, y la columna "Acciones" (Editar/Eliminar)
+                         * simplemente no existe en pantalla por debajo de ~500px.
+                         */
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr style={{ background: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
@@ -169,7 +176,7 @@ export function AdminLessonsClient({ courses, modules, lessons: initialLessons, 
                                                 {lesson.title}
                                             </p>
                                             {lesson.description && (
-                                                <p className="text-xs mt-0.5 max-w-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                                                <p className="text-xs mt-0.5 max-w-[12rem] sm:max-w-xs truncate" style={{ color: 'var(--text-secondary)' }}>
                                                     {lesson.description}
                                                 </p>
                                             )}
@@ -206,6 +213,7 @@ export function AdminLessonsClient({ courses, modules, lessons: initialLessons, 
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     )}
                 </div>
             )}

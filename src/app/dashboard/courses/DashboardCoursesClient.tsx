@@ -238,10 +238,10 @@ export function DashboardCoursesClient({ courses, hasPaid }: Props) {
                     })}
 
                     {/* CTA Card */}
-                    <div className="lg:col-span-1 bg-gradient-to-br from-primary-container to-secondary-container rounded-xl p-10 flex flex-col justify-center relative overflow-hidden group shadow-2xl">
+                    <div className="lg:col-span-1 bg-gradient-to-br from-primary-container to-secondary-container rounded-xl p-6 sm:p-10 flex flex-col justify-center relative overflow-hidden group shadow-2xl">
                         <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700" />
                         <div className="relative z-10">
-                            <h2 className="text-3xl font-black text-on-primary-container leading-tight mb-4">
+                            <h2 className="text-2xl sm:text-3xl font-black text-on-primary-container leading-tight mb-4">
                                 ¿No encuentras lo que buscas?
                             </h2>
                             <p className="text-on-primary-container/80 mb-8">

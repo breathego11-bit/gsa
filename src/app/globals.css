@@ -51,7 +51,48 @@ input[type="number"] {
         -ms-overflow-style: none;
         scrollbar-width: none;
     }
+
+    /*
+     * ── Hueco del BottomNav ───────────────────────────
+     * El BottomNav (components/layout/BottomNav.tsx) es `fixed bottom-0`, mide
+     * ~88–97px y es `lg:hidden`. Fuente única de verdad: no repetir
+     * `pb-24`/`pb-28`/`pb-[104px]` a mano por cada pantalla.
+     *
+     * Ambas utilidades están acotadas a `max-width: 1023.98px` a propósito: por
+     * encima no emiten NADA, así que el valor de escritorio lo sigue poniendo la
+     * clase Tailwind del propio elemento. Uso previsto:
+     *
+     *     pb-bottom-nav lg:pb-4        →  hueco en móvil, 1rem en escritorio
+     *     bottom-above-nav lg:bottom-6 →  sobre la barra en móvil, 24px en escritorio
+     */
+    @media (max-width: 1023.98px) {
+        .pb-bottom-nav {
+            padding-bottom: calc(100px + env(safe-area-inset-bottom));
+        }
+        /* Para elementos `fixed` que deben quedar POR ENCIMA de la barra. */
+        .bottom-above-nav {
+            bottom: calc(100px + env(safe-area-inset-bottom));
+        }
+    }
 }
+
+/*
+ * ── Escala de z-index ─────────────────────────────────
+ * OJO: `main` (components/layout/MainContent.tsx) es `relative z-10`, lo que crea
+ * un STACKING CONTEXT. Nada renderizado dentro de `main` puede superar a un
+ * hermano de `main` — da igual el z-index que se le ponga. Por eso los modales
+ * se portalizan a `document.body` (components/ui/Modal.tsx) en vez de subirles
+ * el z-index, y por eso los overlays que se quedan dentro de `main` (barra de
+ * guardado, toasts) se resuelven por POSICIÓN con `.bottom-above-nav`.
+ *
+ *   z-0        AnimatedBackground, Watermark
+ *   z-10       main (y todo su contenido)
+ *   z-50       BottomNav
+ *   z-[60]     Backdrop del drawer
+ *   z-[65]     Drawer (MobileSidebar)
+ *   z-[70]     Modales portalizados
+ *   z-[9999]   NavigationProgress
+ */
 
 @layer base {
     :root {
@@ -165,8 +206,13 @@ input[type="number"] {
         transform: translateY(-1px);
     }
 
+    /*
+     * `text-base` (16px) en móvil es intencionado: Safari iOS hace zoom automático
+     * sobre cualquier input con font-size < 16px al enfocarlo, y no lo revierte al
+     * salir. `md:text-sm` restituye los 14px de siempre en escritorio.
+     */
     .form-input {
-        @apply w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all duration-200;
+        @apply w-full rounded-xl border px-4 py-2.5 text-base md:text-sm outline-none transition-all duration-200;
         background-color: var(--bg-raised);
         border-color: var(--border);
         color: var(--text-primary);
@@ -537,6 +583,64 @@ input[type="number"] {
 @media (max-width: 900px) {
     .manifesto-grid {
         grid-template-columns: 1fr !important;
+    }
+}
+
+/*
+ * ── Escape hatch para estilos inline ──────────────────
+ * Un `style={{}}` inline no admite media queries. El patrón del proyecto es:
+ * mantener el inline como valor de ESCRITORIO, añadir una clase semántica al
+ * elemento y colapsarla aquí con `!important` (necesario para ganarle al inline).
+ * Precedente: `.manifesto-grid` de arriba.
+ */
+
+/*
+ * /onboarding — grid `1.5fr 400px` inline (onboarding/page.tsx).
+ *
+ * Se respeta el orden del DOM a propósito: hero → vídeo de bienvenida → siguientes
+ * pasos → aside (progreso + "Ir al dashboard"). El propósito de esta pantalla es que
+ * el alumno VEA el vídeo, así que el botón de saltar al dashboard va al final. Poner
+ * el aside arriba con `order: -1` ofrecía la salida antes que el contenido.
+ * El `sticky` del aside se desactiva porque en una sola columna no aporta nada.
+ */
+@media (max-width: 1023px) {
+    .onboarding-layout {
+        grid-template-columns: 1fr !important;
+    }
+    .onboarding-main {
+        padding: 28px 16px 48px !important;
+    }
+    .onboarding-layout > aside > div {
+        position: static !important;
+    }
+}
+
+/* /auth — fila de 2 campos `1fr 1fr` inline (AuthShell.tsx) */
+@media (max-width: 639px) {
+    .auth-field-row {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/*
+ * Evita el zoom automático de iOS al enfocar. Complementa el `text-base md:text-sm`
+ * de `.form-input`, para los campos con font-size inline o arbitrario.
+ */
+@media (max-width: 767px) {
+    .auth-shell input,
+    .coach-composer textarea,
+    .coach-composer select {
+        font-size: 16px !important;
+    }
+}
+
+/* Respeta la preferencia del sistema: el fondo animado es decorativo. */
+@media (prefers-reduced-motion: reduce) {
+    .animate-blob1,
+    .animate-blob2,
+    .animate-blob3,
+    .animate-blob4 {
+        animation: none;
     }
 }
 

@@ -4,57 +4,21 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import {
-    LayoutDashboard,
-    BookOpen,
-    Users,
-    User as UserIcon,
-    LogOut,
-    BarChart3,
-    Settings,
-    MailPlus,
-    ShieldCheck,
-    Compass,
-    Sparkles,
-    ClipboardList,
-    TrendingUp,
-    Wallet,
-    Plus,
-    X,
-    type LucideIcon,
-} from 'lucide-react'
+import { useScrollLock } from '@/hooks/useScrollLock'
+import { LogOut, Plus, X } from 'lucide-react'
 import type { CloserType } from '@prisma/client'
+import {
+    buildAdminGroups,
+    buildStudentGroups,
+    isNavItemActive,
+    type NavItem,
+    type Role,
+    type SidebarBadges,
+    type UserBrief,
+} from './nav-config'
 
-type Role = 'STUDENT' | 'ADMIN'
-
-interface NavItem {
-    href: string
-    label: string
-    Icon: LucideIcon
-    badge?: { kind: 'count'; value: number }
-        | { kind: 'money'; value: string }
-        | { kind: 'notif'; value: number }
-    kbd?: string
-}
-
-interface NavGroup {
-    label: string
-    items: NavItem[]
-}
-
-interface UserBrief {
-    name: string
-    last_name: string
-    email: string
-    profile_image: string | null
-}
-
-export interface SidebarBadges {
-    studentsCount?: number
-    invitationsPending?: number
-    monthCashCents?: number
-    salesCount?: number
-}
+// Re-exportado por compatibilidad: MobileNav.tsx tipa sus `badges` contra este símbolo.
+export type { SidebarBadges }
 
 interface MobileSidebarProps {
     role: Role
@@ -64,120 +28,6 @@ interface MobileSidebarProps {
     closerType?: CloserType | null
     user: UserBrief
     badges?: SidebarBadges
-}
-
-function fmtMoneyShort(cents: number): string {
-    const eur = cents / 100
-    if (eur >= 1000) return `€${Math.round(eur / 1000)}k`
-    return `€${Math.round(eur)}`
-}
-
-function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
-    return [
-        {
-            label: 'PRINCIPAL',
-            items: [
-                { href: '/admin', label: 'Dashboard', Icon: BarChart3, kbd: '1' },
-                { href: '/admin/courses', label: 'Cursos', Icon: BookOpen, kbd: '2' },
-                { href: '/admin/method', label: 'Método', Icon: Compass, kbd: '3' },
-                { href: '/admin/coach', label: 'Coach IA', Icon: Sparkles },
-            ],
-        },
-        {
-            label: 'GESTIÓN',
-            items: [
-                {
-                    href: '/admin/students',
-                    label: 'Estudiantes',
-                    Icon: Users,
-                    badge:
-                        typeof badges.studentsCount === 'number'
-                            ? { kind: 'count', value: badges.studentsCount }
-                            : undefined,
-                },
-                { href: '/admin/coach/alumnos', label: 'Coach · Alumnos', Icon: ClipboardList },
-                {
-                    href: '/admin/sales',
-                    label: 'Ventas',
-                    Icon: TrendingUp,
-                    badge:
-                        typeof badges.monthCashCents === 'number' && badges.monthCashCents > 0
-                            ? { kind: 'money', value: fmtMoneyShort(badges.monthCashCents) }
-                            : undefined,
-                },
-                {
-                    href: '/admin/my-sales',
-                    label: 'Mis ventas',
-                    Icon: Wallet,
-                    badge:
-                        typeof badges.salesCount === 'number' && badges.salesCount > 0
-                            ? { kind: 'count', value: badges.salesCount }
-                            : undefined,
-                },
-                { href: '/admin/team', label: 'Equipo', Icon: ShieldCheck, kbd: '4' },
-                {
-                    href: '/admin/invitations',
-                    label: 'Invitaciones',
-                    Icon: MailPlus,
-                    badge:
-                        typeof badges.invitationsPending === 'number' && badges.invitationsPending > 0
-                            ? { kind: 'notif', value: badges.invitationsPending }
-                            : undefined,
-                },
-            ],
-        },
-        {
-            label: 'AJUSTES',
-            items: [{ href: '/admin/settings', label: 'Configuración', Icon: Settings }],
-        },
-    ]
-}
-
-function buildStudentGroups(
-    closerEnabled: boolean,
-    closerType: CloserType | null,
-    badges: SidebarBadges = {},
-): NavGroup[] {
-    // Same matrix as desktop Sidebar:
-    //   regular student        → Dashboard, Cursos, Método, Perfil
-    //   CRM_ONLY closer        → Método, Perfil, Ventas
-    //   CRM_AND_COURSES closer → Dashboard, Cursos, Método, Perfil, Ventas
-    const isCloser = closerEnabled && closerType !== null
-    const hasCourseAccess = !isCloser || closerType === 'CRM_AND_COURSES'
-
-    const principalItems: NavItem[] = []
-    if (hasCourseAccess) {
-        principalItems.push(
-            { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, kbd: '1' },
-            { href: '/dashboard/courses', label: 'Cursos', Icon: BookOpen, kbd: '2' },
-        )
-    }
-    principalItems.push(
-        { href: '/dashboard/method', label: 'Método', Icon: Compass, kbd: '3' },
-        { href: '/dashboard/coach', label: 'Coach IA', Icon: Sparkles, kbd: '4' },
-        { href: '/dashboard/profile', label: 'Perfil', Icon: UserIcon, kbd: '5' },
-    )
-
-    const groups: NavGroup[] = [{ label: 'PRINCIPAL', items: principalItems }]
-
-    if (isCloser) {
-        groups.push({
-            label: 'VENTAS',
-            items: [
-                {
-                    href: '/dashboard/sales',
-                    label: 'Ventas',
-                    Icon: TrendingUp,
-                    badge:
-                        typeof badges.salesCount === 'number' && badges.salesCount > 0
-                            ? { kind: 'count', value: badges.salesCount }
-                            : undefined,
-                },
-            ],
-        })
-    }
-
-    return groups
 }
 
 export function MobileSidebar({
@@ -196,23 +46,15 @@ export function MobileSidebar({
         ? buildAdminGroups(badges)
         : buildStudentGroups(closerEnabled, closerType, badges)
 
-    const isActive = (href: string) => {
-        if (href === '/admin' || href === '/dashboard' || href === '/admin/coach') return pathname === href
-        // "Coach · Alumnos" cubre toda el área de gestión del coach (alumnos, uso, ajustes)
-        if (href === '/admin/coach/alumnos') return pathname.startsWith('/admin/coach/')
-        return pathname.startsWith(href)
-    }
+    const isActive = (href: string) => isNavItemActive(href, pathname)
 
     // Close drawer on route change
     useEffect(() => {
         onClose()
     }, [pathname])
 
-    // Lock body scroll when open
-    useEffect(() => {
-        document.body.style.overflow = open ? 'hidden' : ''
-        return () => { document.body.style.overflow = '' }
-    }, [open])
+    // Lock scroll when open (body + el <main>, que es el scroller real en dashboard/admin)
+    useScrollLock(open)
 
     const initials = `${user.name.charAt(0) ?? ''}${user.last_name.charAt(0) ?? ''}`.toUpperCase()
     const profileHref = isAdmin ? '/admin/settings?tab=profile' : '/dashboard/profile'
@@ -222,14 +64,20 @@ export function MobileSidebar({
             {/* Backdrop */}
             {open && (
                 <div
-                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                    className="fixed inset-0 z-[60] bg-black/50 lg:hidden"
                     onClick={onClose}
                 />
             )}
 
-            {/* Drawer */}
+            {/*
+              * Drawer.
+              * z-[65] > z-50 del BottomNav. Antes ambos eran z-50 y, a igual z-index,
+              * gana el último del DOM: BottomNav se renderiza después (MobileNav.tsx),
+              * así que tapaba el footer del drawer — donde viven "Mi perfil" y
+              * "Cerrar sesión", el único acceso a logout que hay en móvil.
+              */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+                className={`fixed inset-y-0 left-0 z-[65] flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
                     open ? 'translate-x-0' : '-translate-x-full'
                 }`}
                 style={{
@@ -299,7 +147,7 @@ export function MobileSidebar({
                     </div>
                     <button
                         onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-white/10 shrink-0"
+                        className="flex h-11 w-11 lg:h-8 lg:w-8 items-center justify-center rounded-lg transition-colors hover:bg-white/10 shrink-0"
                         aria-label="Cerrar menú"
                     >
                         <X size={18} className="text-slate-400" />
@@ -428,7 +276,7 @@ export function MobileSidebar({
                             onClick={() => signOut({ callbackUrl: '/' })}
                             aria-label="Cerrar sesión"
                             title="Cerrar sesión"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            className="w-11 h-11 lg:w-7 lg:h-7 rounded-lg flex items-center justify-center shrink-0"
                             style={{
                                 background: 'rgba(8,13,24,0.5)',
                                 border: '1px solid rgba(129,140,248,0.14)',

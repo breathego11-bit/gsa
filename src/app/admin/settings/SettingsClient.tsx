@@ -65,7 +65,7 @@ export function SettingsClient({ initialPricing, initialTiers, user, adminStats 
     const activeTabInfo = TABS.find((t) => t.id === activeTab) ?? TABS[0]
 
     return (
-        <div className="px-6 md:px-7 py-6 pb-24 lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5">
+        <div className="px-4 sm:px-6 md:px-7 py-6 pb-bottom-nav lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5">
             {/* Page header */}
             <header className="flex justify-between items-end gap-5 flex-wrap">
                 <div>
@@ -114,10 +114,15 @@ export function SettingsClient({ initialPricing, initialTiers, user, adminStats 
                 </div>
             </header>
 
-            {/* Layout 2 columnas */}
-            <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 184px) 1fr' }}>
+            {/*
+              * Layout 2 columnas.
+              * El grid estaba en `style` inline, que no admite media queries: a 375px
+              * dejaba 123px para el contenido y los inputs (con `min-width:auto`) no
+              * podían encoger, así que desbordaban y arrastraban todo el panel.
+              */}
+            <div className="grid gap-5 grid-cols-1 md:[grid-template-columns:minmax(0,184px)_1fr]">
                 {/* Sidebar interno */}
-                <aside className="flex flex-col gap-1 sticky top-20 self-start">
+                <aside className="flex flex-col gap-1 md:sticky md:top-20 md:self-start">
                     <div
                         className="px-3 pb-2"
                         style={{
@@ -129,7 +134,8 @@ export function SettingsClient({ initialPricing, initialTiers, user, adminStats 
                     >
                         AJUSTES
                     </div>
-                    <nav className="flex flex-col gap-0.5">
+                    {/* En móvil los tabs van en fila con scroll; desde `md` vuelven a columna. */}
+                    <nav className="flex flex-row md:flex-col gap-0.5 overflow-x-auto no-scrollbar">
                         {TABS.map((tab) => {
                             const Icon = tab.icon
                             const active = activeTab === tab.id
@@ -138,7 +144,7 @@ export function SettingsClient({ initialPricing, initialTiers, user, adminStats 
                                     key={tab.id}
                                     type="button"
                                     onClick={() => setActiveTab(tab.id)}
-                                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-left relative transition-colors cursor-pointer"
+                                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-left relative transition-colors cursor-pointer shrink-0 whitespace-nowrap md:whitespace-normal"
                                     style={
                                         active
                                             ? {
@@ -154,10 +160,10 @@ export function SettingsClient({ initialPricing, initialTiers, user, adminStats 
                                     }
                                 >
                                     <Icon size={14} />
-                                    <span className="flex-1">{tab.label}</span>
+                                    <span className="md:flex-1">{tab.label}</span>
                                     {active && (
                                         <span
-                                            className="w-1.5 h-1.5 rounded-full"
+                                            className="hidden md:block w-1.5 h-1.5 rounded-full"
                                             style={{
                                                 background: '#fb923c',
                                                 boxShadow: '0 0 6px #fb923c',

@@ -142,7 +142,7 @@ export function SaleDetailClient({ sale: initialSale, backHref = '/dashboard/sal
     }, [sale])
 
     return (
-        <div className="px-6 md:px-8 py-7 pb-24 lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5">
+        <div className="px-4 sm:px-6 md:px-8 py-7 pb-bottom-nav lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5">
             {/* Back link */}
             <Link
                 href={backHref}
@@ -260,7 +260,9 @@ export function SaleDetailClient({ sale: initialSale, backHref = '/dashboard/sal
             </header>
 
             {/* Grid */}
-            <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
+            {/* 1 columna hasta `lg`. Archivo compartido: sirve /dashboard/sales/[id] y
+              * /admin/sales/[id] — verificar ambos al tocar esto. */}
+            <div className="grid gap-5 grid-cols-1 lg:[grid-template-columns:minmax(0,1.4fr)_minmax(0,1fr)]">
                 {/* Left column */}
                 <div className="flex flex-col gap-5 min-w-0">
                     {/* Package card */}
@@ -590,7 +592,7 @@ export function SaleDetailClient({ sale: initialSale, backHref = '/dashboard/sal
             {/* Image modal */}
             {imgModal && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-6"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-6 pb-bottom-nav lg:pb-6"
                     style={{ background: 'rgba(8,13,24,0.85)', backdropFilter: 'blur(8px)' }}
                     onClick={() => setImgModal(false)}
                 >
@@ -723,9 +725,8 @@ function InstallmentRow({
 
     return (
         <div
-            className="grid items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all"
+            className="grid items-center gap-2 sm:gap-3.5 px-3.5 py-3 rounded-xl transition-all grid-cols-[32px_minmax(0,1fr)_auto_auto] sm:[grid-template-columns:40px_minmax(0,1fr)_90px_auto]"
             style={{
-                gridTemplateColumns: '40px minmax(0, 1fr) 90px auto',
                 background: isCobrada
                     ? 'linear-gradient(90deg, rgba(52,211,153,0.05), rgba(8,13,24,0.4))'
                     : 'rgba(8,13,24,0.4)',
@@ -801,17 +802,23 @@ function InstallmentRow({
                 </div>
             </div>
 
+            {/* En móvil la columna del importe es `auto` en vez de 90px fijos: los 30px
+              * que libera son los que evitaban que la columna de info colapsara. */}
             <div
-                className="text-base font-semibold text-right"
-                style={{ color: '#dee2f2', letterSpacing: -0.3, minWidth: 80 }}
+                className="text-sm sm:text-base font-semibold text-right sm:min-w-[80px]"
+                style={{ color: '#dee2f2', letterSpacing: -0.3 }}
             >
                 {fmt(cuota.amount)}
             </div>
 
+            {/* La etiqueta (~125px con `whitespace-nowrap`) es lo que colapsaba la columna
+              * de info en móvil. Se oculta desde `sm` hacia abajo; el `aria-label`
+              * mantiene el botón accesible como botón de solo icono. */}
             <button
                 onClick={onToggle}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                aria-label={isCobrada ? 'Marcar pendiente' : 'Marcar cobrada'}
+                className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 max-sm:h-9 max-sm:w-9 rounded-lg text-[11.5px] font-medium cursor-pointer disabled:opacity-50 whitespace-nowrap"
                 style={
                     isCobrada
                         ? {
@@ -831,12 +838,12 @@ function InstallmentRow({
                 ) : isCobrada ? (
                     <>
                         <RotateCcw size={12} />
-                        <span>Marcar pendiente</span>
+                        <span className="hidden sm:inline">Marcar pendiente</span>
                     </>
                 ) : (
                     <>
                         <Check size={12} />
-                        <span>Marcar cobrada</span>
+                        <span className="hidden sm:inline">Marcar cobrada</span>
                     </>
                 )}
             </button>

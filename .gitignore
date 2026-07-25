@@ -51,3 +51,9 @@ tsconfig.tsbuildinfo
 *.tsbuildinfo
 
 testi3.MOV
+
+# Specs y notas de trabajo (no forman parte del build)
+spec*.md
+CRM_Leads_Spec.md
+docs/*-spec.md
+docs/responsive-audit/

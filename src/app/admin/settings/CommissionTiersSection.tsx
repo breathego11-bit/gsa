@@ -214,10 +214,11 @@ export function CommissionTiersSection({ initialTiers }: Props) {
 
                 {/* Tiers list */}
                 <div className="flex flex-col gap-1.5">
+                    {/* La cabecera se oculta en móvil: con 2 columnas los rótulos ya no
+                      * casan con las celdas de abajo. */}
                     <div
-                        className="grid items-center gap-2.5 px-3.5 pb-1"
+                        className="hidden sm:grid items-center gap-2.5 px-3.5 pb-1 sm:[grid-template-columns:50px_1.5fr_0.9fr_1fr_32px]"
                         style={{
-                            gridTemplateColumns: '50px 1.5fr 0.9fr 1fr 32px',
                             fontFamily: 'JetBrains Mono, ui-monospace, monospace',
                             fontSize: 9.5,
                             letterSpacing: 1.2,
@@ -236,11 +237,15 @@ export function CommissionTiersSection({ initialTiers }: Props) {
                         const err = rowErrors[i]
                         const colors = TIER_BADGE_COLORS[i % TIER_BADGE_COLORS.length]
                         return (
+                            /*
+                             * Móvil: 2 columnas → [TIER][€ Desde] / [% Pct][X]. Con las 5
+                             * columnas originales las celdas caían a 45–60px y los inputs
+                             * eran inoperables. Desde `sm` vuelve el grid de siempre.
+                             */
                             <div
                                 key={r.key}
-                                className="grid items-center gap-2.5 px-3.5 py-3 rounded-xl"
+                                className="grid items-center gap-2.5 px-3.5 py-3 rounded-xl grid-cols-[50px_1fr] sm:[grid-template-columns:50px_1.5fr_0.9fr_1fr_32px]"
                                 style={{
-                                    gridTemplateColumns: '50px 1.5fr 0.9fr 1fr 32px',
                                     background: err ? 'rgba(239,68,68,0.05)' : 'rgba(8,13,24,0.4)',
                                     border: `1px solid ${err ? 'rgba(239,68,68,0.3)' : 'rgba(129,140,248,0.12)'}`,
                                     minWidth: 0,
@@ -310,7 +315,9 @@ export function CommissionTiersSection({ initialTiers }: Props) {
                                     )}
                                 </div>
 
-                                <div className="flex flex-col gap-1 min-w-0 justify-center">
+                                {/* "HASTA" es de solo lectura y se deduce del "DESDE" del tier
+                                  * siguiente: es la primera celda que se puede sacrificar en móvil. */}
+                                <div className="hidden sm:flex flex-col gap-1 min-w-0 justify-center">
                                     <div
                                         className="px-3 py-2 rounded-lg text-[12.5px]"
                                         style={{
@@ -545,11 +552,17 @@ export function CommissionTiersSection({ initialTiers }: Props) {
                 </div>
             </section>
 
-            {/* Sticky save bar (overlay, only when dirty) */}
+            {/*
+              * Sticky save bar (overlay, only when dirty).
+              * `bottom-above-nav` (globals.css) la sube por encima del BottomNav en
+              * móvil y la devuelve a 1rem desde `lg`. No vale subirle el z-index:
+              * esta barra vive dentro de `main`, que es `relative z-10` y crea
+              * stacking context — el BottomNav la taparía igualmente. Y el `bottom`
+              * tiene que salir del `style` inline o le ganaría a la clase.
+              */}
             <div
-                className="fixed left-0 right-0 z-40 pointer-events-none transition-all"
+                className="fixed left-0 right-0 z-40 pointer-events-none transition-all bottom-above-nav lg:bottom-4"
                 style={{
-                    bottom: 16,
                     transform: dirty ? 'translateY(0)' : 'translateY(120%)',
                     opacity: dirty ? 1 : 0,
                 }}

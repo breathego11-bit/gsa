@@ -113,8 +113,17 @@ function SaleRow({ sale, stripe }: { sale: SaleDTO; stripe: boolean }) {
                 borderBottom: '1px solid rgba(129,140,248,0.06)',
             }}
         >
+            {/*
+              * `max-md:!basis-auto` en las 6 celdas no es cosmético.
+              * El contenedor pasa a `flex-col` en móvil, pero los `flex: 'N 1 XXXpx'`
+              * inline seguían aplicándose — y en un contenedor `column`, flex-basis es
+              * la ALTURA. Cada fila de venta medía 240+180+110+200+110+88 = 928px más
+              * gaps ≈ 1.016px, de los que ~40px eran contenido real.
+              * Un `!important` de hoja de estilos gana al inline; desde `md` la regla
+              * no se emite y el layout de escritorio queda intacto.
+              */}
             {/* Cliente */}
-            <div style={{ flex: '2 1 240px', minWidth: 0 }} className="flex items-center gap-3">
+            <div style={{ flex: '2 1 240px', minWidth: 0 }} className="flex items-center gap-3 max-md:!basis-auto">
                 <div className="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold"
                     style={{
                         background: 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(129,140,248,0.18))',
@@ -131,7 +140,7 @@ function SaleRow({ sale, stripe }: { sale: SaleDTO; stripe: boolean }) {
             </div>
 
             {/* Paquete */}
-            <div style={{ flex: '1.5 1 180px', minWidth: 0 }} className="flex flex-col justify-center">
+            <div style={{ flex: '1.5 1 180px', minWidth: 0 }} className="flex flex-col justify-center max-md:!basis-auto">
                 <div className="text-sm truncate" style={{ color: '#dee2f2' }}>{sale.package_name}</div>
                 <div className="text-[10.5px] truncate" style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace', color: '#7a8094' }}>
                     {sale.id.slice(0, 12).toUpperCase()}
@@ -139,14 +148,14 @@ function SaleRow({ sale, stripe }: { sale: SaleDTO; stripe: boolean }) {
             </div>
 
             {/* Total */}
-            <div style={{ flex: '1 1 110px', textAlign: 'right' }} className="flex flex-col justify-center">
+            <div style={{ flex: '1 1 110px', textAlign: 'right' }} className="flex flex-col justify-center max-md:!basis-auto max-md:!text-left">
                 <div className="text-sm font-semibold" style={{ color: '#dee2f2', letterSpacing: -0.2 }}>
                     {fmt(sale.total_amount)}
                 </div>
             </div>
 
             {/* Cobrado */}
-            <div style={{ flex: '1.7 1 200px' }} className="flex flex-col justify-center">
+            <div style={{ flex: '1.7 1 200px' }} className="flex flex-col justify-center max-md:!basis-auto">
                 <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-sm font-medium" style={{ color: '#dee2f2' }}>{fmt(sale.cash_collected)}</span>
                     <span className="px-1.5 py-px rounded-full text-[10px] font-semibold"
@@ -171,13 +180,13 @@ function SaleRow({ sale, stripe }: { sale: SaleDTO; stripe: boolean }) {
             </div>
 
             {/* Fecha */}
-            <div style={{ flex: '1 1 110px' }} className="flex flex-col justify-center">
+            <div style={{ flex: '1 1 110px' }} className="flex flex-col justify-center max-md:!basis-auto">
                 <div className="text-sm" style={{ color: '#dee2f2' }}>{formatDate(sale.sale_date)}</div>
                 <div className="text-[11.5px] mt-0.5" style={{ color: '#7a8094' }}>{relativeDate(sale.sale_date)}</div>
             </div>
 
             {/* Acciones */}
-            <div style={{ flex: '0 0 88px' }} className="flex items-center justify-end gap-1">
+            <div style={{ flex: '0 0 88px' }} className="flex items-center justify-end gap-1 max-md:!basis-auto">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center"
                     style={{ border: '1px solid rgba(129,140,248,0.15)', color: '#9ca3b8' }}>
                     <ArrowRight size={14} />

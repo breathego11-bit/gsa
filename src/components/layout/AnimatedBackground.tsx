@@ -1,7 +1,14 @@
 export function AnimatedBackground() {
     return (
         <>
-            {/* Animated blobs */}
+            {/*
+             * Animated blobs.
+             * Son 4 capas promovidas a GPU (`will-change`) con blurs de 90–140px animándose
+             * en bucle infinito, en las DOS áreas logueadas, y encima se les superponen los
+             * `backdrop-filter` del BottomNav y de las clases `.glass*`. En gama media
+             * Android eso es jank de scroll y batería. En móvil se dejan 2 de los 4; el
+             * respeto a `prefers-reduced-motion` está en globals.css.
+             */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
                 <div
                     className="absolute w-[600px] h-[600px] rounded-full blur-[120px] animate-blob1"
@@ -20,7 +27,7 @@ export function AnimatedBackground() {
                     }}
                 />
                 <div
-                    className="absolute w-[500px] h-[500px] rounded-full blur-[100px] animate-blob3"
+                    className="hidden md:block absolute w-[500px] h-[500px] rounded-full blur-[100px] animate-blob3"
                     style={{
                         background: 'radial-gradient(circle, #b8c4ff 0%, transparent 70%)',
                         bottom: '-20%',
@@ -28,7 +35,7 @@ export function AnimatedBackground() {
                     }}
                 />
                 <div
-                    className="absolute w-[400px] h-[400px] rounded-full blur-[90px] animate-blob4"
+                    className="hidden md:block absolute w-[400px] h-[400px] rounded-full blur-[90px] animate-blob4"
                     style={{
                         background: 'radial-gradient(circle, #adc6ff 0%, transparent 70%)',
                         top: '60%',

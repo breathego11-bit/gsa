@@ -3,7 +3,7 @@ export default function DashboardLoading() {
         <div className="space-y-8 animate-pulse">
             <div className="space-y-2">
                 <div className="h-8 w-56 rounded-lg" style={{ background: 'var(--bg-raised)' }} />
-                <div className="h-4 w-80 rounded-lg" style={{ background: 'var(--bg-raised)' }} />
+                <div className="h-4 w-full max-w-80 rounded-lg" style={{ background: 'var(--bg-raised)' }} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[1, 2, 3, 4].map((i) => (

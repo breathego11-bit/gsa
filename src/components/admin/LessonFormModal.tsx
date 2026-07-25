@@ -160,13 +160,15 @@ export function LessonFormModal({ open, onClose, onSuccess, moduleId, initial, n
                 {/* Type selector */}
                 <div className="flex flex-col gap-1.5">
                     <label className="form-label">Tipo de lección</label>
-                    <div className="grid grid-cols-4 gap-2">
+                    {/* 2 columnas en móvil: con 4, cada celda quedaba en 67px y "Formulario"
+                      * (~62px a text-xs, una sola palabra) desbordaba su botón. */}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {typeOptions.map((opt) => (
                             <button
                                 key={opt.value}
                                 type="button"
                                 onClick={() => setType(opt.value)}
-                                className={`flex flex-col items-center gap-1 px-3 py-3 rounded-xl border text-xs font-medium transition-all ${
+                                className={`flex flex-col items-center gap-1 px-3 py-3 rounded-xl border text-xs font-medium transition-all break-words ${
                                     type === opt.value
                                         ? 'border-blue-500 bg-blue-500/10 text-blue-400'
                                         : 'border-transparent bg-white/5 hover:bg-white/10'

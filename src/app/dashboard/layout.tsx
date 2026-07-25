@@ -40,7 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const badges = isCloser ? { salesCount } : {}
 
     return (
-        <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
+        <div className="flex h-[100svh] lg:h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
             <Watermark />
             <div className="hidden lg:flex shrink-0 relative z-10">
@@ -60,7 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 badges={badges}
             />
             <MainContent
-                wrapperClassName="p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto"
+                wrapperClassName="p-4 sm:p-6 md:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto"
                 fullBleedPaths={['/dashboard/method', '/dashboard/sales', '/dashboard/coach']}
             >
                 {children}

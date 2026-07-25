@@ -160,14 +160,14 @@ export function InvitationsClient() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="section-title">Invitaciones</h1>
                     <p className="section-subtitle">Genera links únicos para registrar alumnos que pagaron por fuera</p>
                 </div>
                 <button
                     onClick={() => setShowForm(!showForm)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-container to-secondary-container text-white font-bold text-sm hover:shadow-lg active:scale-95 transition-all"
+                    className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-container to-secondary-container text-white font-bold text-sm hover:shadow-lg active:scale-95 transition-all"
                 >
                     <MaterialIcon name="add_link" size="text-lg" />
                     Nueva invitación
@@ -288,7 +288,14 @@ export function InvitationsClient() {
                                 </button>
                             </div>
                             {pendingInstallments.map((inst, idx) => (
-                                <div key={idx} className="flex items-center gap-3">
+                                /*
+                                 * `flex-wrap` + `min-w-0`: el input numérico era `flex-1` sin
+                                 * `min-w-0`, así que su `min-width:auto` lo anclaba en ~175px;
+                                 * con el `<input type=date>` (~140px intrínsecos) la fila pedía
+                                 * ~435px sobre 279px y, al no haber `overflow` en el contenedor,
+                                 * el desbordamiento subía hasta `main` y desplazaba todo el panel.
+                                 */
+                                <div key={idx} className="flex flex-wrap items-center gap-3">
                                     <span className="text-xs text-on-surface-variant shrink-0 w-16">Cuota {idx + 2}</span>
                                     <input
                                         type="number"
@@ -296,14 +303,14 @@ export function InvitationsClient() {
                                         min="0"
                                         value={inst.amount}
                                         onChange={e => updateInstallment(idx, 'amount', e.target.value)}
-                                        className="flex-1 bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
+                                        className="flex-1 min-w-0 basis-24 bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
                                         placeholder="EUR"
                                     />
                                     <input
                                         type="date"
                                         value={inst.dueDate}
                                         onChange={e => updateInstallment(idx, 'dueDate', e.target.value)}
-                                        className="bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
+                                        className="min-w-0 basis-36 sm:basis-auto bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
                                     />
                                     <button onClick={() => removeInstallment(idx)} className="text-red-400 hover:text-red-300 shrink-0">
                                         <MaterialIcon name="close" size="text-sm" />

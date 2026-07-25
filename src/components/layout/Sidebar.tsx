@@ -4,60 +4,21 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import {
-    LayoutDashboard,
-    BookOpen,
-    Users,
-    User as UserIcon,
-    LogOut,
-    BarChart3,
-    Settings,
-    MailPlus,
-    Inbox,
-    ShieldCheck,
-    Compass,
-    Sparkles,
-    ClipboardList,
-    TrendingUp,
-    Wallet,
-    Plus,
-    ChevronLeft,
-    ChevronRight,
-    type LucideIcon,
-} from 'lucide-react'
+import { LogOut, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { CloserType } from '@prisma/client'
+import {
+    buildAdminGroups,
+    buildStudentGroups,
+    isNavItemActive,
+    type NavItem,
+    type Role,
+    type SidebarBadges,
+    type UserBrief,
+} from './nav-config'
 
-type Role = 'STUDENT' | 'ADMIN'
-
-interface NavItem {
-    href: string
-    label: string
-    Icon: LucideIcon
-    badge?: { kind: 'count'; value: number }
-        | { kind: 'money'; value: string }
-        | { kind: 'notif'; value: number }
-    kbd?: string
-}
-
-interface NavGroup {
-    label: string
-    items: NavItem[]
-}
-
-interface UserBrief {
-    name: string
-    last_name: string
-    email: string
-    profile_image: string | null
-}
-
-export interface SidebarBadges {
-    studentsCount?: number
-    invitationsPending?: number
-    monthCashCents?: number
-    salesCount?: number
-    leadsNew?: number
-}
+// Re-exportado por compatibilidad: admin/layout.tsx y dashboard/layout.tsx
+// tipan sus `badges` contra este símbolo.
+export type { SidebarBadges }
 
 interface SidebarProps {
     role: Role
@@ -70,129 +31,6 @@ interface SidebarProps {
 const COLLAPSE_KEY = 'gsa.sidebar.collapsed'
 const WIDTH_EXPANDED = 264
 const WIDTH_COLLAPSED = 68
-
-function fmtMoneyShort(cents: number): string {
-    const eur = cents / 100
-    if (eur >= 1000) return `€${Math.round(eur / 1000)}k`
-    return `€${Math.round(eur)}`
-}
-
-function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
-    return [
-        {
-            label: 'PRINCIPAL',
-            items: [
-                { href: '/admin', label: 'Dashboard', Icon: BarChart3, kbd: '1' },
-                { href: '/admin/courses', label: 'Cursos', Icon: BookOpen, kbd: '2' },
-                { href: '/admin/method', label: 'Método', Icon: Compass, kbd: '3' },
-                { href: '/admin/coach', label: 'Coach IA', Icon: Sparkles },
-            ],
-        },
-        {
-            label: 'GESTIÓN',
-            items: [
-                {
-                    href: '/admin/leads',
-                    label: 'Leads',
-                    Icon: Inbox,
-                    badge:
-                        typeof badges.leadsNew === 'number' && badges.leadsNew > 0
-                            ? { kind: 'notif', value: badges.leadsNew }
-                            : undefined,
-                },
-                {
-                    href: '/admin/students',
-                    label: 'Estudiantes',
-                    Icon: Users,
-                    badge:
-                        typeof badges.studentsCount === 'number'
-                            ? { kind: 'count', value: badges.studentsCount }
-                            : undefined,
-                },
-                { href: '/admin/coach/alumnos', label: 'Coach · Alumnos', Icon: ClipboardList },
-                {
-                    href: '/admin/sales',
-                    label: 'Ventas',
-                    Icon: TrendingUp,
-                    badge:
-                        typeof badges.monthCashCents === 'number' && badges.monthCashCents > 0
-                            ? { kind: 'money', value: fmtMoneyShort(badges.monthCashCents) }
-                            : undefined,
-                },
-                {
-                    href: '/admin/my-sales',
-                    label: 'Mis ventas',
-                    Icon: Wallet,
-                    badge:
-                        typeof badges.salesCount === 'number' && badges.salesCount > 0
-                            ? { kind: 'count', value: badges.salesCount }
-                            : undefined,
-                },
-                { href: '/admin/team', label: 'Equipo', Icon: ShieldCheck, kbd: '4' },
-                {
-                    href: '/admin/invitations',
-                    label: 'Invitaciones',
-                    Icon: MailPlus,
-                    badge:
-                        typeof badges.invitationsPending === 'number' && badges.invitationsPending > 0
-                            ? { kind: 'notif', value: badges.invitationsPending }
-                            : undefined,
-                },
-            ],
-        },
-        {
-            label: 'AJUSTES',
-            items: [{ href: '/admin/settings', label: 'Configuración', Icon: Settings }],
-        },
-    ]
-}
-
-function buildStudentGroups(
-    closerEnabled: boolean,
-    closerType: CloserType | null,
-    badges: SidebarBadges = {},
-): NavGroup[] {
-    // Matrix:
-    //   regular student            (closer_enabled=false)         → Dashboard, Cursos, Método, Perfil
-    //   CRM_ONLY closer            (enabled=true, CRM_ONLY)       → Método, Perfil, Ventas (NO Dashboard/Cursos)
-    //   CRM_AND_COURSES closer     (enabled=true, full)           → Dashboard, Cursos, Método, Perfil, Ventas
-    const isCloser = closerEnabled && closerType !== null
-    const hasCourseAccess = !isCloser || closerType === 'CRM_AND_COURSES'
-
-    const principalItems: NavItem[] = []
-    if (hasCourseAccess) {
-        principalItems.push(
-            { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, kbd: '1' },
-            { href: '/dashboard/courses', label: 'Cursos', Icon: BookOpen, kbd: '2' },
-        )
-    }
-    principalItems.push(
-        { href: '/dashboard/method', label: 'Método', Icon: Compass, kbd: '3' },
-        { href: '/dashboard/coach', label: 'Coach IA', Icon: Sparkles, kbd: '4' },
-        { href: '/dashboard/profile', label: 'Perfil', Icon: UserIcon, kbd: '5' },
-    )
-
-    const groups: NavGroup[] = [{ label: 'PRINCIPAL', items: principalItems }]
-
-    if (isCloser) {
-        groups.push({
-            label: 'VENTAS',
-            items: [
-                {
-                    href: '/dashboard/sales',
-                    label: 'Ventas',
-                    Icon: TrendingUp,
-                    badge:
-                        typeof badges.salesCount === 'number' && badges.salesCount > 0
-                            ? { kind: 'count', value: badges.salesCount }
-                            : undefined,
-                },
-            ],
-        })
-    }
-
-    return groups
-}
 
 export function Sidebar({ role, closerEnabled = false, closerType = null, user, badges }: SidebarProps) {
     const pathname = usePathname()
@@ -217,12 +55,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
         window.localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')
     }, [collapsed, hydrated])
 
-    const isActive = (href: string) => {
-        if (href === '/admin' || href === '/dashboard' || href === '/admin/coach') return pathname === href
-        // "Coach · Alumnos" cubre toda el área de gestión del coach (alumnos, uso, ajustes)
-        if (href === '/admin/coach/alumnos') return pathname.startsWith('/admin/coach/')
-        return pathname.startsWith(href)
-    }
+    const isActive = (href: string) => isNavItemActive(href, pathname)
 
     const initials = `${user.name.charAt(0) ?? ''}${user.last_name.charAt(0) ?? ''}`.toUpperCase()
     const profileHref = isAdmin ? '/admin/settings?tab=profile' : '/dashboard/profile'

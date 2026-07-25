@@ -130,8 +130,11 @@ export function FormSchemaBuilder({ value, onChange }: FormSchemaBuilderProps) {
                         </div>
                     </div>
 
-                    {/* Type + Label row */}
-                    <div className="grid grid-cols-[140px_1fr] gap-3">
+                    {/* Type + Label row.
+                      * `min-w-0` en select e input: sin él su `min-width:auto` (~175px)
+                      * hacía que la pista `1fr` no pudiera encoger y la fila desbordara
+                      * el cuerpo del modal (295px a 375px). */}
+                    <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
                         <div className="flex flex-col gap-1">
                             <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>Tipo</label>
                             <select
@@ -152,14 +155,14 @@ export function FormSchemaBuilder({ value, onChange }: FormSchemaBuilderProps) {
                                 ))}
                             </select>
                         </div>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 min-w-0">
                             <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>Etiqueta</label>
                             <input
                                 type="text"
                                 value={field.label}
                                 onChange={(e) => updateField(index, { label: e.target.value })}
                                 placeholder="Ej: Nombre completo"
-                                className="form-input text-sm"
+                                className="form-input text-sm min-w-0"
                             />
                         </div>
                     </div>
@@ -200,7 +203,7 @@ export function FormSchemaBuilder({ value, onChange }: FormSchemaBuilderProps) {
                                         value={opt}
                                         onChange={(e) => updateOption(index, optIndex, e.target.value)}
                                         placeholder={`Opción ${optIndex + 1}`}
-                                        className="form-input text-sm flex-1"
+                                        className="form-input text-sm flex-1 min-w-0"
                                     />
                                     <button
                                         type="button"

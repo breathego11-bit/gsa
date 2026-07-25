@@ -162,25 +162,29 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
         <div className="min-h-screen bg-surface flex flex-col">
             {/* ── Top Nav ─────────────────────────────────── */}
             <nav className="fixed top-0 w-full z-50 glass-header shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                <div className="flex justify-between items-center px-4 sm:px-8 h-16 w-full max-w-[1440px] mx-auto">
-                    <div className="flex items-center gap-6">
+                <div className="flex justify-between items-center gap-3 px-4 sm:px-8 h-16 w-full max-w-[1440px] mx-auto">
+                    <div className="flex items-center gap-3 sm:gap-6 min-w-0">
                         <Link href="/" className="flex items-center gap-3">
                             <img src="/logo_dark.png" alt="GSA" className="h-8 w-auto" />
-                            <span className="text-lg font-bold tracking-tighter text-slate-100">
+                            <span className="hidden sm:inline text-lg font-bold tracking-tighter text-slate-100">
                                 Growth Sales Academy
                             </span>
                         </Link>
+                        {/* En móvil este enlace era `hidden md:flex`, así que el alumno no veía
+                          * en qué curso estaba ni tenía forma de volver. Ahora se muestra
+                          * siempre: es el hueco que dejan la marca y los iconos decorativos. */}
                         <Link
                             href={courseBackHref}
-                            className="hidden md:flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+                            className="flex items-center gap-1.5 min-w-0 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
                         >
                             <MaterialIcon name="arrow_back" size="text-sm" />
-                            {lesson.module.course.title}
+                            <span className="truncate">{lesson.module.course.title}</span>
                         </Link>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <MaterialIcon name="search" className="text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
-                        <MaterialIcon name="notifications" className="text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
+                    <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                        {/* Decorativos (sin handler): se comían 80px del ancho más escaso de la app. */}
+                        <MaterialIcon name="search" className="hidden sm:inline-block text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
+                        <MaterialIcon name="notifications" className="hidden sm:inline-block text-on-surface-variant cursor-pointer hover:bg-white/5 p-2 rounded-full transition-all" />
                         <Link
                             href={session.user.role === 'ADMIN' ? '/admin' : '/dashboard'}
                             className="h-9 w-9 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden"
@@ -306,14 +310,18 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
                             <PrivateNotes lessonId={lessonId} initialContent={note?.content ?? ''} />
                         </div>
                         {/* Mobile Course Outline */}
-                        <details className="lg:hidden bg-surface-container-low rounded-3xl border border-white/5 overflow-hidden">
+                        {/* `group` + `open:` en el <details>: el selector anterior
+                          * (`[[open]>&]` en el icono) generaba `[open] > .clase`, pero el
+                          * icono es NIETO del details (details → summary → span), así que
+                          * el chevron nunca giraba. */}
+                        <details className="group lg:hidden bg-surface-container-low rounded-3xl border border-white/5 overflow-hidden">
                             <summary className="flex items-center gap-3 p-4 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                 <MaterialIcon name="menu_book" size="text-2xl" className="text-primary" />
                                 <div className="flex-1">
                                     <h3 className="font-bold text-on-surface text-sm">Contenido del curso</h3>
                                     <p className="text-xs text-on-surface-variant">{coursePercent}% completado • {completedLessons}/{totalLessons} lecciones</p>
                                 </div>
-                                <MaterialIcon name="expand_more" size="text-xl" className="text-on-surface-variant transition-transform [[open]>&]:rotate-180" />
+                                <MaterialIcon name="expand_more" size="text-xl" className="text-on-surface-variant transition-transform group-open:rotate-180" />
                             </summary>
                             <div className="p-4 pt-0 space-y-2 border-t border-white/5">
                                 {courseModules.map((mod) => (

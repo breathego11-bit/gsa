@@ -97,17 +97,24 @@ export default async function LandingPage() {
 
             <main className="relative z-10 pt-16">
                 {/* ── Hero ────────────────────────────────────── */}
-                <section className="relative h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-8 overflow-hidden">
+                {/* `svh` en móvil: con `vh` (viewport grande, sin barra de URL) el CTA
+                  * "Comenzar Ahora" caía por debajo de la zona visible en la primera pintura. */}
+                <section className="relative h-[calc(100svh-64px)] sm:h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-8 overflow-hidden">
 
                     {/* Content */}
                     <div className="z-10 text-center max-w-4xl">
                         <span className="uppercase tracking-[0.2em] text-secondary font-bold mb-4 block text-sm">
                             Growth Sales Academy
                         </span>
-                        <h1 className="text-4xl md:text-6xl lg:text-[5.5rem] font-black tracking-tighter text-on-surface mb-6 leading-tight">
-                            <span className="whitespace-nowrap">No cerramos ventas,</span>
+                        {/* El `whitespace-nowrap` sin prefijo recortaba el titular en TODOS los
+                          * móviles: las líneas miden ~376px y ~406px contra 343px útiles, y la
+                          * sección es `overflow-hidden`, así que se leía "o cerramos ventas /
+                          * yudamos a persona". Desde `sm` hay 576px y el diseño de dos líneas
+                          * fijas se conserva intacto. */}
+                        <h1 className="text-[1.75rem] sm:text-4xl md:text-6xl lg:text-[5.5rem] font-black tracking-tighter text-on-surface mb-6 leading-tight">
+                            <span className="sm:whitespace-nowrap">No cerramos ventas,</span>
                             <br />
-                            <span className="whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-secondary to-tertiary">
+                            <span className="sm:whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-secondary to-tertiary">
                                ayudamos a personas.
                             </span>
                         </h1>

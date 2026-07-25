@@ -16,6 +16,7 @@ const LINKS: NavLink[] = [
 export function LandingNavbar() {
     const [scrolled, setScrolled] = useState(false)
     const [active, setActive] = useState<string>(LINKS[0].label)
+    const [menuOpen, setMenuOpen] = useState(false)
 
     useEffect(() => {
         const sectionLinks = LINKS.filter((l) => l.href.startsWith('#'))
@@ -126,10 +127,13 @@ export function LandingNavbar() {
                         className="hidden sm:inline-block"
                         aria-hidden
                     />
+                    {/* Sin el `inline-flex`, por debajo de 640px el único CTA que quedaba era
+                      * "Empezar", que lleva a REGISTRO: un alumno que vuelve no tenía acceso a
+                      * login. Y no era falta de espacio — la barra usa 172px de 375px. */}
                     <Link
                         href="/auth"
                         style={nv.loginLink}
-                        className="gsa-nav-login hidden sm:inline-flex"
+                        className="gsa-nav-login inline-flex"
                     >
                         Iniciar sesión
                     </Link>
@@ -147,8 +151,80 @@ export function LandingNavbar() {
                             <path d="M2 6h7M6 2l4 4-4 4" />
                         </svg>
                     </Link>
+
+                    {/* Hamburguesa: por debajo de `md` los 5 enlaces de sección son
+                      * `hidden md:flex` y hasta ahora no tenían ningún sustituto — la
+                      * navegación de la landing simplemente dejaba de existir en móvil. */}
+                    <button
+                        type="button"
+                        onClick={() => setMenuOpen((v) => !v)}
+                        aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                        aria-expanded={menuOpen}
+                        aria-controls="gsa-mobile-menu"
+                        style={nv.iconBtn}
+                        className="gsa-nav-icon md:hidden"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                        >
+                            {menuOpen ? (
+                                <path d="M4 4l10 10M14 4L4 14" />
+                            ) : (
+                                <path d="M2.5 5h13M2.5 9h13M2.5 13h13" />
+                            )}
+                        </svg>
+                    </button>
                 </div>
             </div>
+
+            {menuOpen && (
+                <div
+                    id="gsa-mobile-menu"
+                    className="md:hidden flex flex-col gap-1 px-4 pb-4 pt-1"
+                    style={{
+                        background: 'rgba(8,13,24,0.97)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        borderBottom: '1px solid rgba(129,140,248,0.18)',
+                    }}
+                >
+                    {LINKS.map((l) =>
+                        l.href.startsWith('/') ? (
+                            <Link
+                                key={l.label}
+                                href={l.href}
+                                onClick={() => {
+                                    setActive(l.label)
+                                    setMenuOpen(false)
+                                }}
+                                className="gsa-nav-link"
+                                style={{ ...nv.link, padding: '12px 14px' }}
+                            >
+                                {l.label}
+                            </Link>
+                        ) : (
+                            <a
+                                key={l.label}
+                                href={l.href}
+                                onClick={() => {
+                                    setActive(l.label)
+                                    setMenuOpen(false)
+                                }}
+                                className="gsa-nav-link"
+                                style={{ ...nv.link, padding: '12px 14px' }}
+                            >
+                                {l.label}
+                            </a>
+                        ),
+                    )}
+                </div>
+            )}
 
             <style>{`
                 .gsa-nav-link:hover {

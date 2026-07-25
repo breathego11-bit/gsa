@@ -116,7 +116,10 @@ export function TierScaleBar({ tiers, cashCollected, commission, activeTierIdx }
                             >
                                 <div className="flex items-center justify-between w-full"
                                     style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace', fontSize: 9.5, letterSpacing: 0.8, color: 'rgba(222,226,242,0.85)' }}>
-                                    <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                                    {/* A 375px cada segmento mide ~70–90px y el `padding: 0 14px`
+                                      * se lo come: el rango se cortaba al primer carácter y solo
+                                      * se leía el %. En móvil se deja solo el porcentaje. */}
+                                    <span className="hidden sm:inline whitespace-nowrap overflow-hidden text-ellipsis">
                                         {fmt(seg.segFrom)} – {i === segments.length - 1 ? '∞' : fmt(seg.segTo)}
                                     </span>
                                     <span className="font-bold ml-2" style={{ color: '#fff' }}>

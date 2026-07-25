@@ -36,7 +36,12 @@ export function MobileNav({ role, closerEnabled = false, closerType = null, user
                 user={user}
                 badges={badges}
             />
-            <BottomNav role={role} onOpenMenu={() => setDrawerOpen(true)} />
+            <BottomNav
+                role={role}
+                closerEnabled={closerEnabled}
+                closerType={closerType}
+                onOpenMenu={() => setDrawerOpen(true)}
+            />
         </>
     )
 }

@@ -117,11 +117,21 @@ export function CourseModuleAccordion({ modules, isEnrolled }: CourseModuleAccor
                                 />
                         </button>
 
-                        {/* Lessons (expanded) */}
+                        {/*
+                          * Lessons (expanded).
+                          * Antes esto era `maxHeight: lecciones * 80 + 32`. Los 80px asumen
+                          * un título de una línea; en móvil los títulos envuelven a 2–3
+                          * (92–116px por fila), así que en un módulo de 6 lecciones se
+                          * recortaban ~208px SIN scroll posible (el contenedor es
+                          * `overflow-hidden`): las últimas lecciones eran invisibles.
+                          * `grid-template-rows: 0fr → 1fr` anima igual pero mide el
+                          * contenido real, sin números mágicos.
+                          */}
                         <div
-                            className="transition-all duration-300 overflow-hidden"
-                            style={{ maxHeight: isOpen ? `${mod.lessons.length * 80 + 32}px` : '0px' }}
+                            className="grid transition-[grid-template-rows] duration-300 ease-out"
+                            style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
                         >
+                            <div className="overflow-hidden min-h-0">
                             <div className="px-6 pb-6 space-y-3">
                                 {mod.lessons.map((lesson) => {
                                     const completed = Array.isArray(lesson.progress) && lesson.progress[0]?.completed
@@ -188,6 +198,7 @@ export function CourseModuleAccordion({ modules, isEnrolled }: CourseModuleAccor
                                         </Link>
                                     )
                                 })}
+                            </div>
                             </div>
                         </div>
                     </div>

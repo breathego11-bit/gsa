@@ -48,13 +48,13 @@ export function AdminModulesClient({ courses, selectedCourseId, modules: initial
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="section-title">Gestión de módulos</h1>
                     <p className="section-subtitle">Organiza el contenido de cada curso</p>
                 </div>
                 {selectedCourseId && (
-                    <Button onClick={() => setCreateOpen(true)} icon={<Plus size={16} />}>
+                    <Button onClick={() => setCreateOpen(true)} icon={<Plus size={16} />} className="w-full sm:w-auto justify-center shrink-0">
                         Nuevo módulo
                     </Button>
                 )}
@@ -93,6 +93,9 @@ export function AdminModulesClient({ courses, selectedCourseId, modules: initial
                             </p>
                         </div>
                     ) : (
+                        /* Ver AdminLessonsClient: el padre es `overflow-hidden`, así que sin
+                         * este wrapper el desbordamiento se recorta en vez de desplazarse. */
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr style={{ background: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
@@ -108,7 +111,7 @@ export function AdminModulesClient({ courses, selectedCourseId, modules: initial
                                         <td className="hidden sm:table-cell px-5 py-4 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
                                             {mod.order}
                                         </td>
-                                        <td className="px-5 py-4 font-medium" style={{ color: 'var(--text-primary)' }}>
+                                        <td className="px-5 py-4 font-medium break-words" style={{ color: 'var(--text-primary)' }}>
                                             {mod.title}
                                         </td>
                                         <td className="hidden sm:table-cell px-5 py-4">
@@ -137,6 +140,7 @@ export function AdminModulesClient({ courses, selectedCourseId, modules: initial
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     )}
                 </div>
             )}

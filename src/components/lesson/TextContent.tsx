@@ -3,6 +3,13 @@ interface TextContentProps {
 }
 
 export function TextContent({ content }: TextContentProps) {
+    /*
+     * El contenido llega por `dangerouslySetInnerHTML`, así que no se puede envolver
+     * cada `<table>` en su contenedor de scroll. En su lugar, por debajo de `md` la
+     * tabla se convierte ella misma en el contenedor (`display:block` + `overflow-x`).
+     * Sin esto una tabla de 3–4 columnas desbordaba y hacía que TODA la página de la
+     * lección se desplazara lateralmente, descuadrando nav y footer fijos.
+     */
     return (
         <div
             className="
@@ -27,6 +34,8 @@ export function TextContent({ content }: TextContentProps) {
                 [&_th]:border [&_th]:border-outline-variant [&_th]:bg-surface-container [&_th]:px-4 [&_th]:py-2 [&_th]:text-left [&_th]:text-on-surface [&_th]:font-semibold [&_th]:text-sm
                 [&_td]:border [&_td]:border-outline-variant [&_td]:px-4 [&_td]:py-2 [&_td]:text-on-surface-variant [&_td]:text-sm
                 [&_img]:rounded-xl [&_img]:my-4 [&_img]:max-w-full
+
+                max-md:[&_table]:block max-md:[&_table]:overflow-x-auto max-md:[&_table]:whitespace-nowrap max-md:[&_table]:max-w-full
             "
             dangerouslySetInnerHTML={{ __html: content }}
         />

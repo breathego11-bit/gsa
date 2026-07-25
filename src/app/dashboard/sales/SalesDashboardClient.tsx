@@ -67,7 +67,7 @@ export function SalesDashboardClient() {
     }
 
     return (
-        <div className="px-6 md:px-8 py-7 pb-24 lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-6">
+        <div className="px-4 sm:px-6 md:px-8 py-7 pb-bottom-nav lg:pb-12 max-w-[1440px] mx-auto flex flex-col gap-6">
             {/* Header */}
             <header className="flex items-end justify-between gap-6 flex-wrap">
                 <div>

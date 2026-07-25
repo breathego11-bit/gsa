@@ -457,6 +457,28 @@ export function CourseBuilderClient({ course: initial }: Props) {
                 </div>
             </header>
 
+            {/*
+              * Aviso de escritorio (decisión D5 del spec).
+              * Reordenar módulos/lecciones exige drag & drop táctil, que aquí choca con
+              * el header `sticky` y el footer `fixed` (se comen la zona de drop) y con el
+              * scroll de página. El builder además es un layout de dos paneles con
+              * formularios de examen largos. En vez de prometer un drag que se pelearía
+              * con el scroll, se avisa. El reordenado del catálogo sí funciona en touch
+              * desde /admin/courses, cuyo tirante lleva `touch-none`.
+              */}
+            <div
+                className="lg:hidden mx-4 mt-4 rounded-xl px-4 py-3 text-xs leading-relaxed"
+                style={{
+                    background: 'rgba(251,191,36,0.1)',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                    color: '#fbbf24',
+                }}
+            >
+                Estás en una pantalla pequeña. Puedes revisar y editar el contenido, pero para{' '}
+                <strong>reordenar módulos y lecciones</strong> y para construir exámenes o
+                formularios, usa un ordenador.
+            </div>
+
             {/* ── Main Workspace ───────────────────────────── */}
             <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 p-4 sm:p-8 pb-24">
 
@@ -548,8 +570,12 @@ export function CourseBuilderClient({ course: initial }: Props) {
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2 shrink-0">
+                                                            {/* El bloque derecho es `shrink-0`, así que nunca cede espacio:
+                                                              * con los 3 botones (~136px) más este texto (~130px) sobre 295px,
+                                                              * al título del módulo le quedaban ~29px. La info reaparece al
+                                                              * expandir el módulo, así que en móvil sobra. */}
                                                             {!isOpen && (
-                                                                <span className="text-xs text-on-surface-variant font-medium mr-2">
+                                                                <span className="hidden sm:inline text-xs text-on-surface-variant font-medium mr-2">
                                                                     {modLessons.length} {modLessons.length === 1 ? 'Lección' : 'Lecciones'}{modDuration > 0 ? ` • ${fmtDuration(modDuration)}` : ''}
                                                                 </span>
                                                             )}
