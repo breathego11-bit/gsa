@@ -59,7 +59,7 @@ export default async function OnboardingPage() {
         { id: 1, label: 'Pago confirmado', sub: 'Ya tienes acceso completo a GSA', done: true, icon: 'check' as const },
         { id: 2, label: 'Mira el video de bienvenida', sub: 'Esencial para empezar bien', done: false, icon: 'play' as const, active: true },
         { id: 3, label: 'Completa tu perfil', sub: 'Para personalizar tu experiencia', done: false, icon: 'user' as const },
-        { id: 4, label: 'Únete a la comunidad', sub: '+1,800 closers activos', done: false, icon: 'message' as const },
+        { id: 4, label: 'Únete a la comunidad', done: false, icon: 'message' as const },
     ]
 
     return (
@@ -192,30 +192,7 @@ export default async function OnboardingPage() {
                                 </div>
                             </div>
 
-                            <div style={ob.statsCard}>
-                                <div style={ob.statsTitle}>Te unes a</div>
-                                <div style={ob.statsRow}>
-                                    <div>
-                                        <div style={ob.statBig}>{totalStudents.toLocaleString('es-ES')}</div>
-                                        <div style={ob.statSub}>closers en formación</div>
-                                    </div>
-                                    <div style={ob.statsDivider} />
-                                    <div>
-                                        <div style={{ ...ob.statBig, color: '#34d399' }}>{monthCashLabel}</div>
-                                        <div style={ob.statSub}>cerrados este mes</div>
-                                    </div>
-                                </div>
-                                {recentStudents.length > 0 && (
-                                    <div style={ob.avatarStack}>
-                                        {recentStudents.map((s, i) => (
-                                            <span key={i} style={{ ...ob.avtStack, marginLeft: i ? -8 : 0, zIndex: 10 - i }}>
-                                                {initials(s.name, s.last_name)}
-                                            </span>
-                                        ))}
-                                        {moreCount > 0 && <span style={ob.avtMore}>{moreLabel}</span>}
-                                    </div>
-                                )}
-                            </div>
+                            
                         </div>
                     </aside>
                 </div>
