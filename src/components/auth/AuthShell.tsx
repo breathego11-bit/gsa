@@ -128,9 +128,11 @@ export function AuthShell() {
             <main style={au.main}>
                 <div style={au.formInner}>
                     <div style={au.brand}>
-                        <div style={au.logoMark}>
-                            <img src="/logo_dark.png" alt="GSA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
-                        </div>
+                        {/* Sin caja: el logo va suelto sobre el fondo oscuro de la pantalla.
+                          * Se dimensiona por alto con `width: auto` porque el archivo es
+                          * vertical (437×572) — forzando 24×24 con `contain` quedaba en unos
+                          * 18px de ancho reales, de ahí que se viera tan pequeño. */}
+                        <img src="/logo_dark.png" alt="GSA" style={au.logoImg} />
                         <div>
                             <div style={au.logoName}>GROWTH SALES</div>
                             <div style={au.logoSub}>ACADEMY</div>
@@ -195,17 +197,25 @@ export function AuthShell() {
                     <form style={au.form} onSubmit={handleSubmit}>
                         {mode === 'register' && (
                             <>
+                                {/*
+                                  * John Doe: el nombre-marcador universal, se reconoce de inmediato
+                                  * como ejemplo. Antes eran los datos reales del fundador —"Iván" /
+                                  * "Abad" / "ivanabad"—, que en un alta se leen como si el campo
+                                  * viniera relleno con la cuenta de otra persona.
+                                  * El usuario mantiene el mismo nombre sin espacios para que el
+                                  * placeholder enseñe además el formato esperado.
+                                  */}
                                 <div style={au.fieldRow} className="auth-field-row">
-                                    <Field label="Nombre" placeholder="Iván" name="name" required />
-                                    <Field label="Apellido" placeholder="Abad" name="last_name" required />
+                                    <Field label="Nombre" placeholder="John" name="name" autoComplete="given-name" required />
+                                    <Field label="Apellido" placeholder="Doe" name="last_name" autoComplete="family-name" required />
                                 </div>
-                                <Field label="Usuario" placeholder="ivanabad" name="username" autoComplete="username" required />
+                                <Field label="Usuario" placeholder="johndoe" name="username" autoComplete="username" required />
                             </>
                         )}
 
                         <Field
                             label="Email"
-                            placeholder="tu@email.com"
+                            placeholder="johndoe@email.com"
                             name="email"
                             type="email"
                             autoComplete="email"
@@ -332,22 +342,32 @@ function Field({
 
     return (
         <div style={au.field}>
-            <div style={au.fieldHead}>
-                <label htmlFor={name} style={au.fieldLabel}>{label}</label>
-                {hint}
-            </div>
             <div style={{ ...au.inputWrap, ...(focus ? au.inputWrapFocus : {}) }}>
+                {/*
+                  * Label flotante. El <label> va DESPUÉS del <input> a propósito: el
+                  * selector hermano `input:not(:placeholder-shown) + label` de globals.css
+                  * es lo que lo hace subir. Se resuelve en CSS y no con estado de React
+                  * porque así también detecta el autorrelleno del navegador, que no
+                  * siempre dispara onChange.
+                  *
+                  * El `placeholder` cae a ' ' (un espacio) cuando no hay hint: sin
+                  * placeholder, `:placeholder-shown` nunca casa y el label no bajaría.
+                  */}
                 <input
                     id={name}
                     name={name}
                     type={realType}
-                    placeholder={placeholder}
+                    placeholder={placeholder ?? ' '}
                     onFocus={() => setFocus(true)}
                     onBlur={() => setFocus(false)}
                     style={au.input}
+                    className="auth-field-input"
                     autoComplete={autoComplete}
                     required={required}
                 />
+                <label htmlFor={name} className="auth-floating-label">
+                    {label}
+                </label>
                 {isPwd && (
                     <button
                         type="button"
@@ -370,12 +390,14 @@ function Field({
                     </button>
                 )}
             </div>
+            {/* El hint vivía junto al label de arriba; al desaparecer esa cabecera
+              * pasa debajo del campo, alineado a la derecha. */}
+            {hint && <div style={au.fieldHint}>{hint}</div>}
         </div>
     )
 }
 
 const MONO = 'var(--font-jetbrains-mono), ui-monospace, monospace'
-const SERIF = 'var(--font-instrument-serif), Georgia, serif'
 
 const au: Record<string, CSSProperties> = {
     root: {
@@ -433,17 +455,11 @@ const au: Record<string, CSSProperties> = {
         alignSelf: 'center',
         marginBottom: 4,
     },
-    logoMark: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        background: 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(129,140,248,0.2))',
-        borderWidth: 1,
-        borderStyle: 'solid',
-        borderColor: 'rgba(129,140,248,0.3)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+    logoImg: {
+        height: 46,
+        width: 'auto',
+        objectFit: 'contain',
+        flexShrink: 0,
     },
     logoName: { fontSize: 12, letterSpacing: 2, fontWeight: 700, color: '#dee2f2', lineHeight: 1.1 },
     logoSub: {
@@ -545,29 +561,21 @@ const au: Record<string, CSSProperties> = {
         margin: 0,
         color: '#dee2f2',
     },
+    // Solo cambia el color: la palabra destacada hereda fuente, peso y estilo del
+    // <h2> (formTitle) para que el titular se lea como una sola frase. Antes metía
+    // además serif + cursiva + peso 400, y partía la frase en dos tipografías.
     formTitleAccent: {
         background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',
-        fontFamily: SERIF,
-        fontStyle: 'italic',
-        fontWeight: 400,
     },
     formSub: { fontSize: 13.5, lineHeight: 1.5, color: '#c4c5d5', margin: 0 },
 
     form: { display: 'flex', flexDirection: 'column', gap: 14 },
     fieldRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
     field: { display: 'flex', flexDirection: 'column', gap: 6 },
-    fieldHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
-    fieldLabel: {
-        fontSize: 11.5,
-        letterSpacing: 0.3,
-        color: '#c4c5d5',
-        textTransform: 'uppercase',
-        fontWeight: 600,
-        fontFamily: MONO,
-    },
+    fieldHint: { display: 'flex', justifyContent: 'flex-end' },
     fieldLinkBtn: {
         background: 'transparent',
         border: 'none',
@@ -602,12 +610,14 @@ const au: Record<string, CSSProperties> = {
     },
     input: {
         flex: 1,
+        minWidth: 0,
         background: 'transparent',
         border: 'none',
         outline: 'none',
         color: '#dee2f2',
         fontSize: 14,
-        padding: '12px 14px',
+        // Padding superior generoso: es el hueco donde aterriza el label al flotar.
+        padding: '21px 14px 7px',
         fontFamily: 'inherit',
     },
     eyeBtn: {

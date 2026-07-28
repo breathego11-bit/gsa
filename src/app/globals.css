@@ -623,6 +623,54 @@ input[type="number"] {
 }
 
 /*
+ * ── Labels flotantes del formulario de auth ───────────
+ * El <label> se renderiza DESPUÉS del <input> (ver AuthShell.tsx) para poder usar
+ * el selector hermano. Se resuelve en CSS y no con estado de React a propósito:
+ * `:placeholder-shown` también detecta el autorrelleno del navegador, que no
+ * siempre dispara onChange y dejaría el label encima del texto ya escrito.
+ */
+.auth-shell .auth-floating-label {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: #8b93a7;
+    pointer-events: none; /* el clic debe llegar al input, no al label */
+    transition: top .15s ease, font-size .15s ease, color .15s ease,
+                letter-spacing .15s ease, transform .15s ease;
+}
+
+/* Flota al enfocar o cuando el campo ya tiene contenido. */
+.auth-shell .auth-field-input:focus + .auth-floating-label,
+.auth-shell .auth-field-input:not(:placeholder-shown) + .auth-floating-label {
+    top: 8px;
+    transform: none;
+    font-size: 9.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+    color: #c4c5d5;
+}
+
+.auth-shell .auth-field-input:focus + .auth-floating-label {
+    color: #38bdf8;
+}
+
+/*
+ * El placeholder de formato (johndoe@email.com, "Mínimo 8 caracteres"…) solo se
+ * revela cuando el label ya ha subido. En reposo el campo enseña únicamente el
+ * label, que era el objetivo: nada parece "ya relleno".
+ */
+.auth-shell .auth-field-input::placeholder {
+    color: transparent;
+}
+.auth-shell .auth-field-input:focus::placeholder {
+    color: #5a6178;
+}
+
+/*
  * Evita el zoom automático de iOS al enfocar. Complementa el `text-base md:text-sm`
  * de `.form-input`, para los campos con font-size inline o arbitrario.
  */
@@ -631,6 +679,10 @@ input[type="number"] {
     .coach-composer textarea,
     .coach-composer select {
         font-size: 16px !important;
+    }
+    /* El label en reposo hace de placeholder: debe igualar el tamaño del texto. */
+    .auth-shell .auth-field-input:placeholder-shown:not(:focus) + .auth-floating-label {
+        font-size: 16px;
     }
 }
 
