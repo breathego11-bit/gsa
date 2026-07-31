@@ -26,8 +26,17 @@ services:
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
       - OPENAI_MODEL_LIGHT=${OPENAI_MODEL_LIGHT:-gpt-4o-mini}
       - COACH_RATE_LIMIT_PER_DAY=${COACH_RATE_LIMIT_PER_DAY:-40}
-      - COACH_MAX_INPUT_CHARS=${COACH_MAX_INPUT_CHARS:-32000}
+      # OJO: este default DEBE coincidir con el de src/lib/coach/prompt.ts.
+      # Al declararse aquí, la variable SIEMPRE llega definida al contenedor, así que
+      # el `?? ...` del código nunca actúa en Docker: manda este valor.
+      - COACH_MAX_INPUT_CHARS=${COACH_MAX_INPUT_CHARS:-250000}
       - COACH_MAX_OUTPUT_TOKENS=${COACH_MAX_OUTPUT_TOKENS:-2500}
+      # Tokens por minuto que admite la cuenta de OpenAI. Es el límite real del coach,
+      # no la ventana de contexto. Tier 1 = 30000, Tier 2 = 450000.
+      # Puesto ya en Tier 2 para poder probar en cuanto Iván suba de plan. Mientras siga
+      # en Tier 1, las llamadas largas las rechaza OpenAI y el aviso se muestra igual de
+      # claro gracias al `onError` de api/coach/chat/route.ts.
+      - COACH_TPM_LIMIT=${COACH_TPM_LIMIT:-450000}
       - COACH_HISTORY_LIMIT=${COACH_HISTORY_LIMIT:-12}
     depends_on:
       db:
@@ -75,8 +84,17 @@ services:
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
       - OPENAI_MODEL_LIGHT=${OPENAI_MODEL_LIGHT:-gpt-4o-mini}
       - COACH_RATE_LIMIT_PER_DAY=${COACH_RATE_LIMIT_PER_DAY:-40}
-      - COACH_MAX_INPUT_CHARS=${COACH_MAX_INPUT_CHARS:-32000}
+      # OJO: este default DEBE coincidir con el de src/lib/coach/prompt.ts.
+      # Al declararse aquí, la variable SIEMPRE llega definida al contenedor, así que
+      # el `?? ...` del código nunca actúa en Docker: manda este valor.
+      - COACH_MAX_INPUT_CHARS=${COACH_MAX_INPUT_CHARS:-250000}
       - COACH_MAX_OUTPUT_TOKENS=${COACH_MAX_OUTPUT_TOKENS:-2500}
+      # Tokens por minuto que admite la cuenta de OpenAI. Es el límite real del coach,
+      # no la ventana de contexto. Tier 1 = 30000, Tier 2 = 450000.
+      # Puesto ya en Tier 2 para poder probar en cuanto Iván suba de plan. Mientras siga
+      # en Tier 1, las llamadas largas las rechaza OpenAI y el aviso se muestra igual de
+      # claro gracias al `onError` de api/coach/chat/route.ts.
+      - COACH_TPM_LIMIT=${COACH_TPM_LIMIT:-450000}
       - COACH_HISTORY_LIMIT=${COACH_HISTORY_LIMIT:-12}
     depends_on:
       db:

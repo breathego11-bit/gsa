@@ -479,8 +479,24 @@ model CoachMessage {
 model CoachSetting {
   id                 String   @id @default("singleton")
   extra_instructions String?  @db.Text
+  // Documento Maestro editado desde el panel. NULL = se usa el del build (Coach-ia.md
+  // compilado en src/lib/coach/methodology.ts). En cuanto se guarda una edición, ESTA
+  // columna pasa a ser la fuente de verdad y el archivo queda solo como original de fábrica.
+  methodology        String?  @db.Text
   updated_at         DateTime @updatedAt
   updated_by         String?
+}
+
+// Instantánea del Documento Maestro cada vez que se guarda desde el panel.
+// El método es el activo principal del coach: sin historial, una edición desafortunada
+// degradaría en silencio todas las evaluaciones sin forma de volver atrás.
+model CoachMethodologyVersion {
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  created_at DateTime @default(now())
+  created_by String?
+
+  @@index([created_at])
 }
 
 // GSA Coach IA — registro REAL de consumo por cada llamada a la API de OpenAI.
