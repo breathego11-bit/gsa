@@ -28,7 +28,9 @@ interface SidebarProps {
     badges?: SidebarBadges
 }
 
-const COLLAPSE_KEY = 'gsa.sidebar.collapsed'
+// `.v2` a propósito: la clave anterior se escribía sola en cada carga, así que sus valores
+// no representan una preferencia del usuario y deben ignorarse.
+const COLLAPSE_KEY = 'gsa.sidebar.collapsed.v2'
 const WIDTH_EXPANDED = 264
 const WIDTH_COLLAPSED = 68
 
@@ -40,45 +42,85 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
         ? buildAdminGroups(badges)
         : buildStudentGroups(closerEnabled, closerType, badges)
 
-    const [collapsed, setCollapsed] = useState(false)
-    const [hydrated, setHydrated] = useState(false)
+    /*
+     * Colapsado por defecto; `localStorage` solo guarda decisiones EXPLÍCITAS.
+     *
+     * Antes se persistía dentro de un efecto que corría en cada carga, así que el valor por
+     * defecto de entonces ("expandido") se escribía solo y todo el mundo acababa con un '0'
+     * guardado que nadie había elegido. Por eso la clave lleva sufijo `.v2`: las entradas
+     * viejas no son preferencias reales y hay que ignorarlas.
+     *
+     * Ahora solo escribe `toggleCollapsed`, al pulsar el botón.
+     */
+    const [collapsed, setCollapsed] = useState(true)
+    const [hovered, setHovered] = useState(false)
 
     useEffect(() => {
         if (typeof window === 'undefined') return
-        const saved = window.localStorage.getItem(COLLAPSE_KEY)
-        if (saved === '1') setCollapsed(true)
-        setHydrated(true)
+        if (window.localStorage.getItem(COLLAPSE_KEY) === '0') setCollapsed(false)
     }, [])
 
-    useEffect(() => {
-        if (!hydrated) return
-        window.localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')
-    }, [collapsed, hydrated])
+    const toggleCollapsed = () => {
+        setCollapsed((prev) => {
+            const next = !prev
+            try {
+                window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+            } catch {
+                // Modo incógnito o storage lleno: el sidebar sigue funcionando sin recordar.
+            }
+            return next
+        })
+    }
 
     const isActive = (href: string) => isNavItemActive(href, pathname)
 
     const initials = `${user.name.charAt(0) ?? ''}${user.last_name.charAt(0) ?? ''}`.toUpperCase()
     const profileHref = isAdmin ? '/admin/settings?tab=profile' : '/dashboard/profile'
 
+    /*
+     * `mini` (rail estrecho) vs `collapsed` (la preferencia guardada).
+     *
+     * El hover expande solo lo VISUAL: el hueco que el sidebar reserva en el layout sigue
+     * siendo el del rail. Por eso hay dos elementos — el <div> exterior mantiene el ancho
+     * del layout y el <aside> se superpone. Si expandiera el propio elemento del flex, cada
+     * pasada del ratón reflowearía toda la página.
+     */
+    const mini = collapsed && !hovered
+    const layoutWidth = collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED
+    const visualWidth = mini ? WIDTH_COLLAPSED : WIDTH_EXPANDED
+
     return (
-        <aside
-            className="h-screen shrink-0 flex flex-col relative"
+        <div
+            className="h-screen shrink-0 relative"
             style={{
-                width: collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED,
+                width: layoutWidth,
+                transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+        <aside
+            className="h-screen flex flex-col absolute inset-y-0 left-0 z-20"
+            style={{
+                width: visualWidth,
                 background: 'linear-gradient(180deg, #0a1020 0%, #080d18 60%)',
                 borderRight: '1px solid rgba(129,140,248,0.1)',
                 color: '#dee2f2',
                 fontFamily: 'Inter, system-ui, sans-serif',
                 transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                // Al superponerse sobre el contenido necesita separarse visualmente.
+                boxShadow: mini ? 'none' : '8px 0 28px -12px rgba(0,0,0,0.55)',
             }}
         >
-            {/* Collapse toggle — floating button on the right edge */}
+            {/* Collapse toggle — oculto de momento: el sidebar se expande solo al pasar el
+                ratón. La lógica se mantiene intacta para poder reactivarlo quitando el
+                `hidden` (y con él vuelve la preferencia persistida). */}
             <button
                 type="button"
-                onClick={() => setCollapsed((v) => !v)}
+                onClick={toggleCollapsed}
                 aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
                 title={collapsed ? 'Expandir' : 'Colapsar'}
-                className="absolute z-30 flex items-center justify-center rounded-full transition-all"
+                className="hidden absolute z-30 items-center justify-center rounded-full transition-all"
                 style={{
                     top: 22,
                     right: -12,
@@ -95,9 +137,9 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
             </button>
 
             {/* Brand header */}
-            <div className={collapsed ? 'px-2 pt-4 pb-3' : 'px-3 pt-4 pb-3'}>
+            <div className={mini ? 'px-2 pt-4 pb-3' : 'px-3 pt-4 pb-3'}>
                 <div
-                    className={`flex items-center rounded-xl ${collapsed ? 'justify-center p-1.5' : 'gap-2.5 px-2.5 py-2'}`}
+                    className={`flex items-center rounded-xl ${mini ? 'justify-center p-1.5' : 'gap-2.5 px-2.5 py-2'}`}
                     style={{
                         background: 'rgba(20,25,38,0.5)',
                         border: '1px solid rgba(129,140,248,0.14)',
@@ -114,7 +156,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                             className="w-full h-full object-contain"
                         />
                     </div>
-                    {!collapsed && (
+                    {!mini && (
                         <div className="flex-1 min-w-0 text-left">
                             <div className="flex items-center gap-1.5 text-[13px] font-semibold truncate">
                                 <span style={{ color: '#dee2f2' }}>GSA Academy</span>
@@ -157,12 +199,12 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
 
             {/* Nav */}
             <nav
-                className={`flex-1 overflow-y-auto flex flex-col gap-3.5 ${collapsed ? 'px-1.5' : 'px-2'}`}
+                className={`sidebar-scroll flex-1 overflow-y-auto flex flex-col gap-3.5 ${mini ? "px-1.5" : "px-2"}`}
                 style={{ paddingBottom: 8 }}
             >
                 {groups.map((group, gi) => (
                     <div key={gi} className="flex flex-col gap-0.5">
-                        {!collapsed ? (
+                        {!mini ? (
                             <div
                                 className="px-2.5 pt-1.5 pb-1"
                                 style={{
@@ -175,7 +217,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                                 {group.label}
                             </div>
                         ) : (
-                            // Subtle divider between groups when collapsed
+                            // Subtle divider between groups when mini
                             gi > 0 && (
                                 <div
                                     className="mx-3 my-1"
@@ -192,7 +234,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                                     key={item.href}
                                     item={item}
                                     active={isActive(item.href)}
-                                    collapsed={collapsed}
+                                    collapsed={mini}
                                 />
                             ))}
                         </div>
@@ -202,13 +244,13 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
 
             {/* Quick action — closers (both types) + admins (act as seller) */}
             {(isAdmin || (role === 'STUDENT' && isCloser)) && (
-                <div className={collapsed ? 'px-1.5 pt-1.5 pb-3' : 'px-3 pt-1.5 pb-3'}>
+                <div className={mini ? 'px-1.5 pt-1.5 pb-3' : 'px-3 pt-1.5 pb-3'}>
                     <Link
                         href={isAdmin ? '/admin/my-sales' : '/dashboard/sales'}
                         title="Nueva venta"
                         aria-label="Nueva venta"
                         className={`w-full flex items-center rounded-xl text-[13px] font-semibold cursor-pointer ${
-                            collapsed ? 'justify-center py-2.5' : 'gap-2 px-3 py-2.5'
+                            mini ? 'justify-center py-2.5' : 'gap-2 px-3 py-2.5'
                         }`}
                         style={{
                             background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
@@ -218,8 +260,8 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                             textDecoration: 'none',
                         }}
                     >
-                        <Plus size={collapsed ? 16 : 13} />
-                        {!collapsed && (
+                        <Plus size={mini ? 16 : 13} />
+                        {!mini && (
                             <>
                                 <span>Nueva venta</span>
                                 <span
@@ -244,7 +286,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
 
             {/* Profile footer */}
             <div
-                className={collapsed ? 'px-1.5 py-3' : 'px-3 py-3'}
+                className={mini ? 'px-1.5 py-3' : 'px-3 py-3'}
                 style={{
                     borderTop: '1px solid rgba(129,140,248,0.1)',
                     background: 'rgba(8,13,24,0.4)',
@@ -252,7 +294,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
             >
                 <div
                     className={`flex items-center rounded-xl ${
-                        collapsed ? 'flex-col gap-1.5 p-1.5' : 'gap-2.5 px-2.5 py-2'
+                        mini ? 'flex-col gap-1.5 p-1.5' : 'gap-2.5 px-2.5 py-2'
                     }`}
                     style={{
                         background: 'rgba(20,25,38,0.5)',
@@ -297,7 +339,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                             }}
                         />
                     </Link>
-                    {!collapsed && (
+                    {!mini && (
                         <Link
                             href={profileHref}
                             className="flex-1 min-w-0"
@@ -338,6 +380,7 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
                 </div>
             </div>
         </aside>
+        </div>
     )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -42,6 +43,8 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFormModalProps) {
+    const { data: session } = useSession()
+    const myUserId = session?.user?.id ?? null
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -68,7 +71,13 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
         if (!open) return
         setThumbnailUrl(initial?.thumbnail ?? null)
         setHeroImageUrl(initial?.hero_image ?? null)
-        setInstructorIds(initial?.instructor_ids ?? [])
+        /*
+         * Al CREAR (no hay `initial`), quien crea el curso entra como instructor por defecto.
+         * Antes había que elegirse a mano en el desplegable: si se olvidaba, el curso quedaba
+         * sin instructor y la foto y la bio del autor no aparecían en ninguna de las dos
+         * fichas de curso. Sigue siendo editable: se puede quitar o añadir a otros.
+         */
+        setInstructorIds(initial?.instructor_ids ?? (myUserId ? [myUserId] : []))
         setIncludedItems(initial?.included_items ?? [])
         setNewItem('')
         setTagline(initial?.tagline ?? '')
@@ -79,8 +88,10 @@ export function CourseFormModal({ open, onClose, onSuccess, initial }: CourseFor
         setRequirements(initial?.requirements ?? [])
         setNewRequirement('')
         setError('')
+        // `myUserId` entra en las dependencias porque la sesión puede resolverse DESPUÉS de
+        // abrirse el modal; sin él, al crear no se preseleccionaría nadie.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialId, open])
+    }, [initialId, open, myUserId])
 
     function addInstructor(id: string) {
         if (!id || instructorIds.includes(id)) return

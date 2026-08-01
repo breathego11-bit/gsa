@@ -87,6 +87,8 @@ input[type="number"] {
  *
  *   z-0        AnimatedBackground, Watermark
  *   z-10       main (y todo su contenido)
+ *   z-30       Sidebar de escritorio — por encima de main porque al expandirse
+ *              con el hover se superpone al contenido en lugar de empujarlo
  *   z-50       BottomNav
  *   z-[60]     Backdrop del drawer
  *   z-[65]     Drawer (MobileSidebar)
@@ -577,6 +579,46 @@ input[type="number"] {
 @keyframes authProgress {
     from { width: 0%; }
     to   { width: 100%; }
+}
+
+/*
+ * ── Scroll del sidebar ────────────────────────────────
+ * El scrollbar global usa `var(--bg-base)` de pista, un tono más oscuro que el
+ * degradado del panel, así que se dibujaba como una franja vertical marcada.
+ * Aquí la pista es transparente y el pulgar solo aparece al pasar el ratón por la
+ * navegación: en reposo el sidebar queda limpio pero sigue habiendo agarre visible
+ * cuando se va a usar.
+ *
+ * Va fuera de `@layer` y con selector de clase para ganarle al estilo global.
+ */
+.sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent; /* Firefox */
+    transition: scrollbar-color 0.2s ease;
+}
+.sidebar-scroll:hover {
+    scrollbar-color: rgba(129, 140, 248, 0.35) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+    /* El borde transparente afina el pulgar sin reducir el área de arrastre. */
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.2s ease;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(129, 140, 248, 0.3);
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(129, 140, 248, 0.55);
 }
 
 /* Manifesto landing section responsive */

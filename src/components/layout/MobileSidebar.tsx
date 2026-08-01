@@ -155,7 +155,7 @@ export function MobileSidebar({
                 </div>
 
                 {/* Nav */}
-                <nav className="flex-1 overflow-y-auto px-2 flex flex-col gap-3.5 pb-2">
+                <nav className="sidebar-scroll flex-1 overflow-y-auto px-2 flex flex-col gap-3.5 pb-2">
                     {groups.map((group, gi) => (
                         <div key={gi} className="flex flex-col gap-0.5">
                             <div

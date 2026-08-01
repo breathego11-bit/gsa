@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 
@@ -33,6 +34,8 @@ interface ProfileClientProps {
 }
 
 export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
+    const router = useRouter()
+
     // Form state
     const [name, setName] = useState(user.name)
     const [lastName, setLastName] = useState(user.last_name)
@@ -72,6 +75,13 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
             if (res.ok) {
                 const data = await res.json()
                 setAvatarUrl(data.url)
+                /*
+                 * Sin esto la foto solo cambiaba aquí. El sidebar se renderiza en el layout,
+                 * que es un server component: Next.js no lo revalida por cambiar estado de
+                 * cliente. `router.refresh()` vuelve a pedir el árbol de servidor y el avatar
+                 * aparece en la barra (y en cualquier otro sitio que lo pinte) sin recargar.
+                 */
+                router.refresh()
             } else {
                 const data = await res.json()
                 setMessage({ type: 'error', text: data.error || 'Error al subir imagen' })
@@ -124,6 +134,9 @@ export function ProfileClient({ user, stats, adminStats }: ProfileClientProps) {
             }
 
             setMessage({ type: 'success', text: 'Cambios guardados correctamente' })
+            // Mismo motivo que en la subida de avatar: el nombre también se pinta en el
+            // sidebar, que es server component y no se entera de los cambios de cliente.
+            router.refresh()
         } catch {
             setMessage({ type: 'error', text: 'Error al guardar' })
         } finally {

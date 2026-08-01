@@ -15,6 +15,7 @@ export default async function AdminStudentsPage() {
             payment_status: true,
             blocked: true,
             created_at: true,
+            profile_image: true,
             _count: { select: { enrollments: true } },
         },
         orderBy: { created_at: 'desc' },
@@ -54,12 +55,37 @@ export default async function AdminStudentsPage() {
                                 {students.map((student) => (
                                     <tr key={student.id} className="table-row-base">
                                         <td className="py-4 pr-4">
-                                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                                                {student.name} {student.last_name}
-                                            </p>
-                                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                                                {student.email}
-                                            </p>
+                                            <div className="flex items-center gap-3">
+                                                {/* La foto que sube el alumno: hasta ahora solo se
+                                                    veía en su ficha, no en el listado. */}
+                                                <div
+                                                    className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center overflow-hidden text-[11px] font-semibold text-white"
+                                                    style={{
+                                                        background: student.profile_image
+                                                            ? 'var(--bg-raised)'
+                                                            : 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                                                    }}
+                                                >
+                                                    {student.profile_image ? (
+                                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                                        <img
+                                                            src={student.profile_image}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        `${student.name.charAt(0)}${student.last_name.charAt(0)}`.toUpperCase()
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                                                        {student.name} {student.last_name}
+                                                    </p>
+                                                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
+                                                        {student.email}
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="py-4 pr-4 hidden sm:table-cell">
                                             <span className="font-mono text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--bg-raised)', color: 'var(--text-secondary)' }}>

@@ -43,7 +43,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="flex h-[100svh] lg:h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
             <AnimatedBackground />
             <Watermark />
-            <div className="hidden lg:flex shrink-0 relative z-10">
+            {/* z-30 > z-10 de <main>: al expandirse por hover el sidebar se superpone al
+              contenido, y a igual z-index ganaría main por ir despues en el DOM. */}
+            <div className="hidden lg:flex shrink-0 relative z-30">
                 <Sidebar
                     role="STUDENT"
                     closerEnabled={closerEnabled}
