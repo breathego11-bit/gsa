@@ -128,7 +128,11 @@ export function MethodContent() {
             }
             @media (min-width: 1024px) {
                 .gsa-thread-inner { padding-bottom: 60px; }
-                .gsa-thread-nav { left: 272px !important; }
+                /* Antes era un 272px fijo, calibrado para el sidebar expandido (264+8).
+                   Al pasar el sidebar a estar colapsado por defecto, el nav quedaba 200px
+                   dentro del contenido y tapaba el titular. Derivarlo de --sidebar-w hace
+                   que siga al sidebar sea cual sea su estado. */
+                .gsa-thread-nav { left: calc(var(--sidebar-w, 68px) + 12px) !important; }
             }
             @media (max-width: 900px) {
                 .gsa-thread-nav { display: none !important; }

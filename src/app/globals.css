@@ -98,6 +98,17 @@ input[type="number"] {
 
 @layer base {
     :root {
+        /*
+         * Ancho que el sidebar de escritorio reserva en el layout (no el visual: al
+         * expandirse por hover se superpone y este valor no cambia). Lo mantiene
+         * actualizado components/layout/Sidebar.tsx.
+         *
+         * Existe para que nadie tenga que hardcodear el ancho del sidebar al posicionar
+         * elementos `fixed` — que es justo lo que descuadró el nav del Método al pasar
+         * el sidebar a estar colapsado por defecto.
+         */
+        --sidebar-w: 68px;
+
         --bg-base: #080d18;
         --bg-surface: #0e131e;
         --bg-raised: #1b1f2b;

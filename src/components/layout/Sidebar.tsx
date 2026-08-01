@@ -60,6 +60,15 @@ export function Sidebar({ role, closerEnabled = false, closerType = null, user, 
         if (window.localStorage.getItem(COLLAPSE_KEY) === '0') setCollapsed(false)
     }, [])
 
+    // Publica el ancho reservado para quien posicione elementos `fixed` junto al sidebar
+    // (p. ej. el nav flotante del Método). Ver `--sidebar-w` en globals.css.
+    useEffect(() => {
+        document.documentElement.style.setProperty(
+            '--sidebar-w',
+            `${collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED}px`,
+        )
+    }, [collapsed])
+
     const toggleCollapsed = () => {
         setCollapsed((prev) => {
             const next = !prev
