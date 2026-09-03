@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto'
 import { getServerSession } from 'next-auth'
 import { openai } from '@ai-sdk/openai'
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { canAccessCoach } from '@/lib/access'
+import { loadCoachAccess, refundFreeEvaluation, reserveFreeEvaluation } from '@/lib/coach/access'
+import { COACH_TRIAL_EXHAUSTED } from '@/lib/coach/trial'
 import {
     buildCoachSystemPrompt,
     COACH_MODEL,
@@ -39,15 +41,21 @@ export async function POST(req: Request) {
     }
 
     const u = session.user
-    if (
-        !canAccessCoach({
-            role: u.role,
-            closer_enabled: u.closer_enabled ?? false,
-            closer_type: u.closer_type ?? null,
-            payment_status: u.payment_status ?? 'none',
-        })
-    ) {
-        return new Response('Forbidden', { status: 403 })
+    /*
+     * Acceso freemium: quien ha pagado entra sin límite; quien solo se ha registrado tiene
+     * COACH_FREE_EVALUATIONS transcripciones de prueba y después se le bloquea el coach.
+     * El nivel se resuelve contra la BASE, no contra el JWT: la sesión no se refresca al
+     * consumir una evaluación y un contador cacheado ahí daría pruebas infinitas.
+     */
+    const access = await loadCoachAccess(u.id, {
+        role: u.role,
+        closer_enabled: u.closer_enabled ?? false,
+        closer_type: u.closer_type ?? null,
+        payment_status: u.payment_status ?? 'none',
+    })
+
+    if (access.level === 'exhausted') {
+        return new Response(COACH_TRIAL_EXHAUSTED, { status: 402 })
     }
 
     let body: { messages?: UIMessage[]; conversationId?: string; callType?: string }
@@ -91,8 +99,15 @@ export async function POST(req: Request) {
     const conversationTitle =
         userText.replace(/^\(Tipo de llamada[^)]*\)\s*/, '').slice(0, 60) || 'Nueva llamada'
 
-    // Persistir el turno del alumno ANTES de streamear (upsert de la conversación).
-    const conversationId = body.conversationId
+    /*
+     * Persistir el turno del alumno ANTES de streamear (upsert de la conversación).
+     *
+     * Si el cliente no manda `conversationId` se genera aquí en vez de saltarse la
+     * persistencia. Era un campo opcional bajo su control, y omitirlo dejaba la petición sin
+     * rastro: ni mensaje guardado ni nada que contara para el tope diario. Ahora toda llamada
+     * queda registrada antes de gastar un solo token.
+     */
+    const conversationId = body.conversationId || randomUUID()
 
     // Integridad + seguridad: nunca escribir en una conversación de OTRO usuario
     // (el id lo controla el cliente). Si existe y no es suya → 403.
@@ -107,21 +122,19 @@ export async function POST(req: Request) {
     }
 
     try {
-        if (conversationId) {
-            await prisma.coachConversation.upsert({
-                where: { id: conversationId },
-                create: {
-                    id: conversationId,
-                    user_id: u.id,
-                    title: conversationTitle,
-                    call_type: body.callType ?? null,
-                },
-                update: { updated_at: new Date() },
-            })
-            await prisma.coachMessage.create({
-                data: { conversation_id: conversationId, role: 'user', content: userText },
-            })
-        }
+        await prisma.coachConversation.upsert({
+            where: { id: conversationId },
+            create: {
+                id: conversationId,
+                user_id: u.id,
+                title: conversationTitle,
+                call_type: body.callType ?? null,
+            },
+            update: { updated_at: new Date() },
+        })
+        await prisma.coachMessage.create({
+            data: { conversation_id: conversationId, role: 'user', content: userText },
+        })
     } catch (err) {
         console.error('[coach] error persistiendo el mensaje del alumno:', err)
         // No bloqueamos la evaluación por un fallo de persistencia.
@@ -130,6 +143,37 @@ export async function POST(req: Request) {
     // Enrutado de modelo: evaluación pesada → gpt-4o; seguimiento conversacional → modelo light.
     const isEvaluation = looksLikeTranscript(userText)
     const model = isEvaluation ? COACH_MODEL : COACH_MODEL_LIGHT
+
+    /*
+     * Consumo de la prueba gratuita: se cobra una evaluación por TRANSCRIPCIÓN, que es
+     * literalmente lo que se ofreció ("2 transcripciones únicas gratis"). Un mensaje corto
+     * —un "hola", una duda sobre la puntuación— no gasta cuota.
+     *
+     * Invariante: se cobra EXACTAMENTE cuando se entrega una evaluación, así que la condición
+     * es la misma que decide el modelo (`isEvaluation`). Separarlas —se probó con un umbral de
+     * cobro más alto— abre una franja donde el alumno recibe la evaluación completa sin gastar
+     * cuota, y la prueba deja de tener límite.
+     *
+     * Sigue siendo una heurística y por tanto esquivable troceando la llamada por debajo de
+     * 800 caracteres, pero quien la esquiva NO obtiene el producto: esos mensajes van al
+     * modelo light con el prompt de seguimiento, sin rúbrica ni puntuación. Lo que se regala
+     * así es charla barata, y el tope diario de `checkCoachRateLimit` acota el gasto.
+     *
+     * Alternativa descartada: cobrar por conversación. No acota nada — basta con pegar todas
+     * las llamadas en el mismo chat para pagar una sola vez — y hacía que abrir un chat y
+     * escribir "hola" costara una de las dos pruebas.
+     *
+     * La reserva es atómica y ocurre ANTES de llamar a OpenAI: si se hiciera después, dos
+     * pestañas simultáneas pasarían las dos comprobaciones y consumirían tokens de más.
+     */
+    let reservedFreeEvaluation = false
+    if (access.level === 'trial' && isEvaluation) {
+        reservedFreeEvaluation = await reserveFreeEvaluation(u.id)
+        if (!reservedFreeEvaluation) {
+            // Otra petición se llevó la última mientras esta estaba en vuelo.
+            return new Response(COACH_TRIAL_EXHAUSTED, { status: 402 })
+        }
+    }
 
     // Solo se reenvían los últimos N mensajes (el system prompt fijo va aparte y se cachea).
     const recentMessages = messages.slice(-COACH_HISTORY_LIMIT)
@@ -166,6 +210,12 @@ export async function POST(req: Request) {
     const requestTokens = estimateTokens(systemPrompt) + messagesTokens + COACH_MAX_OUTPUT_TOKENS
 
     if (requestTokens > COACH_TPM_LIMIT) {
+        // La cuota ya estaba reservada: aquí no se ha evaluado nada, así que se devuelve.
+        // Si no, un intento con una llamada demasiado larga quemaría una de las dos pruebas.
+        if (reservedFreeEvaluation) {
+            reservedFreeEvaluation = false
+            await refundFreeEvaluation(u.id)
+        }
         const overflowChars = Math.ceil((requestTokens - COACH_TPM_LIMIT) * 3.6)
         console.warn(
             `[coach] petición por encima del TPM de la cuenta: ~${requestTokens} tokens ` +
@@ -214,7 +264,7 @@ export async function POST(req: Request) {
             }
 
             // 2. Persistir la respuesta del coach.
-            if (!conversationId || !text) return
+            if (!text) return
             try {
                 await prisma.coachMessage.create({
                     data: { conversation_id: conversationId, role: 'assistant', content: text },
@@ -229,6 +279,15 @@ export async function POST(req: Request) {
         },
     })
 
+    /*
+     * El servidor termina de leer el stream aunque el cliente se desconecte.
+     *
+     * `onFinish` —donde se registra CoachUsage— solo corre si el stream se consume, y ese
+     * registro es ahora la fuente del límite diario. Sin esto, abortar cada petición llegaba
+     * igualmente a OpenAI pero no dejaba rastro, y el tope de mensajes al día no saltaba nunca.
+     */
+    void result.consumeStream()
+
     return result.toUIMessageStreamResponse({
         /*
          * Sin esto el SDK devuelve su default literal: "An error occurred." — que es
@@ -237,6 +296,19 @@ export async function POST(req: Request) {
          */
         onError(error) {
             const msg = collectErrorText(error)
+
+            /*
+             * La evaluación se reservó antes de llamar a OpenAI. Si la llamada falla, se le
+             * devuelve: un error transitorio de la API no puede costarle una de sus dos
+             * únicas pruebas. Esto también cubre los cortes a mitad de stream —donde ya
+             * habría leído parte de la respuesta— a propósito: una evaluación truncada no
+             * es una evaluación, y ahí tampoco se registra consumo. El flag evita devolver
+             * dos veces si el SDK invoca este callback más de una vez.
+             */
+            if (reservedFreeEvaluation) {
+                reservedFreeEvaluation = false
+                void refundFreeEvaluation(u.id)
+            }
 
             // 429 por tope de la cuenta: la petición no cabe en el TPM de la organización.
             if (/tokens per min|TPM|request too large|rate.?limit/i.test(msg)) {

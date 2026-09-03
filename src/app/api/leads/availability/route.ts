@@ -5,7 +5,7 @@ import { localParts } from '@/lib/calendar/tz'
 
 export const dynamic = 'force-dynamic'
 
-const DEFAULT_DURATION = 45
+const DEFAULT_DURATION = 30
 const DEFAULT_DAYS = 14
 
 function isValidTz(tz: string): boolean {

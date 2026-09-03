@@ -83,6 +83,12 @@ model User {
   updated_at    DateTime  @updatedAt
 
   payment_status     String    @default("none")   // none | active | past_due | cancelled
+
+  // Coach IA — prueba gratuita para quien se registra sin pagar. Cuenta EVALUACIONES
+  // consumidas (transcripciones), no mensajes: los seguimientos sobre una evaluación ya
+  // hecha no gastan cuota. Se reserva de forma atómica antes de llamar a OpenAI, así que
+  // abrir varias pestañas no regala evaluaciones extra. Ver src/lib/coach/access.ts.
+  coach_free_evaluations_used Int @default(0)
   stripe_customer_id String?   @unique
   blocked            Boolean   @default(false)
   closer_enabled     Boolean    @default(false)

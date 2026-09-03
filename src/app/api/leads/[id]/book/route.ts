@@ -9,7 +9,7 @@ import { toRfc3339InZone } from '@/lib/calendar/tz'
 
 export const dynamic = 'force-dynamic'
 
-const DEFAULT_DURATION = 45
+const DEFAULT_DURATION = 30
 
 function isValidTz(tz: string): boolean {
     try {

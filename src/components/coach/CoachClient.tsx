@@ -7,7 +7,14 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Sparkles, Send, Plus, Loader2, MessageSquare } from 'lucide-react'
+import { Sparkles, Send, Plus, Loader2, MessageSquare, CalendarDays } from 'lucide-react'
+import { CoachUpgradeModal } from '@/components/coach/CoachUpgradeModal'
+import {
+    COACH_TRIAL_EXHAUSTED,
+    COACH_UPGRADE_URL,
+    chargesFreeEvaluation,
+    type CoachAccess,
+} from '@/lib/coach/trial'
 import { COACH_CALL_TYPES } from '@/lib/coach/types'
 import {
     parseScorecard,
@@ -84,24 +91,49 @@ function ScorecardCard({ data }: { data: Scorecard }) {
     )
 }
 
+/** Acceso por defecto: sin límite. `/admin/coach` no pasa `access` — el staff siempre lo tiene. */
+const FULL_ACCESS: CoachAccess = { level: 'full', remaining: 0, used: 0, limit: 0 }
+
 export function CoachClient({
     activeConversationId,
     initialMessages,
     conversations,
     firstName,
     basePath = '/dashboard/coach',
+    access = FULL_ACCESS,
 }: {
     activeConversationId: string
     initialMessages: CoachUIMessage[]
     conversations: CoachConversationBrief[]
     firstName: string
     basePath?: string
+    access?: CoachAccess
 }) {
     const router = useRouter()
     const [input, setInput] = useState('')
     const [callType, setCallType] = useState('')
     const urlSynced = useRef(initialMessages.length > 0)
     const scrollRef = useRef<HTMLDivElement>(null)
+
+    /*
+     * Prueba gratuita. `remaining` se lleva en estado porque baja al enviar una
+     * transcripción, sin recargar la página.
+     *
+     * Cuándo aparece el popup:
+     *  - al ENTRAR con la cuota ya agotada (`access.level === 'exhausted'`), que es lo que
+     *    pidió el cliente: "un pop-up cada que lo intenten abrir";
+     *  - si el servidor rechaza un envío por cuota (red de seguridad para varias pestañas).
+     *
+     * Al gastar la última evaluación DENTRO de la sesión no se abre: quien acaba de enviarla
+     * tiene que poder leer la respuesta que está llegando. Se le bloquea el composer y el
+     * popup le saldrá la próxima vez que entre.
+     */
+    const isTrial = access.level !== 'full'
+    const [remaining, setRemaining] = useState(access.remaining)
+    const [blocked, setBlocked] = useState(access.level === 'exhausted')
+    // Si el envío que descontó cuota acaba fallando, hay que devolverla en la UI: el
+    // servidor tampoco la consumió (la reserva se devuelve en la ruta).
+    const pendingQuotaRef = useRef(false)
 
     // Historial optimista: al iniciar/continuar un chat la conversación aparece en el
     // sidebar al instante, sin refrescar. Se fusiona sobre la lista del servidor (que
@@ -136,6 +168,43 @@ export function CoachClient({
     })
 
     const busy = status === 'submitted' || status === 'streaming'
+    const outOfQuota = isTrial && remaining <= 0
+
+    /*
+     * Envío completado sin error: el descuento se confirma y deja de estar "pendiente".
+     * Sin esto el ref se quedaba en true tras una evaluación correcta, y el siguiente
+     * fallo cualquiera (un seguimiento que peta) devolvía en la UI una evaluación que el
+     * servidor nunca devolvió: el banner prometía de más y el usuario se topaba con un 402.
+     */
+    useEffect(() => {
+        if (status === 'ready' && !error) pendingQuotaRef.current = false
+    }, [status, error])
+
+    useEffect(() => {
+        if (!error) return
+        if (error.message?.includes(COACH_TRIAL_EXHAUSTED)) {
+            // Red de seguridad: otra pestaña se llevó la última evaluación.
+            pendingQuotaRef.current = false
+            setRemaining(0)
+            setBlocked(true)
+            return
+        }
+        /*
+         * Los errores que devuelve el servidor (413 por tamaño, 429, fallo de OpenAI) no
+         * consumen cuota allí, así que aquí también se devuelve. Sin esto, dos intentos
+         * fallidos bloqueaban el composer y abrían el popup con el contador real todavía a
+         * cero, y solo se recuperaba recargando.
+         *
+         * Excepción conocida: si el error viene de que el navegador cortó la conexión, el
+         * servidor sí terminó la evaluación (`consumeStream`) y no devolvió nada. El banner
+         * queda optimista hasta el siguiente envío, que recibe un 402 y abre el popup. No se
+         * intenta distinguir ese caso: desde el cliente no es fiable, y el 402 lo corrige.
+         */
+        if (pendingQuotaRef.current) {
+            pendingQuotaRef.current = false
+            setRemaining((n) => Math.min(access.limit, n + 1))
+        }
+    }, [error, access.limit])
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -145,10 +214,26 @@ export function CoachClient({
         e.preventDefault()
         const text = input.trim()
         if (!text || busy) return
+        if (outOfQuota) {
+            setBlocked(true)
+            return
+        }
         const prefix = callType
             ? `(Tipo de llamada indicado por el alumno: ${callTypeLabel(callType)})\n\n`
             : ''
-        sendMessage({ text: prefix + text })
+        const payload = prefix + text
+        /*
+         * Solo las transcripciones descuentan, igual que en el servidor: un "hola" o una duda
+         * sobre la puntuación no puede quemar una de las dos pruebas. Se evalúa sobre
+         * `payload`, exactamente el mismo string que recibe el servidor.
+         */
+        // Misma función que el servidor, sobre el mismo string: el contador de la UI no
+        // puede divergir del real.
+        if (isTrial && chargesFreeEvaluation(payload)) {
+            pendingQuotaRef.current = true
+            setRemaining((n) => Math.max(0, n - 1))
+        }
+        sendMessage({ text: payload })
         setInput('')
         // Muestra la conversación en el historial de inmediato (título = primer mensaje).
         setOptimisticConvs((prev) => ({
@@ -323,13 +408,46 @@ export function CoachClient({
                     )}
                 </div>
 
-                {/* Error */}
-                {error && (
+                {/* Error. El marcador de cuota agotada no se pinta: ya lo explica el popup. */}
+                {error && !error.message?.includes(COACH_TRIAL_EXHAUSTED) && (
                     <div
                         className="mx-4 md:mx-8 mb-2 px-4 py-2.5 rounded-lg text-[12.5px]"
                         style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)', color: '#fda4af' }}
                     >
                         {error.message || 'Ha ocurrido un error. Inténtalo de nuevo.'}
+                    </div>
+                )}
+
+                {/* Prueba gratuita: cuántas evaluaciones quedan, y el CTA cuando se agotan. */}
+                {isTrial && (
+                    <div
+                        className="mx-4 md:mx-8 mb-2 px-4 py-2.5 rounded-lg text-[12.5px] flex flex-wrap items-center justify-between gap-2"
+                        style={
+                            outOfQuota
+                                ? { background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.3)', color: '#c7cede' }
+                                : { background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.22)', color: '#9ca3b8' }
+                        }
+                    >
+                        <span>
+                            {outOfQuota ? (
+                                <>Has usado tus {access.limit} evaluaciones gratuitas.</>
+                            ) : (
+                                <>
+                                    Prueba gratuita: te{' '}
+                                    {remaining === 1 ? 'queda 1 evaluación' : `quedan ${remaining} evaluaciones`}.
+                                </>
+                            )}
+                        </span>
+                        <a
+                            href={COACH_UPGRADE_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 font-semibold transition-opacity hover:opacity-80"
+                            style={{ color: '#818cf8' }}
+                        >
+                            <CalendarDays size={13} />
+                            Agendar mi reunión
+                        </a>
                     </div>
                 )}
 
@@ -382,20 +500,25 @@ export function CoachClient({
                                     }
                                 }}
                                 rows={3}
-                                placeholder="Pega aquí la transcripción de tu llamada… (Enter para enviar · Shift+Enter para salto de línea)"
+                                disabled={outOfQuota}
+                                placeholder={
+                                    outOfQuota
+                                        ? 'Agenda tu reunión para seguir entrenando tus llamadas.'
+                                        : 'Pega aquí la transcripción de tu llamada… (Enter para enviar · Shift+Enter para salto de línea)'
+                                }
                                 className="flex-1 resize-none bg-transparent outline-none text-[13.5px] px-2 py-1.5 max-h-52"
-                                style={{ color: '#dee2f2' }}
+                                style={{ color: '#dee2f2', opacity: outOfQuota ? 0.5 : 1 }}
                             />
                             <button
                                 type="submit"
-                                disabled={busy || !input.trim()}
+                                disabled={busy || !input.trim() || outOfQuota}
                                 aria-label="Enviar"
                                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-opacity"
                                 style={{
                                     background: ACCENT,
                                     color: '#fff',
-                                    opacity: busy || !input.trim() ? 0.4 : 1,
-                                    cursor: busy || !input.trim() ? 'not-allowed' : 'pointer',
+                                    opacity: busy || !input.trim() || outOfQuota ? 0.4 : 1,
+                                    cursor: busy || !input.trim() || outOfQuota ? 'not-allowed' : 'pointer',
                                 }}
                             >
                                 {busy ? <Loader2 size={17} className="animate-spin" /> : <Send size={16} />}
@@ -404,6 +527,9 @@ export function CoachClient({
                     </div>
                 </form>
             </section>
+
+            {/* Bloqueo: sin salida más que agendar. Ver CoachUpgradeModal. */}
+            {blocked && <CoachUpgradeModal />}
         </div>
     )
 }

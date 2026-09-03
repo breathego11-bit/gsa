@@ -387,8 +387,198 @@ export function canAccessCoach(u: AccessUser): boolean {
 - El endpoint revalida `canAccessCoach` server-side (defensa en profundidad, como hacen las
   rutas de enrollments/sales).
 
-> **Pendiente cliente:** ¿el coach es para todos los alumnos con pago activo, o solo para un
-> curso/tier concreto? Ajustar el gate según respuesta.
+> **Resuelto (2026-09-03):** el coach deja de ser exclusivo de quien paga. Ver §8.1.
+
+---
+
+## 8.1 Freemium — 2 evaluaciones gratis para quien se registra ✅ IMPLEMENTADO
+
+> **Requerimiento del cliente (2026-09-03):** *"que el coach de IA lo puedan utilizar las
+> personas que se registren aunque no hayan pagado, y que puedan hacer 2 transcripciones
+> únicas gratis. Después de las 2 transcripciones debe bloquearse el coach y salir un pop-up
+> cada que lo intenten abrir, que lo llevará a agendar una reunión en
+> `https://aplica.growthsalessacademy.com/survey` para saber si aplica o no. Las personas que
+> ya pagaron el curso tendrán el acceso."*
+
+El coach pasa de ser una prestación del programa a ser **la puerta de entrada al embudo**: se
+regala el valor primero y el bloqueo empuja a agendar la llamada de admisión.
+
+### Los tres niveles de acceso
+
+| Nivel | Quién | Qué puede hacer |
+|---|---|---|
+| `full` | admins, closers y quien pagó (`active` \| `complimentary`) | sin límite, como hasta ahora |
+| `trial` | registrado sin pagar, con cuota restante | usar el coach; ve cuántas evaluaciones le quedan |
+| `exhausted` | registrado sin pagar, cuota agotada | al entrar le sale el pop-up bloqueante; no puede enviar nada más |
+
+`src/lib/coach/trial.ts` (lógica pura, importable desde el navegador) y
+`src/lib/coach/access.ts` (lo que toca Prisma). Están separados a propósito: el componente de
+chat importa las constantes, y un solo módulo arrastraría Prisma al bundle del cliente.
+
+### Decisiones de diseño
+
+**Invariante del cobro: recibir una evaluación ⟺ gastar cuota.** La condición que descuenta es
+EXACTAMENTE la misma que decide si el mensaje se responde con gpt-4o y el Documento Maestro
+entero (`looksLikeTranscript`: >800 caracteres o marcas de tiempo). Un "hola" o una duda corta
+no gastan nada porque tampoco reciben una evaluación.
+
+> **Umbral de cobro separado: probado y descartado.** Se puso el cobro en 2.500 caracteres
+> para que un seguimiento largo no se facturara como evaluación. Efecto secundario: entre 800
+> y 2.500 el alumno recibía la evaluación completa —el producto— sin descontar nada, es decir
+> **evaluaciones gratis ilimitadas**. Prevalece el invariante: si el sistema entregó una
+> evaluación de verdad, cobrarla es lo correcto.
+
+> **Alternativa probada y descartada: cobrar por conversación.** Parecía más robusta (nada que
+> adivinar), pero no acota nada — basta pegar todas las llamadas en el mismo chat para pagar
+> una sola vez — y hacía que abrir un chat y escribir "hola" costara una de las dos pruebas.
+> Además, si la primera petición de un chat fallaba, la devolución de cuota dejaba esa
+> conversación marcada como pagada para siempre: un bypass completo del límite.
+
+**La heurística del cliente se aplica al mismo string que recibe el servidor**, prefijo de
+"tipo de llamada" incluido (~60 caracteres). Sobre el texto pelado, cerca del umbral de 800 el
+servidor cobraba una evaluación que el contador de la UI no reflejaba.
+
+**La reserva es atómica y ocurre ANTES de llamar a OpenAI.**
+
+```ts
+// src/lib/coach/access.ts
+await prisma.user.updateMany({
+  where: { id: userId, coach_free_evaluations_used: { lt: COACH_FREE_EVALUATIONS } },
+  data:  { coach_free_evaluations_used: { increment: 1 } },
+})
+```
+
+Un read-then-write dejaría pasar dos pestañas simultáneas y regalaría evaluaciones que cuestan
+dinero real en la API. Es el mismo patrón que el claim del booking de leads. Si la petición se
+rechaza después por tamaño (el pre-check de TPM), la cuota **se devuelve**: un intento fallido
+no puede costarle al usuario una de sus dos pruebas.
+
+**El contador vive en la base, no en el JWT.** La sesión de NextAuth se firma al iniciar sesión
+y no se refresca al consumir una evaluación; cachearlo ahí daría pruebas gratis infinitas hasta
+el siguiente login.
+
+**Cuándo aparece el pop-up.** Al *entrar* con la cuota agotada — literalmente lo que pidió el
+cliente ("cada que lo intenten abrir") — y también si el servidor rechaza un envío por cuota,
+que es la red de seguridad para varias pestañas abiertas. **No** salta al gastar la última
+evaluación dentro de la sesión: quien acaba de enviarla tiene que poder leer la respuesta que
+está llegando; se le bloquea el composer y el pop-up le saldrá la próxima vez que entre. No se
+puede cerrar: un botón de cerrar dejaría usar la pantalla igual.
+
+**Agotada la cuota, el bloqueo es total**, también para los seguimientos de conversaciones que
+sí se pagaron. Es la lectura literal del encargo ("después de las 2 transcripciones debe
+bloquearse el coach"): la 2ª evaluación se lee entera, y a partir de ahí la única acción
+disponible es agendar. Si Iván prefiere dejar abiertas las dudas sobre las evaluaciones ya
+entregadas, es cambiar una condición en el gate.
+
+**Los cortes a mitad de stream devuelven la cuota**, aunque el alumno ya hubiera leído parte
+de la respuesta: una evaluación truncada no es una evaluación, y en ese caso tampoco se
+registra consumo. Se decide a favor del usuario a propósito.
+
+**Efecto secundario aceptado:** un alumno cuyo pago pase a `past_due` o `cancelled` cae a
+`trial` y recibe 2 evaluaciones gratis (su contador está en 0 porque nunca lo usó). Se
+considera un margen de gracia razonable, no un agujero.
+
+### Archivos
+
+| Archivo | Acción |
+|---|---|
+| `prisma/schema.prisma` + `migrations/20260903000000_add_coach_free_trial/` | `User.coach_free_evaluations_used Int @default(0)` |
+| `src/lib/coach/rate-limit.ts` | el tope diario pasa a contar `CoachUsage` |
+| `src/lib/coach/trial.ts` | **nuevo** — constantes, tipos y `coachAccessFrom()` (puro) |
+| `src/lib/coach/access.ts` | **nuevo** — `loadCoachAccess`, `reserveFreeEvaluation`, `refundFreeEvaluation` |
+| `src/app/api/coach/chat/route.ts` | gating de 3 niveles + reserva atómica + devolución |
+| `src/app/dashboard/coach/page.tsx` | deja de redirigir a quien no pagó; pasa `access` |
+| `src/components/coach/CoachClient.tsx` | banner de cuota, composer bloqueado, pop-up |
+| `src/components/coach/CoachUpgradeModal.tsx` | **nuevo** — pop-up de bloqueo con CTA a `/survey` |
+
+El ítem "Coach IA" del sidebar **ya se mostraba a todos los estudiantes** sin comprobar
+`canAccessCoach` (`nav-config.ts:162`): hoy quien no pagaba hacía clic y era redirigido al
+dashboard sin explicación. Este cambio convierte ese callejón sin salida en la prueba gratuita.
+
+### Endurecido a raíz del code review
+
+- **Devolución de cuota en todos los caminos de fallo**, no solo en el pre-check de tamaño: si
+  OpenAI falla, se corta la red o hay un timeout, el alumno no ha recibido nada y recupera su
+  evaluación (`onError` del stream). Antes, un error transitorio le costaba una de sus dos
+  pruebas.
+- **El contador de la UI también revierte** cuando el envío falla. Sin eso, dos intentos
+  fallidos bloqueaban el composer y abrían el pop-up con el contador real todavía a cero, y
+  solo se recuperaba recargando.
+- **El mensaje del alumno se persiste SIEMPRE, con `conversationId` generado en el servidor si
+  el cliente no lo manda.** Ese campo es opcional y lo controlaba el cliente: omitirlo dejaba
+  la petición sin rastro alguno —ni mensaje guardado ni nada que contara para el tope diario—
+  y, ahora que cualquiera puede registrarse, eso dejaba la API key del cliente expuesta a gasto
+  ilimitado. Este es el arreglo importante del review.
+- **El tope diario cuenta `CoachMessage`, que se escribe ANTES de llamar a OpenAI.** Se probó
+  contar `CoachUsage`, pero ese se escribe al terminar el stream: iba un request por detrás y
+  no frenaba a quien encadena peticiones. *Limitación conocida y aceptada:* peticiones
+  estrictamente simultáneas leen todas el valor previo; acotarlo requeriría un contador
+  atómico por usuario, y esto es una barrera anti-abuso, no un límite de facturación exacto.
+- **`consumeStream()` en el servidor**, para que `onFinish` (y con él el registro de coste en
+  `CoachUsage`) se ejecute aunque el navegador corte la conexión.
+- **Umbral de cobro alineado con el de evaluación** (ver el invariante arriba), tras detectar
+  que un umbral propio más alto regalaba evaluaciones completas sin descontar cuota.
+- **El descuento "pendiente" de la UI se confirma al terminar bien.** Se quedaba marcado tras
+  una evaluación correcta, así que el siguiente fallo cualquiera devolvía en pantalla una
+  evaluación que el servidor nunca devolvió.
+- **`checkCoachRateLimit` pasa a contar `CoachUsage` en vez de `CoachMessage`.** Este es el
+  arreglo importante: `CoachMessage` solo se escribe cuando el cliente manda `conversationId`,
+  un campo opcional bajo su control, así que **bastaba con omitirlo para que el límite de
+  40/día no saltara nunca**. Mientras el coach era exclusivo de quien pagaba el agujero tenía
+  poco recorrido; al abrirlo a cualquiera que se registre, dejaba la API key del cliente
+  expuesta a gasto ilimitado. `CoachUsage` se escribe siempre que OpenAI responde, sin
+  depender de nada que mande el cliente.
+
+### Verificado
+
+- **10 casos de `coachAccessFrom`**: 0/1/2/5 evaluaciones usadas, contador negativo (defensivo),
+  alumno pagado, cortesía, admin, closer y pago vencido.
+- **8 casos del invariante `recibe evaluación ⟺ cobra`**, incluidos los bordes del umbral
+  (799 y 900 caracteres), un mensaje con `12:30 -` y una llamada de 30 min: **0 casos en los
+  que se entregue el producto sin descontar cuota**.
+- `tsc --noEmit` limpio y `next build` OK.
+
+**Cuatro pases de code review**, cada uno con sus hallazgos corregidos. El tercero descartó el
+diseño "cuota por conversación" que había sustituido al original; el cuarto separó el umbral de
+cobro y cerró el agujero del `conversationId`.
+
+### Qué NO impide este diseño (límites conocidos)
+
+| Vía | ¿Obtiene el producto? | Mitigación |
+|---|---|---|
+| **Registrarse otra vez con otro email** | Sí, 2 evaluaciones más por cuenta | Ninguna. El registro es abierto y **no hay verificación de email**. Es inherente a cualquier freemium sin fricción: cerrarlo exige verificación por email o SMS, que también reduce el registro legítimo. **Decisión de producto pendiente de Iván.** |
+| Trocear la llamada en fragmentos <800 caracteres | **No.** Esos mensajes van al modelo light con el prompt de seguimiento: sin rúbrica, sin puntuación, sin Documento Maestro | El tope diario (`checkCoachRateLimit`) acota el gasto; lo que se regala es charla barata en el modelo más económico |
+| Abrir varias pestañas y enviar a la vez | No | La reserva es atómica (`updateMany` con el límite en el `where`) |
+| Omitir `conversationId` para no dejar rastro | No | El servidor genera el id cuando falta; toda petición se registra antes de gastar tokens |
+| Manipular el contador desde el navegador | No | El nivel de acceso se resuelve en el servidor contra la base en cada petición; la UI solo pinta |
+
+### ⚠️ Decisión pendiente de Iván — verificación de email en el registro
+
+**Preguntar antes de dar por cerrado el freemium.**
+
+El límite de 2 evaluaciones es **por cuenta**, y el registro (`/api/auth/register`) es abierto y
+**no verifica el email**: quien agote su prueba puede crear otra cuenta con otro correo y
+obtener otras dos. No hay forma de cerrarlo desde el gating — es inherente a cualquier
+freemium sin fricción de registro.
+
+Las opciones, para plantearle:
+
+| Opción | Efecto | Coste |
+|---|---|---|
+| **Dejarlo así** | Máxima conversión: nadie abandona por fricción. Se asume que unos pocos repetirán registro | 0 |
+| **Verificación por email** | Corta el reciclado casual (hay que tener acceso al buzón). No frena a quien use alias `+1` o dominios desechables | ~4 h (ya hay Resend integrado) |
+| **Verificación por SMS/WhatsApp** | Corta de verdad el reciclado | ~8 h + coste por mensaje + proveedor nuevo |
+
+**Recomendación:** dejarlo así de momento. El objetivo del coach gratuito es llenar el embudo,
+y cada evaluación de más cuesta céntimos de OpenAI frente al valor de una llamada agendada.
+Revisarlo solo si el consumo del coach se dispara sin que suban los leads — se puede vigilar
+cruzando `CoachUsage` con los leads creados.
+
+### Pendiente / fuera de alcance
+
+- Panel de admin para ver o resetear la cuota de un usuario (no lo pidió el cliente)
+- Mensaje al alumno cuando el registro no vino por invitación explicando qué incluye la prueba
+- Analítica de conversión trial → reunión agendada (hoy se puede inferir por `Lead.source`)
 
 ---
 
