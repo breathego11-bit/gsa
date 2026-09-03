@@ -2,7 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/Card'
-import { situationLabel, urgencyLabel, investmentLabel } from '@/lib/leads/options'
+import Link from 'next/link'
+import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
 import type { LeadStatus } from '@prisma/client'
 import { CheckCircle2, AlertTriangle, CalendarPlus, Video } from 'lucide-react'
 
@@ -67,6 +68,9 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                 urgency: true,
                 investment: true,
                 status: true,
+                source: true,
+                utm_campaign: true,
+                utm_source: true,
                 meeting_at: true,
                 meeting_tz_iana: true,
                 meeting_link: true,
@@ -299,6 +303,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Lead</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>WhatsApp</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--text-secondary)' }}>Situación</th>
+                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--text-secondary)' }}>Campaña</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Cita</th>
                                     <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Asignado</th>
                                     <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Estado</th>
@@ -315,12 +320,27 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                     return (
                                         <tr key={lead.id} className="table-row-base">
                                             <td className="py-4 pr-4">
-                                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{lead.full_name}</p>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    {/* Enlace al detalle: es donde viven las respuestas del formulario y la atribución. */}
+                                                    <Link href={`/admin/leads/${lead.id}`} className="font-medium hover:underline" style={{ color: 'var(--text-primary)' }}>
+                                                        {lead.full_name}
+                                                    </Link>
+                                                    <span
+                                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
+                                                        style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
+                                                        title={`source: ${lead.source}`}
+                                                    >
+                                                        {sourceLabel(lead.source)}
+                                                    </span>
+                                                </div>
                                                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{lead.email}</p>
                                                 <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>{ig}</p>
                                             </td>
                                             <td className="py-4 pr-4 hidden lg:table-cell text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{lead.whatsapp}</td>
-                                            <td className="py-4 pr-4 hidden xl:table-cell text-xs" style={{ color: 'var(--text-secondary)' }} title={`Inversión: ${investmentLabel(lead.investment)}`}>{situationLabel(lead.situation)}</td>
+                                            <td className="py-4 pr-4 hidden xl:table-cell text-xs" style={{ color: 'var(--text-secondary)' }} title={`Inversión: ${investmentLabel(lead.investment, lead.source)}`}>{situationLabel(lead.situation, lead.source)}</td>
+                                            <td className="py-4 pr-4 hidden xl:table-cell text-xs font-mono" style={{ color: 'var(--text-secondary)' }} title={lead.utm_source ? `source: ${lead.utm_source}` : undefined}>
+                                                {lead.utm_campaign ?? <span style={{ opacity: 0.4 }}>—</span>}
+                                            </td>
                                             <td className="py-4 pr-4 hidden md:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                 <div>{fmtMeeting(lead.meeting_at, lead.meeting_tz_iana)}</div>
                                                 {lead.meeting_link && (
@@ -331,7 +351,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                             </td>
                                             <td className="py-4 pr-4 hidden sm:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>{assignedName}</td>
                                             <td className="py-4 pr-4 text-center">
-                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: st.bg, color: st.color }} title={`Urgencia: ${urgencyLabel(lead.urgency)}`}>
+                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: st.bg, color: st.color }} title={`Urgencia: ${urgencyLabel(lead.urgency, lead.source)}`}>
                                                     {st.label}
                                                 </span>
                                             </td>

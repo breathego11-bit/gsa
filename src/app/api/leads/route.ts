@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { leadsAuthOk } from '@/lib/leads/auth'
 import { isSituation, isUrgency, isInvestment } from '@/lib/leads/options'
+import { toLeadAttribution } from '@/lib/leads/attribution'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,6 +81,10 @@ export async function POST(req: NextRequest) {
 
     const source = str(body.source) || 'landing-survey'
 
+    // Atribución de campaña: opcional y con lista blanca. Si falta o es inválida, el lead
+    // se crea igual — nunca debe poder tumbar la captura.
+    const attribution = toLeadAttribution(body.attribution)
+
     const lead = await prisma.lead.create({
         data: {
             full_name,
@@ -95,6 +100,7 @@ export async function POST(req: NextRequest) {
             investment,
             submitted_at,
             source,
+            ...attribution,
         },
         select: { id: true, status: true },
     })

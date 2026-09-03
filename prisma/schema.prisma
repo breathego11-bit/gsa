@@ -415,6 +415,20 @@ model Lead {
   assigned_to     String?
   assigned_at     DateTime?
 
+  // Atribución de campaña (UTMs + fbclid). Escalares = ÚLTIMO toque: es el clic que trajo
+  // la conversión y el que casa con el `_fbc` que Meta usa para atribuir. La primera
+  // atribución se conserva íntegra en `attribution_first`.
+  utm_source      String?
+  utm_medium      String?
+  utm_campaign    String?
+  utm_content     String?
+  utm_term        String?
+  fbclid          String?
+  landing_url     String?
+  referrer        String?
+  attribution_first Json?               // instantánea completa del primer toque
+  attribution_last  Json?               // instantánea completa del último toque
+
   // Metadatos
   submitted_at    DateTime?                 // "enviado_en" del cliente (epoch ms del navegador)
   created_at      DateTime       @default(now())
@@ -425,6 +439,8 @@ model Lead {
   @@index([status, created_at])
   @@index([assigned_to])
   @@index([email])
+  @@index([utm_campaign])
+  @@index([utm_source, created_at])
 }
 
 model CalendarConnection {

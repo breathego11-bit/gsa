@@ -76,6 +76,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 : null,
             meeting_at: lead.meeting_at,
             meeting_link: lead.meeting_link,
+            google_event_id: lead.google_event_id,
+            // No se creó nada en ESTA llamada: quien mida conversiones no debe contar otra.
+            event_confirmed: false,
             already_booked: true,
         })
     }
@@ -177,15 +180,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             meeting_at: existing?.meeting_at ?? null,
             meeting_link: existing?.meeting_link ?? null,
             status: existing?.status ?? 'AGENDADO',
+            event_confirmed: false,
             already_booked: true,
         })
     }
 
     const saved = await prisma.lead.findUnique({ where: { id }, select: { meeting_at: true, meeting_link: true } })
+    /*
+     * `event_confirmed` es la señal de que Google creó el evento EN ESTA llamada. La landing
+     * la usa para disparar la conversión `Schedule` de Meta solo ante una reserva real:
+     * ni el camino idempotente ni una carrera perdida deben contar como conversión nueva.
+     */
     return NextResponse.json({
         assignee: { id: chosen.userId, name: chosen.name },
         meeting_at: saved?.meeting_at ?? startUTC,
         meeting_link: saved?.meeting_link ?? event.hangoutLink ?? null,
+        google_event_id: event.id ?? null,
+        event_confirmed: true,
         status: 'AGENDADO',
     })
 }
