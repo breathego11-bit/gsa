@@ -57,3 +57,7 @@ spec*.md
 CRM_Leads_Spec.md
 docs/*-spec.md
 docs/responsive-audit/
+
+# Notas de trabajo y reportes del cliente (no forman parte del build)
+nuevos tasks.md
+*.xlsx
