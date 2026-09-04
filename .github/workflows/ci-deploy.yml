@@ -65,6 +65,11 @@ jobs:
             OPENAI_API_KEY=$OPENAI_API_KEY
             EOF
             docker compose build --no-cache app
+            # `migrate` usa `target: builder` con COPY . ., así que su imagen lleva dentro una
+            # copia del repo. `compose run` NO la reconstruye si ya existe: sin este build
+            # explícito se ejecutaban las migraciones del deploy ANTERIOR, con un desfase de
+            # una. Reutiliza las capas que acaba de generar el build de `app`, así que es rápido.
+            docker compose build migrate
             docker compose up -d app
             docker compose run --rm migrate
             docker compose run --rm --entrypoint sh migrate -c "npx prisma db seed"
