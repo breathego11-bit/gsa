@@ -61,3 +61,7 @@ docs/responsive-audit/
 # Notas de trabajo y reportes del cliente (no forman parte del build)
 nuevos tasks.md
 *.xlsx
+
+# Documento de calibración del Coach IA (contiene nombres y citas de clientes reales)
+GSA-calibracion-coach-ia.pdf
+calibracion-coach.html
