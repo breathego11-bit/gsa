@@ -528,8 +528,9 @@ export function CoachClient({
                 </form>
             </section>
 
-            {/* Bloqueo: sin salida más que agendar. Ver CoachUpgradeModal. */}
-            {blocked && <CoachUpgradeModal />}
+            {/* Bloqueo. Se puede cerrar para releer las evaluaciones ya recibidas; el envío
+                sigue bloqueado y el popup reaparece en la siguiente visita. */}
+            {blocked && <CoachUpgradeModal onClose={() => setBlocked(false)} />}
         </div>
     )
 }

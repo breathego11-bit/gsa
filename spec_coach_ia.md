@@ -542,6 +542,47 @@ dashboard sin explicación. Este cambio convierte ese callejón sin salida en la
 diseño "cuota por conversación" que había sustituido al original; el cuarto separó el umbral de
 cobro y cerró el agujero del `conversationId`.
 
+### Corregido tras la primera prueba en producción (2026-09-04)
+
+**1. El coach se negaba a leer transcripciones que empiezan por una URL.** Al pegar una llamada
+precedida del enlace de Fathom, respondía que no puede abrir enlaces y no evaluaba el texto que
+venía debajo. El prompt no decía nada sobre ruido en la entrada, y el modelo se quedó en lo
+primero que vio. Regla nueva en `buildCoachSystemPrompt` (ambos modos): ignorar URLs, cabeceras
+de grabación y nombres de archivo, y **nunca** responder que no puede abrir enlaces si hay
+diálogo suficiente para evaluar.
+
+**2. El pop-up de bloqueo no se podía cerrar.** Era deliberado —la lectura literal del encargo—
+pero en la prueba se vio el efecto real: el alumno se queda sin poder releer las dos
+evaluaciones que acaba de recibir, que es justamente el material que le haría volver. Ahora se
+cierra (botón, backdrop o Escape) y solo devuelve acceso de **lectura**: el composer sigue
+bloqueado y el banner mantiene el CTA. El requisito se sigue cumpliendo porque el estado no se
+persiste: reaparece en cada visita a la pantalla.
+
+### ⚠️ Calibración de la puntuación — falta un anclaje que solo puede dar Iván
+
+**Síntoma:** dos llamadas distintas **del propio Iván** puntuaron **75/100** las dos.
+
+**Causa raíz:** el Documento Maestro **no contiene ni una sola puntuación de referencia**. La
+rúbrica de §13 dice "puntúa alto si…" y "puntúa bajo si…" pero nunca dice *cuánto* es alto, y
+los 4 ejemplos gold de §17 —las mejores llamadas de Iván, las que definen el estándar— llevan
+feedback cualitativo pero **ninguna nota numérica**. Sin un solo ancla, un LLM hace lo previsible:
+converge a la franja media-alta. Dos llamadas seguidas en 75 es exactamente ese síntoma.
+
+**Mitigado en el prompt** (no lo resuelve, lo reduce): se obliga a citar evidencia concreta por
+categoría, se prohíbe puntuar alto sin poder citarla, se advierte explícitamente contra quedarse
+en la franja media y se exige que el total sea la SUMA comprobada de las 8 categorías.
+
+**Lo que hace falta de Iván para resolverlo de verdad — pedírselo:**
+
+1. Que **puntúe 3-5 llamadas** con la rúbrica en la mano (idealmente una excelente, una media y
+   una floja), con el desglose de las 8 categorías. Con eso se añaden ejemplos calibrados al
+   documento y el modelo tiene contra qué anclar.
+2. O, como mínimo, que defina **qué significa cada franja**: qué es una llamada de 90+, qué es
+   una de 70, qué es una de 40. Cuatro frases bastan.
+
+Sin esto, la puntuación seguirá siendo internamente coherente pero poco discriminante, y ese es
+el dato que el alumno mira primero. **Es el riesgo abierto más importante del coach.**
+
 ### Qué NO impide este diseño (límites conocidos)
 
 | Vía | ¿Obtiene el producto? | Mitigación |
