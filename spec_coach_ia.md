@@ -570,8 +570,8 @@ resultó que **el coach no era blando, era demasiado duro**:
 
 | Llamada | Coach IA | Iván | Diferencia |
 |---|---|---|---|
-| Pris Villarreal | 68 | **84** | +16 |
-| Paula Roa y Elena | 54 | **78** | +24 |
+| Llamada A (formación de closer, 51 min) | 68 | **84** | +16 |
+| Llamada B (retiro, 47 min) | 54 | **78** | +24 |
 
 Iván lo confirmó por escrito: *"el coach está siendo más duro de lo que yo sería en varias
 categorías, especialmente en marco de llamada, presentación y valor, precio y cierre y objeciones.

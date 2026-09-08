@@ -131,6 +131,64 @@ export async function createEvent(auth: CalendarAuthClient, input: CreateEventIn
     }
 }
 
+/** Datos de un evento existente, tal y como están en Google. */
+export interface ExistingEvent {
+    summary: string
+    description: string
+    startDateTime: string
+    endDateTime: string
+    timeZone: string
+}
+
+/**
+ * Lee un evento del calendario.
+ *
+ * Se usa al transferir una reunión a otro miembro: los datos se copian del evento REAL en vez de
+ * reconstruirlos desde el `Lead`, porque el lead guarda `meeting_at` pero no la duración. Las
+ * reuniones antiguas son de 45 min y las nuevas de 30, así que recalcular el fin a ojo cambiaría
+ * la hora de una reunión ya pactada con el lead.
+ */
+export async function getEvent(
+    auth: CalendarAuthClient,
+    calendarId: string,
+    eventId: string,
+): Promise<ExistingEvent | null> {
+    const calendar = google.calendar({ version: 'v3', auth })
+    const { data } = await calendar.events.get({ calendarId, eventId })
+    if (!data.start?.dateTime || !data.end?.dateTime) return null
+    /*
+     * No se devuelven los asistentes a propósito. Al transferir, el invitado se toma del `Lead` en
+     * la base: la lista del evento incluye también al organizador saliente, y copiarla a ciegas
+     * hacía que la invitación nueva fuera a parar al miembro que se va en lugar de al lead.
+     */
+    return {
+        summary: data.summary ?? '',
+        description: data.description ?? '',
+        startDateTime: data.start.dateTime,
+        endDateTime: data.end.dateTime,
+        timeZone: data.start.timeZone ?? 'UTC',
+    }
+}
+
+/**
+ * Revoca el refresh token en Google.
+ *
+ * Borrar nuestra fila no basta: sin revocar, la app sigue apareciendo como autorizada en la cuenta
+ * del usuario y el token seguiría siendo válido. Es best-effort — si Google falla, el que llama
+ * debe seguir adelante con el borrado local igualmente.
+ */
+export async function revokeToken(refreshToken: string): Promise<void> {
+    const res = await fetch('https://oauth2.googleapis.com/revoke', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: refreshToken }),
+        signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) {
+        throw new Error(`Google respondió ${res.status} al revocar el token`)
+    }
+}
+
 /** Borra un evento (best-effort cleanup ante carreras de booking). */
 export async function deleteEvent(auth: CalendarAuthClient, calendarId: string, eventId: string): Promise<void> {
     const calendar = google.calendar({ version: 'v3', auth })

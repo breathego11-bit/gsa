@@ -1594,8 +1594,11 @@ Frase que el alumno debe modelar:
 
 > Iván puntuó estas dos llamadas suyas el 2026-09-04. **Son la referencia numérica del coach.**
 > Cuando dudes entre dos notas, compara la llamada que estás evaluando con estas dos y sitúala.
+>
+> Van sin nombre a propósito: este documento viaja entero a la API de OpenAI en cada evaluación y
+> los nombres de los prospectos no aportan nada a la calibración.
 
-## Ejemplo calibrado A — Pris Villarreal · **84/100**
+## Ejemplo calibrado A — llamada de formación de closer · **84/100**
 
 Formación de closer · 51 minutos · terminó en "lo hablo con mi esposo y te digo a las 6".
 
@@ -1619,7 +1622,7 @@ Qué aprender de esta nota: la llamada **no cerró** —terminó en "lo hablo co
 puntúa 84. **No cerrar no hunde la nota si el proceso está bien ejecutado.** Se evalúa la ejecución,
 no el resultado.
 
-## Ejemplo calibrado B — Paula Roa y Elena · **78/100**
+## Ejemplo calibrado B — llamada de retiro, dos asistentes · **78/100**
 
 Retiro de 4.888 € · 47 minutos · terminó en "lo consultamos y te confirmamos a las 5".
 

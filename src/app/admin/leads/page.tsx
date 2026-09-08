@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
 import type { LeadStatus } from '@prisma/client'
 import { CheckCircle2, AlertTriangle, CalendarPlus, Video } from 'lucide-react'
+import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
+import { countFutureMeetings } from '@/lib/calendar/transfer'
 
 const STATUS_META: Record<LeadStatus, { label: string; bg: string; color: string }> = {
     NUEVO: { label: 'Nuevo', bg: 'rgba(56,189,248,0.15)', color: '#38bdf8' },
@@ -53,7 +55,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
     const session = await getServerSession(authOptions)
     const myUserId = session?.user?.id
 
-    const [leads, members, myConnection] = await Promise.all([
+    const [leads, members, myConnection, myFutureMeetings] = await Promise.all([
         prisma.lead.findMany({
             where: assigneeFilter ? { assigned_to: assigneeFilter } : {},
             orderBy: { created_at: 'desc' },
@@ -105,6 +107,9 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                   select: { status: true, account_email: true },
               })
             : Promise.resolve(null),
+        // Reuniones futuras propias: hay que saberlas ANTES de ofrecer la desconexión, porque son
+        // las que quedarían atrapadas en el calendario si se suelta la conexión sin traspasarlas.
+        myUserId ? countFutureMeetings(myUserId) : Promise.resolve(0),
     ])
 
     // En el pool del round-robin pero sin calendario activo: no pueden recibir reuniones.
@@ -112,6 +117,14 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
 
     const nuevos = leads.filter((l) => l.status === 'NUEVO').length
     const connected = myConnection?.status === 'active'
+
+    /*
+     * A quién se le puede traspasar una reunión: solo miembros con el calendario ACTIVO. Sin
+     * conexión activa no hay dónde crear el evento, así que ofrecerlos sería ofrecer un error.
+     */
+    const transferTargets = members
+        .filter((m) => m.id !== myUserId && m.calendars[0]?.status === 'active')
+        .map((m) => ({ id: m.id, name: `${m.name} ${m.last_name}`.trim() }))
 
     return (
         <div className="space-y-6">
@@ -164,18 +177,11 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                             </p>
                         </div>
                     </div>
-                    <a
-                        href="/api/integrations/google/connect"
-                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors"
-                        style={{
-                            background: connected ? 'var(--bg-raised)' : 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                            color: connected ? 'var(--text-secondary)' : '#fff',
-                            border: connected ? '1px solid var(--border)' : 'none',
-                        }}
-                    >
-                        <CalendarPlus size={14} />
-                        {connected ? 'Reconectar' : 'Conectar Google Calendar'}
-                    </a>
+                    <GoogleCalendarActions
+                        connected={connected}
+                        futureMeetings={myFutureMeetings}
+                        transferTargets={transferTargets}
+                    />
                 </div>
 
                 {/*

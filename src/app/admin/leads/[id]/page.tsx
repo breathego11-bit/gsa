@@ -12,6 +12,7 @@ import {
     sourceLabel,
 } from '@/lib/leads/options'
 import { AttributionCard } from '@/components/leads/AttributionCard'
+import { LeadAssigneeControl } from '@/components/leads/LeadAssigneeControl'
 import type { LeadStatus } from '@prisma/client'
 import { ArrowLeft, Mail, MessageCircle, Instagram, MapPin, Video, CalendarDays, ExternalLink } from 'lucide-react'
 
@@ -50,7 +51,8 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
 
     const { id } = await params
 
-    const lead = await prisma.lead.findUnique({
+    const [lead, bookableMembers] = await Promise.all([
+        prisma.lead.findUnique({
         where: { id },
         select: {
             id: true,
@@ -86,9 +88,55 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             attribution_last: true,
             assignee: { select: { id: true, name: true, last_name: true } },
         },
-    })
+        }),
+        /*
+         * Quien puede RECIBIR la reunión: solo miembros con calendario activo, porque sin conexión
+         * no hay dónde crear el evento.
+         *
+         * Se incluye además a cualquiera que esté en el pool de reparto aunque su calendario no
+         * esté activo ahora mismo: con el consent screen en modo Testing los tokens caducan cada
+         * 7 días, así que el responsable actual de un lead puede tener la conexión caída de forma
+         * rutinaria. Si se filtrara solo por activos, su propio lead aparecería como "Sin asignar".
+         */
+        prisma.user.findMany({
+            where: {
+                OR: [
+                    { calendars: { some: { provider: 'GOOGLE', status: 'active' } } },
+                    { lead_booking_enabled: true },
+                ],
+            },
+            select: {
+                id: true,
+                name: true,
+                last_name: true,
+                calendars: { where: { provider: 'GOOGLE' }, select: { status: true } },
+            },
+            orderBy: { name: 'asc' },
+        }),
+    ])
 
     if (!lead) notFound()
+
+    /*
+     * Opciones del desplegable de responsable.
+     *
+     * Al responsable ACTUAL se le añade siempre, aunque no salga en la consulta: quien desconecta
+     * su calendario pierde la conexión y `lead_booking_enabled`, así que desaparece de las dos
+     * ramas del OR. Sin esta línea, el <select> no encontraría su propia opción y sus leads se
+     * verían como "Sin asignar" justo mientras la ficha, arriba, sigue diciendo su nombre.
+     */
+    const assigneeOptions = bookableMembers.map((m) => ({
+        id: m.id,
+        name: `${m.name} ${m.last_name}`.trim(),
+        calendarActive: m.calendars[0]?.status === 'active',
+    }))
+    if (lead.assignee && !assigneeOptions.some((o) => o.id === lead.assignee!.id)) {
+        assigneeOptions.unshift({
+            id: lead.assignee.id,
+            name: `${lead.assignee.name} ${lead.assignee.last_name}`.trim(),
+            calendarActive: false,
+        })
+    }
 
     const st = STATUS_META[lead.status]
     const ig = lead.instagram.startsWith('@') ? lead.instagram : `@${lead.instagram}`
@@ -208,6 +256,18 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                         Este lead completó el formulario pero no llegó a agendar.
                     </p>
                 )}
+
+                <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-secondary)' }}>
+                        Responsable
+                    </p>
+                    <LeadAssigneeControl
+                        leadId={lead.id}
+                        currentAssigneeId={lead.assignee?.id ?? null}
+                        hasMeeting={Boolean(lead.meeting_at)}
+                        members={assigneeOptions}
+                    />
+                </div>
             </Card>
 
             {/* ---------------- Atribución ---------------- */}
