@@ -558,30 +558,60 @@ cierra (botón, backdrop o Escape) y solo devuelve acceso de **lectura**: el com
 bloqueado y el banner mantiene el CTA. El requisito se sigue cumpliendo porque el estado no se
 persiste: reaparece en cada visita a la pantalla.
 
-### ⚠️ Calibración de la puntuación — falta un anclaje que solo puede dar Iván
+### ✅ Calibración de la puntuación — RESUELTA (2026-09-04)
 
-**Síntoma:** dos llamadas distintas **del propio Iván** puntuaron **75/100** las dos.
+**Síntoma original:** dos llamadas distintas del propio Iván puntuaban **75/100** las dos.
 
-**Causa raíz:** el Documento Maestro **no contiene ni una sola puntuación de referencia**. La
-rúbrica de §13 dice "puntúa alto si…" y "puntúa bajo si…" pero nunca dice *cuánto* es alto, y
-los 4 ejemplos gold de §17 —las mejores llamadas de Iván, las que definen el estándar— llevan
-feedback cualitativo pero **ninguna nota numérica**. Sin un solo ancla, un LLM hace lo previsible:
-converge a la franja media-alta. Dos llamadas seguidas en 75 es exactamente ese síntoma.
+**Causa:** el Documento Maestro no tenía ninguna puntuación de referencia. La rúbrica decía
+"puntúa alto si…" pero nunca cuánto es alto, y los ejemplos gold no llevaban nota.
 
-**Mitigado en el prompt** (no lo resuelve, lo reduce): se obliga a citar evidencia concreta por
-categoría, se prohíbe puntuar alto sin poder citarla, se advierte explícitamente contra quedarse
-en la franja media y se exige que el total sea la SUMA comprobada de las 8 categorías.
+**El hallazgo que le dio la vuelta al diagnóstico:** al pedirle a Iván que puntuara dos llamadas,
+resultó que **el coach no era blando, era demasiado duro**:
 
-**Lo que hace falta de Iván para resolverlo de verdad — pedírselo:**
+| Llamada | Coach IA | Iván | Diferencia |
+|---|---|---|---|
+| Pris Villarreal | 68 | **84** | +16 |
+| Paula Roa y Elena | 54 | **78** | +24 |
 
-1. Que **puntúe 3-5 llamadas** con la rúbrica en la mano (idealmente una excelente, una media y
-   una floja), con el desglose de las 8 categorías. Con eso se añaden ejemplos calibrados al
-   documento y el modelo tiene contra qué anclar.
-2. O, como mínimo, que defina **qué significa cada franja**: qué es una llamada de 90+, qué es
-   una de 70, qué es una de 40. Cuatro frases bastan.
+Iván lo confirmó por escrito: *"el coach está siendo más duro de lo que yo sería en varias
+categorías, especialmente en marco de llamada, presentación y valor, precio y cierre y objeciones.
+Sí quiero que sea exigente con la profundidad del diagnóstico, dolor/deseo/brecha, liderazgo y
+control de la llamada, pero sin penalizar de forma desproporcionada cuando el proceso sí está bien
+ejecutado."*
 
-Sin esto, la puntuación seguirá siendo internamente coherente pero poco discriminante, y ese es
-el dato que el alumno mira primero. **Es el riesgo abierto más importante del coach.**
+> ⚠️ **Esto invalidó la mitigación anterior.** El prompt decía "evita quedarte en la franja media,
+> una llamada floja debe bajar de 50" — una instrucción que empujaba al coach a ser AÚN más duro,
+> exactamente en la dirección contraria. Sustituida por la escala real.
+
+**Lo incorporado al método** (`Coach-ia.md`, sincronizado a `methodology.ts` con `npm run coach:sync`):
+
+- **§13 BIS — Escala de puntuación calibrada.** Las 5 franjas descritas por Iván con sus palabras.
+  Trae criterios medibles que antes no existían: en 75-89 *"el closer habla por encima del 25-30 %
+  del tiempo"*; en 60-74 *"el 90-95 % de estas llamadas no cierran"* y aparecen los finales tipo
+  *"lo pienso", "te aviso", "ya hablamos"*; bajar de 40 exige una ejecución *"excepcionalmente mala"*.
+- **§13 BIS — Dónde ser exigente y dónde no.** La instrucción textual de Iván: descontar por falta
+  de profundidad, no por falta de perfección.
+- **§17 BIS — Dos ejemplos calibrados** con el desglose de las 8 categorías puntuado por él (84 y
+  78), más la regla que se deriva: **ambas terminaron sin cierre y ninguna baja de 78**, así que no
+  cerrar no hunde la nota — se evalúa la ejecución, no el resultado.
+- **§16 — Error que siempre debe marcarse:** proponer que una persona pague un acceso y lo comparta
+  con otra. Instrucción explícita de Iván tras ver que él mismo lo hacía en la llamada de Paula.
+
+**Cambios en el prompt** (`buildCoachSystemPrompt`): puntuar contra la escala de §13 BIS y situar la
+llamada respecto a los dos ejemplos con nota; exigencia diferenciada por categoría; medios puntos
+admitidos (Iván usó 8,5 y 9,5); recordatorio de que no cerrar no penaliza.
+
+**Coste en tokens:** el documento pasó de 51.828 a 62.299 caracteres (~17.300 tokens). Con la cuenta
+en Tier 2 (450k TPM) no afecta: la transcripción más larga admitida da una petición de 89k tokens,
+holgada en la ventana de 128k de gpt-4o.
+
+> ⚠️ **Comprobar antes de dar la calibración por aplicada:** si Iván ha editado el método desde
+> `/admin/coach/ajustes`, `CoachSetting.methodology` manda sobre el archivo y estos cambios **no se
+> aplicarían**. El panel lo indica; si está editado, hay que volcar ahí el documento nuevo o pulsar
+> "Restaurar original".
+
+**Siguiente paso:** volver a pasarle al coach las dos llamadas. Las notas deberían acercarse a 84 y
+78; si siguen en 68 y 54, revisar primero si la BD tiene una versión editada del método.
 
 ### Qué NO impide este diseño (límites conocidos)
 

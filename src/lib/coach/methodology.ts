@@ -1087,6 +1087,161 @@ No volvió al cierre.
 
 ---
 
+# 13 BIS. ESCALA DE PUNTUACIÓN — CALIBRADA POR IVÁN
+
+> Esta escala la definió Iván Abad el 2026-09-04 revisando dos llamadas suyas evaluadas por el
+> coach. **Es la referencia obligatoria**: antes de dar un total, comprueba en qué franja encaja
+> la llamada según lo que aquí se describe, y ajusta las categorías para que el total caiga ahí.
+
+## 90 – 100
+
+Ha sido una llamada prácticamente excelente. Se ha generado una conexión emocional desde el
+principio, se ha establecido correctamente el marco de la llamada y se ha realizado un diagnóstico
+profundo con las preguntas adecuadas. El closer ha obtenido toda la información necesaria para
+entender con absoluta claridad de qué dolor quiere alejarse el cliente y hacia qué deseo o
+resultado quiere acercarse. Al leer la transcripción, cualquier persona —incluido el coach de IA—
+debe poder identificar perfectamente cuál es el dolor del cliente, cuál es su deseo y cuál es la
+brecha entre su situación actual y la que quiere conseguir.
+
+Además, el closer ha liderado la conversación en todo momento, sin sonar agresivo ni perseguir al
+cliente. Ha sabido profundizar cuando era necesario, no ha dado nada por supuesto y ha hecho que el
+cliente llegue por sí mismo a sus propias conclusiones.
+
+La presentación del producto está completamente alineada con el diagnóstico: cada beneficio responde
+a una necesidad detectada previamente. El precio se presenta con seguridad y siguiendo el proceso
+correcto. Las objeciones se trabajan con profundidad, entendiendo primero qué hay realmente detrás
+de ellas antes de responderlas. El cierre es claro, natural y orientado a la acción.
+
+Una llamada de 90-100 normalmente termina en venta. Si no termina en venta, debe ser porque existe
+un motivo externo real y aun así quedar una probabilidad muy alta de compra en el corto plazo. En
+una llamada de 90-100 no se percibe que el closer quiera vender: se percibe que quiere comprender al
+cliente y ayudarle a tomar la mejor decisión para su situación.
+
+## 75 – 89
+
+Ha sido una buena llamada y la estructura general está bien ejecutada, pero todavía existen varios
+aspectos que impiden considerarla una llamada excelente. Al leer la transcripción, el coach percibe
+que no se ha profundizado lo suficiente en el dolor, el deseo o la brecha del cliente, o que ha
+quedado información importante sin explorar. El diagnóstico cumple su función, pero las preguntas no
+llegan a la profundidad necesaria para comprender por completo la situación del prospecto.
+
+También puede apreciarse que el marco de la llamada no ha quedado completamente establecido o que el
+closer ha perdido parte del liderazgo durante la conversación. En muchos casos, **el closer habla más
+de lo recomendable —por encima del 25-30 % del tiempo de la llamada—**, explica demasiado o entra en
+enseñar antes de comprender al cliente.
+
+La presentación aporta valor y puede terminar incluso en una venta, pero todavía hay momentos donde
+el closer deja oportunidades importantes sobre la mesa: preguntas que no hace, emociones en las que
+no profundiza, objeciones que no trabaja con suficiente profundidad o cierres que podrían ser mucho
+más sólidos.
+
+Aunque la llamada pueda acabar en venta, existen detalles importantes que deben corregirse porque
+esos mismos errores podrían hacer que otro prospecto, con un perfil similar, no terminara comprando.
+Una llamada de este nivel demuestra que el closer tiene una buena base, pero todavía no ejecuta el
+proceso con la consistencia y profundidad de una llamada de 90-100.
+
+## 60 – 74
+
+Ha sido una llamada aceptable, pero está lejos del nivel que debería tener un closer profesional.
+Normalmente, una llamada de este nivel no termina en venta; **aproximadamente el 90-95 % de las
+llamadas con esta puntuación no acaban cerrando**.
+
+Uno de los principales motivos de esta nota es la pérdida de liderazgo durante la conversación. En
+varios momentos es el cliente quien dirige la llamada, marca el ritmo o decide hacia dónde va la
+conversación. El closer no mantiene la autoridad necesaria para liderar el proceso de decisión, y
+esto es algo que el coach puede identificar claramente al leer la transcripción.
+
+Existe una estructura de llamada y se realizan preguntas, pero el diagnóstico es superficial. Se
+entiende parcialmente el dolor, el deseo y la brecha del cliente, aunque sin la profundidad
+suficiente para comprender realmente sus motivaciones. La conversación se queda en la superficie y
+faltan preguntas que permitan descubrir la verdadera raíz del problema y el impacto que tiene en la
+vida del prospecto.
+
+La conexión emocional puede existir, pero no es lo suficientemente profunda ni consistente como para
+sostener la venta durante toda la llamada. También puede ocurrir lo contrario: que el closer entre
+directamente a vender sin dedicar tiempo a conocer realmente a la persona, construir confianza o
+generar una relación auténtica.
+
+El mayor punto de fuga suele aparecer en el cierre. El closer no resuelve correctamente las
+objeciones, responde de forma poco efectiva o evita profundizar en ellas. El lanzamiento del precio
+y la petición de la decisión no generan el compromiso necesario para avanzar. Como consecuencia, el
+cliente suele marcharse sin una decisión clara y sin un siguiente paso concreto, dejando la
+conversación abierta con frases como **"lo pienso", "te aviso" o "ya hablamos"**.
+
+En resumen, es una llamada que demuestra que el closer conoce la estructura del proceso, pero
+todavía no sabe ejecutarla con la profundidad, el liderazgo y la intención necesarios para convertir
+de forma consistente.
+
+## 40 – 59
+
+Ha sido una llamada claramente deficiente. El closer demuestra conocer poco o nada el proceso de
+ventas y la conversación se basa principalmente en la improvisación. No existe una estructura clara,
+no sigue un paso a paso y la llamada va cambiando de dirección constantemente según lo que va
+diciendo el cliente.
+
+Desde la transcripción se percibe una fuerte necesidad de vender. El closer habla desde la urgencia,
+intenta convencer demasiado pronto o presenta la solución sin haber comprendido realmente a la
+persona. No se genera una conexión emocional auténtica ni una relación de confianza suficiente para
+que el cliente se abra.
+
+El diagnóstico es muy pobre o prácticamente inexistente. Apenas se profundiza en el dolor, el deseo
+o la situación del prospecto, por lo que la presentación del producto no está construida sobre
+necesidades reales descubiertas durante la conversación.
+
+El closer tampoco mantiene el control de la llamada. Es el cliente quien dirige la conversación,
+cambia de tema o marca el ritmo. La llamada suele alargarse innecesariamente porque no existe una
+dirección clara y termina pareciendo más una conversación entre amigos que una llamada de ventas
+profesional.
+
+El cierre es prácticamente inexistente. No hay una petición clara de decisión, no se trabajan
+correctamente las objeciones y no queda definido un siguiente paso concreto. La conversación termina
+abierta y sin compromiso por parte del cliente.
+
+En definitiva, es una llamada donde faltan los pilares fundamentales del proceso comercial:
+estructura, liderazgo, diagnóstico, profundidad, control y capacidad de dirigir al cliente hacia una
+decisión. Por eso las probabilidades de venta son muy bajas.
+
+## Menos de 40
+
+Una llamada por debajo de 40 representa una ejecución completamente fallida del proceso comercial.
+Prácticamente ningún paso del método se ha realizado correctamente. No existe estructura, no hay
+liderazgo, no hay diagnóstico, no se profundiza en el dolor ni en el deseo del cliente, no se genera
+confianza y la conversación carece de dirección.
+
+El closer improvisa durante toda la llamada, habla sin una intención clara y no es capaz de conducir
+al cliente a través de un proceso de decisión. La llamada no puede considerarse una llamada de
+ventas profesional, sino simplemente una conversación sin objetivo ni metodología.
+
+No existe una presentación alineada con las necesidades del cliente, no se trabaja el precio
+correctamente, no se gestionan las objeciones y tampoco hay un cierre ni un siguiente paso definido.
+Evidentemente, no hay venta.
+
+Para que una llamada reciba una puntuación inferior a 40, el coach debe percibir que el closer no
+domina los fundamentos básicos de la venta consultiva. Es una ejecución tan deficiente que resulta
+difícil considerar a esa persona un closer profesional, ya que prácticamente ninguno de los
+principios del método ha sido aplicado correctamente. Una llamada por debajo de 40 no es una llamada
+de ventas mal ejecutada; es una conversación en la que prácticamente nunca ha llegado a existir un
+proceso de venta.
+
+> **Criterio clave de Iván:** para bajar de 40 la ejecución tiene que ser **excepcionalmente mala**.
+> Es un rango reservado para reuniones en las que prácticamente no existe el método ni puede hablarse
+> de una llamada de venta profesional.
+
+## Dónde ser exigente y dónde no (instrucción directa de Iván)
+
+Al calibrar contra sus propias notas, Iván señaló que el coach estaba siendo **más duro de lo que él
+sería**, y dijo exactamente en qué:
+
+- **Sé exigente** con: profundidad del **diagnóstico**, **dolor/deseo/brecha**, **liderazgo** y
+  **control de la llamada**. Aquí es donde se separa un closer profesional de uno que no lo es.
+- **No penalices de forma desproporcionada** en: **marco de llamada**, **presentación y valor**,
+  **precio y cierre** y **objeciones**, **cuando el proceso sí está bien ejecutado**. Que falte un
+  matiz no convierte un buen marco en un aprobado raso.
+
+En otras palabras: descontar por lo que falta de profundidad, no por lo que falta de perfección.
+
+---
+
 # 14. PASOS OBLIGATORIOS VS OPCIONALES
 
 ## Obligatorios
@@ -1288,6 +1443,15 @@ Feedback correcto:
 
 ---
 
+## Error que SIEMPRE debe marcarse: compartir accesos de pago
+
+Instrucción explícita de Iván (2026-09-04): si en la llamada el vendedor propone que una persona
+pague un acceso y lo comparta con otra —por ejemplo, que solo una se certifique "pero como es online
+lo podéis ver las dos"—, **el coach debe marcarlo como error**, por mucho que ayude a cerrar la
+venta. El coach no puede enseñar a los alumnos a compartir accesos de pago.
+
+---
+
 # 17. EJEMPLOS REALES DE TRANSCRIPCIONES Y FEEDBACK
 
 ## Ejemplo 1 — Sebastián: conexión emocional + marco claro
@@ -1428,6 +1592,68 @@ Principio GSA: el vendedor no vende más información; vende claridad, estructur
 Frase que el alumno debe modelar:
 
 “Tu problema no es que no sepas nada. Tu problema es que sabes demasiado, pero no tienes un método simple que puedas repetir con precisión.”
+
+---
+
+# 17 BIS. EJEMPLOS CALIBRADOS — DOS LLAMADAS PUNTUADAS POR IVÁN
+
+> Iván puntuó estas dos llamadas suyas el 2026-09-04. **Son la referencia numérica del coach.**
+> Cuando dudes entre dos notas, compara la llamada que estás evaluando con estas dos y sitúala.
+
+## Ejemplo calibrado A — Pris Villarreal · **84/100**
+
+Formación de closer · 51 minutos · terminó en "lo hablo con mi esposo y te digo a las 6".
+
+| Categoría | Nota de Iván | Máx. |
+|---|---|---|
+| Conexión inicial | 9 | 10 |
+| Marco de llamada | 10 | 10 |
+| Diagnóstico | 12 | 15 |
+| Dolor, deseo y brecha | 15 | 20 |
+| Espejo y claridad | 8,5 | 10 |
+| Presentación y valor | 12 | 15 |
+| Precio y cierre | 9 | 10 |
+| Objeciones | 8,5 | 10 |
+| **TOTAL** | **84** | **100** |
+
+**Por qué 84, en palabras de Iván:** *"Hay una conexión emocional más sólida, un marco muy bien
+marcado y un diagnóstico con mayor profundidad para recoger dolor, deseo y brecha. También considero
+que la presentación, el precio/cierre y el trabajo de objeciones están mejor ejecutados."*
+
+Qué aprender de esta nota: la llamada **no cerró** —terminó en "lo hablo con mi esposo"— y aun así
+puntúa 84. **No cerrar no hunde la nota si el proceso está bien ejecutado.** Se evalúa la ejecución,
+no el resultado.
+
+## Ejemplo calibrado B — Paula Roa y Elena · **78/100**
+
+Retiro de 4.888 € · 47 minutos · terminó en "lo consultamos y te confirmamos a las 5".
+
+| Categoría | Nota de Iván | Máx. |
+|---|---|---|
+| Conexión inicial | 8,5 | 10 |
+| Marco de llamada | 9,5 | 10 |
+| Diagnóstico | 10 | 15 |
+| Dolor, deseo y brecha | 13 | 20 |
+| Espejo y claridad | 8 | 10 |
+| Presentación y valor | 13 | 15 |
+| Precio y cierre | 8 | 10 |
+| Objeciones | 8 | 10 |
+| **TOTAL** | **78** | **100** |
+
+**Por qué 78 y no más, en palabras de Iván:** *"Hay una buena base, pero el diagnóstico y la
+profundidad emocional se quedan más superficiales y hay más puntos que podrían hacer que otro lead
+no comprase."*
+
+Qué aprender de esta nota: las dos llamadas están **bien ejecutadas** y las dos se quedan en la
+franja alta. La diferencia entre 84 y 78 la marcan **el diagnóstico y la profundidad emocional**, no
+los detalles de forma.
+
+## Regla que se deriva de estas dos notas
+
+Ambas llamadas terminaron sin cierre en la propia llamada y ninguna baja de 78. Si al evaluar una
+llamada con marco claro, diagnóstico razonable y cierre pedido te sale un total por debajo de 70,
+**revísalo**: es muy probable que estés penalizando la falta de perfección en lugar de la falta de
+profundidad.
 
 ---
 
