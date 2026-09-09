@@ -8,6 +8,7 @@ import type { LeadStatus } from '@prisma/client'
 import { CheckCircle2, AlertTriangle, CalendarPlus, Video } from 'lucide-react'
 import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
+import { describeWorkingHours } from '@/lib/calendar/availability'
 
 const STATUS_META: Record<LeadStatus, { label: string; bg: string; color: string }> = {
     NUEVO: { label: 'Nuevo', bg: 'rgba(56,189,248,0.15)', color: '#38bdf8' },
@@ -94,6 +95,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                 name: true,
                 last_name: true,
                 booking_timezone: true,
+                working_hours: true,
                 calendars: {
                     where: { provider: 'GOOGLE' },
                     select: { account_email: true, status: true, connected_at: true },
@@ -249,6 +251,12 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                                         <span style={{ opacity: 0.6 }}>
                                                             {' '}
                                                             · desde el {fmtDate(conn.connected_at)} · {m.booking_timezone}
+                                                        </span>
+                                                        {/* El horario decide qué huecos ve el lead. Enseñarlo evita
+                                                            el caso de un horario mal puesto que nadie detecta hasta
+                                                            que alguien agenda a una hora imposible. */}
+                                                        <span style={{ display: 'block', opacity: 0.6 }}>
+                                                            {describeWorkingHours(m.working_hours)}
                                                         </span>
                                                     </>
                                                 ) : (

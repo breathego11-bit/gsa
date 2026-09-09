@@ -17,12 +17,46 @@ const DAY_MS = 86_400_000
 type Windows = [string, string][]
 type WorkingHours = Record<string, Windows>
 
+/**
+ * Horario de atención por defecto: L–V de 8:00 a 12:00 y de 14:00 a 17:00.
+ *
+ * La pausa del mediodía es real, no decorativa: antes el default era 09:00–18:00 de corrido y el
+ * calendario ofrecía reuniones a las 12:00 y a las 13:00, cuando nadie iba a atenderlas.
+ *
+ * Con reuniones de 30 minutos salen 14 huecos al día: 8:00–11:30 por la mañana y 14:00–16:30 por
+ * la tarde (el último empieza a y media y termina justo al cierre).
+ *
+ * Solo aplica a quien tenga `User.working_hours` a null. Cada miembro puede tener el suyo.
+ */
 const DEFAULT_WORKING_HOURS: WorkingHours = {
-    '1': [['09:00', '18:00']],
-    '2': [['09:00', '18:00']],
-    '3': [['09:00', '18:00']],
-    '4': [['09:00', '18:00']],
-    '5': [['09:00', '18:00']],
+    '1': [['08:00', '12:00'], ['14:00', '17:00']],
+    '2': [['08:00', '12:00'], ['14:00', '17:00']],
+    '3': [['08:00', '12:00'], ['14:00', '17:00']],
+    '4': [['08:00', '12:00'], ['14:00', '17:00']],
+    '5': [['08:00', '12:00'], ['14:00', '17:00']],
+}
+
+/** El horario por defecto, para poder mostrarlo en el panel sin duplicarlo. */
+export function defaultWorkingHours(): WorkingHours {
+    return DEFAULT_WORKING_HOURS
+}
+
+/**
+ * Horario efectivo de un miembro en texto, para el panel del CRM.
+ *
+ * Hace visible algo que hasta ahora estaba escondido en la base: si alguien tiene un horario
+ * propio mal puesto, el calendario ofrece huecos raros y no había forma de darse cuenta.
+ */
+export function describeWorkingHours(wh: unknown): string {
+    const parsed = parseWorkingHours(wh)
+    const names = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+    const parts: string[] = []
+    for (let d = 0; d <= 6; d++) {
+        const windows = parsed[String(d)] ?? []
+        if (windows.length === 0) continue
+        parts.push(`${names[d]} ${windows.map(([a, b]) => `${a}–${b}`).join(', ')}`)
+    }
+    return parts.length > 0 ? parts.join(' · ') : 'sin horario configurado'
 }
 /** Techo de la búsqueda de disponibilidad. Lo importa `booking-window.ts` para no pasarse. */
 export const MAX_DAYS = 30

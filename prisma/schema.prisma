@@ -116,7 +116,7 @@ model User {
   // Lead booking / Google Calendar (Fase 1 del motor de agendamiento)
   lead_booking_enabled  Boolean              @default(false)             // entra al round-robin de leads
   booking_timezone      String               @default("America/Bogota")  // zona FIJA de su disponibilidad
-  working_hours         Json?                                            // ventana de atención por día; null → default L–V 09–18
+  working_hours         Json?                                            // ventanas de atención por día; null → default L–V 8–12 y 14–17
   calendars             CalendarConnection[] @relation("UserCalendars")
 
   // GSA Coach IA — historial de evaluaciones de llamadas
