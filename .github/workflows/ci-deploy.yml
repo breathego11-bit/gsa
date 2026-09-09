@@ -39,7 +39,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           timeout: 120s
-          envs: STRIPE_SECRET_KEY,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,STRIPE_WEBHOOK_SECRET,BUNNY_API_KEY,BUNNY_LIBRARY_ID,BUNNY_LIBRARY_API_KEY,BUNNY_CDN_HOSTNAME,RESEND_API_KEY,EMAIL_FROM,EMAIL_REPLY_TO,CRON_SECRET,NEXTAUTH_SECRET,LEADS_API_KEY,GOOGLE_OAUTH_CLIENT_ID,GOOGLE_OAUTH_CLIENT_SECRET,CALENDAR_TOKEN_ENC_KEY,OPENAI_API_KEY
+          envs: STRIPE_SECRET_KEY,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,STRIPE_WEBHOOK_SECRET,BUNNY_API_KEY,BUNNY_LIBRARY_ID,BUNNY_LIBRARY_API_KEY,BUNNY_CDN_HOSTNAME,RESEND_API_KEY,EMAIL_FROM,EMAIL_REPLY_TO,CRON_SECRET,NEXTAUTH_SECRET,LEADS_API_KEY,GOOGLE_OAUTH_CLIENT_ID,GOOGLE_OAUTH_CLIENT_SECRET,CALENDAR_TOKEN_ENC_KEY,OPENAI_API_KEY,BOOKING_WINDOW_DAYS,BOOKING_WINDOW_MAX_DAYS
           script: |
             cd /opt/gsa
             git fetch origin main
@@ -63,6 +63,8 @@ jobs:
             GOOGLE_OAUTH_CLIENT_SECRET=$GOOGLE_OAUTH_CLIENT_SECRET
             CALENDAR_TOKEN_ENC_KEY=$CALENDAR_TOKEN_ENC_KEY
             OPENAI_API_KEY=$OPENAI_API_KEY
+            BOOKING_WINDOW_DAYS=$BOOKING_WINDOW_DAYS
+            BOOKING_WINDOW_MAX_DAYS=$BOOKING_WINDOW_MAX_DAYS
             EOF
             docker compose build --no-cache app
             # `migrate` usa `target: builder` con COPY . ., así que su imagen lleva dentro una
@@ -91,3 +93,8 @@ jobs:
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           CALENDAR_TOKEN_ENC_KEY: ${{ secrets.CALENDAR_TOKEN_ENC_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Ventana de agendamiento. Secrets opcionales: si no existen llegan vacíos, el compose
+          # aplica sus valores por defecto (3 y 21) y el código los valida igualmente. Sin estas
+          # líneas, el `cat > .env` del deploy borraba cualquier ajuste hecho en el VPS.
+          BOOKING_WINDOW_DAYS: ${{ secrets.BOOKING_WINDOW_DAYS }}
+          BOOKING_WINDOW_MAX_DAYS: ${{ secrets.BOOKING_WINDOW_MAX_DAYS }}

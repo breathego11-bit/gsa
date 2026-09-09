@@ -24,7 +24,8 @@ const DEFAULT_WORKING_HOURS: WorkingHours = {
     '4': [['09:00', '18:00']],
     '5': [['09:00', '18:00']],
 }
-const MAX_DAYS = 30
+/** Techo de la búsqueda de disponibilidad. Lo importa `booking-window.ts` para no pasarse. */
+export const MAX_DAYS = 30
 
 function parseWorkingHours(wh: unknown): WorkingHours {
     if (wh && typeof wh === 'object' && !Array.isArray(wh)) return wh as WorkingHours

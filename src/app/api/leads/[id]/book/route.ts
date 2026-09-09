@@ -6,6 +6,7 @@ import { clientForConnection } from '@/lib/calendar/tokens'
 import { createEvent, deleteEvent } from '@/lib/calendar/google'
 import { pickAssignee, type Candidate } from '@/lib/calendar/assignment'
 import { toRfc3339InZone } from '@/lib/calendar/tz'
+import { isWithinBookingWindow } from '@/lib/calendar/booking-window'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,6 +82,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             event_confirmed: false,
             already_booked: true,
         })
+    }
+
+    /*
+     * Ventana de agendamiento (ver lib/calendar/booking-window.ts). Sin esta comprobación la regla
+     * sería decorativa: el calendario limitaría los días, pero un POST a mano reservaría dentro de
+     * tres meses igual.
+     *
+     * Va DESPUÉS de cargar el lead y de la rama idempotente a propósito. Antes iba arriba del todo,
+     * y eso rompía dos cosas: un reintento de una reserva ya hecha en ventana extendida devolvía
+     * 409 en vez de la reunión existente, y un POST con un id inexistente disparaba un free/busy de
+     * tres semanas contra Google antes de devolver el 404.
+     */
+    if (!(await isWithinBookingWindow(startUTC, tz, duration))) {
+        return NextResponse.json({ error: 'outside_booking_window' }, { status: 409 })
     }
 
     // Miembros realmente libres ahora (re-chequeo en vivo)
