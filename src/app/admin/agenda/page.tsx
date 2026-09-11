@@ -1,9 +1,10 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
-import { AlertTriangle, CalendarPlus } from 'lucide-react'
+import { AlertTriangle, CalendarPlus, CalendarCheck, CalendarRange, CalendarDays } from 'lucide-react'
 import { authOptions } from '@/lib/auth'
 import { Card } from '@/components/ui/Card'
-import { loadAgenda } from '@/lib/calendar/agenda'
+import { loadAgenda, loadMeetingStats } from '@/lib/calendar/agenda'
+import { KpiCard } from '@/components/sales/KpiCard'
 import { parseWorkingHours } from '@/lib/calendar/working-hours'
 import { AgendaWeek } from '@/components/agenda/AgendaWeek'
 import { WorkingHoursEditor } from '@/components/agenda/WorkingHoursEditor'
@@ -34,7 +35,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
     if (!session) redirect('/auth')
 
     const sp = await searchParams
-    const agenda = await loadAgenda(session.user.id, sp.week)
+    // Las métricas salen del CRM, no de Google: se piden en paralelo y no dependen de la conexión.
+    const [agenda, stats] = await Promise.all([loadAgenda(session.user.id, sp.week), loadMeetingStats(session.user.id)])
     const banner = agenda.status === 'ok' ? null : STATUS_BANNER[agenda.status]
     const isCustom = agenda.workingHours !== null && agenda.workingHours !== undefined
     const effective = parseWorkingHours(agenda.workingHours)
@@ -47,6 +49,45 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
                     {agenda.accountEmail ? `Tu Google Calendar · ${agenda.accountEmail}` : 'Tu Google Calendar'} · horas en{' '}
                     {agenda.week.tz}
                 </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+                <KpiCard
+                    icon={<CalendarCheck size={16} />}
+                    accent="cyan"
+                    label="Hoy"
+                    value={stats.day.total}
+                    sub={
+                        stats.day.total === 0
+                            ? 'No tienes reuniones con leads hoy'
+                            : `Reuniones con ${leadsWord(stats.day.total)}` +
+                              (stats.day.next
+                                  ? ` · la próxima a las ${stats.day.next.time} con ${stats.day.next.name}`
+                                  : ' · ya no te queda ninguna')
+                    }
+                />
+                <KpiCard
+                    icon={<CalendarRange size={16} />}
+                    accent="indigo"
+                    label="Esta semana"
+                    value={stats.week.total}
+                    sub={
+                        stats.week.total === 0
+                            ? 'Sin reuniones con leads'
+                            : `Reuniones con ${leadsWord(stats.week.total)} · ${stats.week.upcoming} por delante`
+                    }
+                />
+                <KpiCard
+                    icon={<CalendarDays size={16} />}
+                    accent="violet"
+                    label={`Este mes · ${stats.monthLabel}`}
+                    value={stats.month.total}
+                    sub={
+                        stats.month.total === 0
+                            ? 'Sin reuniones con leads'
+                            : `Reuniones con ${leadsWord(stats.month.total)} · ${stats.month.upcoming} por delante`
+                    }
+                />
             </div>
 
             {banner && (
@@ -90,4 +131,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
             </Card>
         </div>
     )
+}
+
+function leadsWord(n: number): string {
+    return n === 1 ? '1 lead' : `${n} leads`
 }

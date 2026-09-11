@@ -286,3 +286,86 @@ function formatRange(from: string, to: string): string {
         ? `${Number(from.slice(8, 10))} – ${fmt(to, { day: 'numeric', month: 'short', year: 'numeric' })}`
         : `${fmt(from, { day: 'numeric', month: 'short' })} – ${fmt(to, { day: 'numeric', month: 'short', year: 'numeric' })}`
 }
+
+// ---------------------------------------------------------------------------------------------
+// Métricas de reuniones con leads (hoy / esta semana / este mes)
+// ---------------------------------------------------------------------------------------------
+
+export interface MeetingStatRanges {
+    day: [Date, Date]
+    week: [Date, Date]
+    month: [Date, Date]
+    /** Nombre del mes en curso, para la etiqueta ("septiembre"). */
+    monthLabel: string
+}
+
+/**
+ * Límites de hoy, esta semana (lunes a domingo) y este mes, en la zona del miembro.
+ *
+ * Son los de AHORA, no los de la semana que se esté mirando en la agenda: "hoy" siempre es hoy, y
+ * que la métrica semanal cambiara al navegar mientras la de hoy se queda fija confundiría.
+ */
+export function meetingStatRanges(now: Date, tz: string): MeetingStatRanges {
+    const today = ymdInZone(now, tz)
+    const monday = mondayOf(today)
+    const [y, m] = today.split('-').map(Number)
+    const monthStart = `${y}-${String(m).padStart(2, '0')}-01`
+    const nextMonthStart = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+    const monthLabel = new Intl.DateTimeFormat('es-ES', { month: 'long', timeZone: 'UTC' }).format(
+        new Date(Date.UTC(y, m - 1, 15, 12)),
+    )
+    return {
+        day: [midnightUtc(today, tz), midnightUtc(addDays(today, 1), tz)],
+        week: [midnightUtc(monday, tz), midnightUtc(addDays(monday, 7), tz)],
+        month: [midnightUtc(monthStart, tz), midnightUtc(nextMonthStart, tz)],
+        monthLabel,
+    }
+}
+
+export interface MeetingCount {
+    /** Reuniones en el periodo, incluidas las que ya pasaron. */
+    total: number
+    /** Las que aún están por delante. */
+    upcoming: number
+}
+
+export interface MeetingStats {
+    day: MeetingCount & { next: { time: string; name: string } | null }
+    week: MeetingCount
+    month: MeetingCount
+    monthLabel: string
+}
+
+/**
+ * Cuenta las reuniones con leads de cada periodo.
+ *
+ * Recibe una sola lista que cubre la unión de semana y mes: la semana puede empezar en el mes
+ * anterior (el 1 de septiembre de 2026 es martes, así que esa semana arranca el 31 de agosto), y
+ * con una sola consulta a la base alcanza para los tres números.
+ */
+export function summarizeMeetings(
+    meetings: { at: Date; name: string }[],
+    ranges: MeetingStatRanges,
+    now: Date,
+    tz: string,
+): MeetingStats {
+    const count = ([from, to]: [Date, Date]): MeetingCount => {
+        const inRange = meetings.filter((mt) => mt.at >= from && mt.at < to)
+        return { total: inRange.length, upcoming: inRange.filter((mt) => mt.at >= now).length }
+    }
+
+    const [dayFrom, dayTo] = ranges.day
+    const nextToday = meetings
+        .filter((mt) => mt.at >= now && mt.at >= dayFrom && mt.at < dayTo)
+        .sort((a, b) => a.at.getTime() - b.at.getTime())[0]
+
+    return {
+        day: {
+            ...count(ranges.day),
+            next: nextToday ? { time: hhmm(nextToday.at, tz), name: nextToday.name } : null,
+        },
+        week: count(ranges.week),
+        month: count(ranges.month),
+        monthLabel: ranges.monthLabel,
+    }
+}

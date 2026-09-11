@@ -2,7 +2,19 @@ import { prisma } from '@/lib/prisma'
 import { clientForConnection, markConnectionError } from './tokens'
 import { listEvents, type AgendaEventRaw } from './google'
 import { isAuthError } from './availability'
-import { addDays, buildWeek, isValidYmd, midnightUtc, mondayOf, ymdInZone, type AgendaStatus, type AgendaWeek } from './agenda-model'
+import {
+    addDays,
+    buildWeek,
+    isValidYmd,
+    meetingStatRanges,
+    midnightUtc,
+    mondayOf,
+    summarizeMeetings,
+    ymdInZone,
+    type AgendaStatus,
+    type AgendaWeek,
+    type MeetingStats,
+} from './agenda-model'
 
 /**
  * Cargador de la agenda (SOLO SERVIDOR): lee la conexión del miembro, pide sus eventos a Google y
@@ -97,4 +109,35 @@ export async function loadAgenda(userId: string, weekParam: unknown): Promise<Lo
         workingHours: user?.working_hours ?? null,
         week: buildWeek({ events, tz, weekStart, todayYmd, workingHours: user?.working_hours ?? null, leadByEventId }),
     }
+}
+
+/**
+ * Reuniones con leads asignadas al miembro: hoy, esta semana y este mes.
+ *
+ * Sale de la tabla de leads del CRM y no de Google a propósito: así las métricas siguen funcionando
+ * aunque la conexión con Google haya caducado (en modo Testing pasa cada 7 días). Los descartados no
+ * cuentan — una reunión con un lead descartado no se va a celebrar.
+ *
+ * Una sola consulta para los tres números: se pide la unión de semana y mes, porque la semana puede
+ * empezar en el mes anterior.
+ */
+export async function loadMeetingStats(userId: string, now: Date = new Date()): Promise<MeetingStats> {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { booking_timezone: true } })
+    const tz = user?.booking_timezone || 'America/Bogota'
+    const ranges = meetingStatRanges(now, tz)
+
+    const from = new Date(Math.min(ranges.week[0].getTime(), ranges.month[0].getTime()))
+    const to = new Date(Math.max(ranges.week[1].getTime(), ranges.month[1].getTime()))
+
+    const leads = await prisma.lead.findMany({
+        where: { assigned_to: userId, status: { not: 'DESCARTADO' }, meeting_at: { gte: from, lt: to } },
+        select: { meeting_at: true, full_name: true },
+    })
+
+    return summarizeMeetings(
+        leads.map((l) => ({ at: l.meeting_at as Date, name: l.full_name })),
+        ranges,
+        now,
+        tz,
+    )
 }
