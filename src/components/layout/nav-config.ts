@@ -13,6 +13,7 @@ import {
     ClipboardList,
     TrendingUp,
     Wallet,
+    CalendarDays,
     type LucideIcon,
 } from 'lucide-react'
 import type { CloserType } from '@prisma/client'
@@ -91,6 +92,7 @@ export function buildAdminGroups(badges: SidebarBadges = {}): NavGroup[] {
                             ? { kind: 'notif', value: badges.leadsNew }
                             : undefined,
                 },
+                { href: '/admin/agenda', label: 'Agenda', Icon: CalendarDays },
                 {
                     href: '/admin/students',
                     label: 'Estudiantes',

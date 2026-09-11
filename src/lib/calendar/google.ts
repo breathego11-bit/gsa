@@ -189,6 +189,109 @@ export async function revokeToken(refreshToken: string): Promise<void> {
     }
 }
 
+/** Evento tal y como lo pinta la agenda de GSA. */
+export interface AgendaEventRaw {
+    id: string
+    title: string
+    /** RFC3339 para eventos con hora; YYYY-MM-DD para los de día completo. */
+    start: string
+    end: string
+    allDay: boolean
+    /**
+     * ¿Cuenta como ocupado para el free/busy? No lo hace si está marcado como "disponible" en
+     * Google o si el propio miembro rechazó la invitación. La agenda los pinta distintos: un lead sí
+     * puede reservar encima, y sin esa marca la agenda parecería contradecir al calendario de reservas.
+     */
+    busy: boolean
+    htmlLink: string
+}
+
+/**
+ * Lista los eventos del calendario en un rango.
+ *
+ * `singleEvents` despliega las series recurrentes en ocurrencias sueltas; sin él llegaría solo el
+ * evento maestro y una reunión semanal aparecería una sola vez. Se pagina hasta un tope por si
+ * alguien tiene una semana con cientos de eventos.
+ */
+export async function listEvents(
+    auth: CalendarAuthClient,
+    calendarId: string,
+    timeMinIso: string,
+    timeMaxIso: string,
+): Promise<AgendaEventRaw[]> {
+    const calendar = google.calendar({ version: 'v3', auth })
+    const out: AgendaEventRaw[] = []
+    let pageToken: string | undefined
+    for (let page = 0; page < 5; page++) {
+        const { data } = await calendar.events.list({
+            calendarId,
+            timeMin: timeMinIso,
+            timeMax: timeMaxIso,
+            singleEvents: true,
+            orderBy: 'startTime',
+            maxResults: 250,
+            pageToken,
+        })
+        for (const ev of data.items ?? []) {
+            if (!ev.id || ev.status === 'cancelled') continue
+            const allDay = Boolean(ev.start?.date && !ev.start?.dateTime)
+            const start = ev.start?.dateTime ?? ev.start?.date
+            const end = ev.end?.dateTime ?? ev.end?.date
+            if (!start || !end) continue
+            const declined = ev.attendees?.some((a) => a.self && a.responseStatus === 'declined') ?? false
+            out.push({
+                id: ev.id,
+                title: ev.summary?.trim() || '(sin título)',
+                start,
+                end,
+                allDay,
+                busy: ev.transparency !== 'transparent' && !declined,
+                htmlLink: ev.htmlLink ?? '',
+            })
+        }
+        pageToken = data.nextPageToken ?? undefined
+        if (!pageToken) break
+    }
+    return out
+}
+
+export interface PlainEventInput {
+    calendarId: string
+    summary: string
+    description?: string
+    startDateTime: string // RFC3339 con offset
+    endDateTime: string
+    timeZone: string
+    /** false = se crea como "disponible": se ve en la agenda pero no le quita huecos a los leads. */
+    blocksAgenda: boolean
+}
+
+/**
+ * Crea un evento propio en el calendario del miembro: sin Meet ni invitados.
+ *
+ * `createEvent` no sirve aquí porque está pensado para el booking — siempre genera Meet e invita a
+ * un lead. Esto es la agenda personal de Iván, no una reunión de admisión.
+ */
+export async function createPlainEvent(
+    auth: CalendarAuthClient,
+    input: PlainEventInput,
+): Promise<{ id: string; htmlLink: string }> {
+    const calendar = google.calendar({ version: 'v3', auth })
+    const { data } = await calendar.events.insert({
+        calendarId: input.calendarId,
+        requestBody: {
+            summary: input.summary,
+            description: input.description || undefined,
+            start: { dateTime: input.startDateTime, timeZone: input.timeZone },
+            end: { dateTime: input.endDateTime, timeZone: input.timeZone },
+            // En Google todo evento cuenta como ocupado salvo que se marque "transparent". Sin esta
+            // opción, un simple recordatorio le quitaría huecos a los leads.
+            transparency: input.blocksAgenda ? 'opaque' : 'transparent',
+        },
+    })
+    return { id: data.id ?? '', htmlLink: data.htmlLink ?? '' }
+}
+
 /** Borra un evento (best-effort cleanup ante carreras de booking). */
 export async function deleteEvent(auth: CalendarAuthClient, calendarId: string, eventId: string): Promise<void> {
     const calendar = google.calendar({ version: 'v3', auth })
