@@ -12,6 +12,47 @@ export function getStripe() {
     return _stripe
 }
 
+/**
+ * Devuelve el Stripe Customer del usuario, creándolo si hace falta.
+ *
+ * Comprueba que el id guardado siga existiendo en la cuenta de Stripe ACTIVA. Los ids de cliente
+ * pertenecen a una cuenta concreta: al cambiar de cuenta —o al pasar de test a live— los que
+ * tenemos guardados dejan de existir, Stripe rechaza el checkout con `resource_missing` y se queda
+ * sin poder pagar justo quien ya lo había intentado alguna vez. Con esta comprobación el cambio de
+ * cuenta se arregla solo, sin tocar la base de datos.
+ *
+ * Solo se recrea ante `resource_missing`: un fallo de red o una clave mal puesta se propaga, para
+ * no ir dejando clientes duplicados en Stripe cada vez que la API falle.
+ */
+export async function ensureStripeCustomer(user: {
+    id: string
+    email: string | null
+    name: string | null
+    stripe_customer_id: string | null
+}): Promise<string> {
+    const stripe = getStripe()
+
+    if (user.stripe_customer_id) {
+        try {
+            const existing = await stripe.customers.retrieve(user.stripe_customer_id)
+            if (!('deleted' in existing) || !existing.deleted) return user.stripe_customer_id
+        } catch (err) {
+            if ((err as { code?: string }).code !== 'resource_missing') throw err
+        }
+        console.warn(
+            `[stripe] el cliente ${user.stripe_customer_id} no existe en la cuenta actual; se crea uno nuevo para el usuario ${user.id}`,
+        )
+    }
+
+    const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        name: user.name ?? undefined,
+        metadata: { user_id: user.id },
+    })
+    await prisma.user.update({ where: { id: user.id }, data: { stripe_customer_id: customer.id } })
+    return customer.id
+}
+
 export interface PricingConfig {
     totalPrice: number       // cents
     firstInstallment: number // cents

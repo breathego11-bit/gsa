@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getStripe, getPricing, computeInstallments } from '@/lib/stripe'
+import { getStripe, getPricing, computeInstallments, ensureStripeCustomer } from '@/lib/stripe'
 import { hasActivePayment } from '@/lib/access'
 import crypto from 'crypto'
 
@@ -24,20 +24,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Find or create Stripe Customer
-    let customerId = user.stripe_customer_id
-    if (!customerId) {
-        const customer = await stripe.customers.create({
-            email: user.email!,
-            name: user.name!,
-            metadata: { user_id: session.user.id },
-        })
-        customerId = customer.id
-        await prisma.user.update({
-            where: { id: session.user.id },
-            data: { stripe_customer_id: customerId },
-        })
-    }
+    // Cliente de Stripe: se crea si no lo tiene, y se recrea si el guardado ya no existe en la
+    // cuenta activa (pasa al cambiar de cuenta de Stripe). Ver ensureStripeCustomer.
+    const customerId = await ensureStripeCustomer({
+        id: session.user.id,
+        email: user.email,
+        name: user.name,
+        stripe_customer_id: user.stripe_customer_id,
+    })
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const pricing = await getPricing()
