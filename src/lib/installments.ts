@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { hasUniversalCourseAccess, type AccessUser } from '@/lib/access'
+import { livePlanIds } from '@/lib/payment-rules'
 
 /**
  * Desbloqueo de contenido por cuotas.
@@ -9,7 +10,8 @@ import { hasUniversalCourseAccess, type AccessUser } from '@/lib/access'
  * módulos dentro de cada curso. El reparto favorece al alumno (tramos de tamaño `ceil(L/N)`).
  *
  * NO aplica a: admins, closers CRM_AND_COURSES (acceso universal), pago único, complimentary
- * (sin filas de cuota) ni a planes ya totalmente pagados.
+ * (sin filas de cuota) ni a planes ya totalmente pagados. Solo cuentan planes con alguna cuota
+ * pagada: los checkouts abandonados no suman.
  *
  * Ver spec_installment_gating.md.
  */
@@ -64,11 +66,16 @@ export async function loadInstallmentGate(
 
     const rows = await prisma.payment.findMany({
         where: { user_id: userId, payment_type: 'installment' },
-        select: { status: true },
+        select: { status: true, installment_plan_id: true },
     })
-    const total = rows.length
-    const paid = rows.filter((r) => r.status === 'completed').length
-    // Pago único / complimentary → sin filas de cuota → no gated. Plan pagado del todo → no gated.
+    // Solo cuentan los planes con alguna cuota pagada. Las cuotas de un checkout abandonado
+    // inflaban el total (menos tramos de los que tocan) y a quien pagó en pago único y antes
+    // abandonó un plan de cuotas le bloqueaban todo el contenido.
+    const live = livePlanIds(rows)
+    const planRows = rows.filter((r) => r.installment_plan_id && live.has(r.installment_plan_id))
+    const total = planRows.length
+    const paid = planRows.filter((r) => r.status === 'completed').length
+    // Pago único / complimentary → sin plan de cuotas vivo → no gated. Plan pagado del todo → no gated.
     const applies = total > 0 && paid < total
     return { applies, total, paid }
 }
