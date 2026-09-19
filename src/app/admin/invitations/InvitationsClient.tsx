@@ -57,11 +57,37 @@ function pendingPaymentLabel(inv: Invitation): string {
         : `Pendiente de pago · ${formatEur(total)}€ en ${amounts.length} cuotas`
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Céntimos → valor del input en EUR ("1888.00"). */
+function toEurInput(cents: number) {
+    return (cents / 100).toFixed(2)
+}
+
+/** Valor del input en EUR → céntimos. */
+function toCents(eur: string) {
+    return Math.round(parseFloat(eur || '0') * 100)
+}
+
+/** Fecha fija por defecto de la cuota siguiente `idx` (0 = cuota 2): cada 30 días desde hoy. */
+function defaultDueDate(idx: number) {
+    return new Date(Date.now() + (idx + 1) * 30 * DAY_MS).toISOString().split('T')[0]
+}
+
 function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export function InvitationsClient() {
+interface Props {
+    /** Precio del curso en pago único, en céntimos. */
+    coursePrice: number
+    /** Lo que cuesta el curso pagando en cuotas (con el recargo configurado), en céntimos. */
+    installmentPlanTotal: number
+    /** Cuántas cuotas se proponen después de la primera. */
+    followingInstallments: number
+}
+
+export function InvitationsClient({ coursePrice, installmentPlanTotal, followingInstallments }: Props) {
     const [invitations, setInvitations] = useState<Invitation[]>([])
     const [loading, setLoading] = useState(true)
     const [showForm, setShowForm] = useState(false)
@@ -73,7 +99,12 @@ export function InvitationsClient() {
     const [mode, setMode] = useState<InviteMode>('pay_on_signup')
     const isFree = mode === 'free'
     const [paymentType, setPaymentType] = useState<'one_time' | 'installment'>('one_time')
-    const [amountPaid, setAmountPaid] = useState('')
+    // "Pagará al registrarse" + pago completo arranca con el precio del curso.
+    const [amountPaid, setAmountPaid] = useState(toEurInput(coursePrice))
+    // Mientras sea true, las cuotas siguientes se recalculan al cambiar la primera. Se apaga en
+    // cuanto el admin toca a mano un importe o añade/quita cuotas.
+    const [autoSplit, setAutoSplit] = useState(true)
+    const [confirmPrice, setConfirmPrice] = useState(false)
     const [pendingInstallments, setPendingInstallments] = useState<PendingInst[]>([])
     const [inviteeName, setInviteeName] = useState('')
     const [inviteeEmail, setInviteeEmail] = useState('')
@@ -89,25 +120,101 @@ export function InvitationsClient() {
         setLoading(false)
     }
 
+    /** Importe inicial según modo y tipo: pagará al registrarse + pago completo = precio del curso. */
+    function defaultAmount(m: InviteMode, t: 'one_time' | 'installment') {
+        return m === 'pay_on_signup' && t === 'one_time' ? toEurInput(coursePrice) : ''
+    }
+
+    function resetPayment(m: InviteMode, t: 'one_time' | 'installment') {
+        setAmountPaid(defaultAmount(m, t))
+        setPendingInstallments([])
+        setAutoSplit(true)
+    }
+
+    function selectMode(m: InviteMode) {
+        setMode(m)
+        resetPayment(m, paymentType)
+    }
+
+    function selectPaymentType(t: 'one_time' | 'installment') {
+        setPaymentType(t)
+        resetPayment(mode, t)
+    }
+
+    /**
+     * Reparte lo que falta del precio en cuotas entre las cuotas siguientes, a partes iguales (los
+     * céntimos sobrantes van a la última). Conserva los días/fechas que ya tuvieran.
+     */
+    function splitFollowing(firstEur: string, current: PendingInst[]): PendingInst[] {
+        const remaining = installmentPlanTotal - toCents(firstEur)
+        if (!firstEur || remaining <= 0) return []
+        const n = followingInstallments
+        const base = Math.floor(remaining / n)
+        return Array.from({ length: n }, (_, i) => ({
+            amount: toEurInput(i === n - 1 ? remaining - base * (n - 1) : base),
+            dueDate: current[i]?.dueDate ?? defaultDueDate(i),
+            offsetDays: current[i]?.offsetDays ?? String((i + 1) * 30),
+        }))
+    }
+
+    function changeAmount(value: string) {
+        setAmountPaid(value)
+        if (mode === 'pay_on_signup' && paymentType === 'installment' && autoSplit) {
+            setPendingInstallments(splitFollowing(value, pendingInstallments))
+        }
+    }
+
+    function resplit() {
+        setAutoSplit(true)
+        setPendingInstallments(splitFollowing(amountPaid, pendingInstallments))
+    }
+
     function addInstallment() {
-        const now = new Date()
-        const nextMonth = new Date(now.getTime() + (pendingInstallments.length + 1) * 30 * 24 * 60 * 60 * 1000)
+        setAutoSplit(false)
         setPendingInstallments([...pendingInstallments, {
             amount: '',
-            dueDate: nextMonth.toISOString().split('T')[0],
+            dueDate: defaultDueDate(pendingInstallments.length),
             offsetDays: String((pendingInstallments.length + 1) * 30),
         }])
     }
 
     function removeInstallment(idx: number) {
+        setAutoSplit(false)
         setPendingInstallments(pendingInstallments.filter((_, i) => i !== idx))
     }
 
     function updateInstallment(idx: number, field: 'amount' | 'dueDate' | 'offsetDays', value: string) {
+        if (field === 'amount') setAutoSplit(false)
         setPendingInstallments(pendingInstallments.map((inst, i) =>
             i === idx ? { ...inst, [field]: value } : inst
         ))
     }
+
+    // Pago completo por un importe distinto del precio del curso: se confirma antes de generar,
+    // porque ese importe le da acceso a todo el curso y no se le cobra ninguna diferencia después.
+    const oneTimeCents = toCents(amountPaid)
+    const customOneTimePrice =
+        mode === 'pay_on_signup' && paymentType === 'one_time' && !!amountPaid && oneTimeCents !== coursePrice
+
+    function requestCreate() {
+        if (customOneTimePrice) {
+            setConfirmPrice(true)
+            return
+        }
+        handleCreate()
+    }
+
+    // Suma del plan en cuotas frente a lo que cuesta el curso a plazos.
+    const planSum = toCents(amountPaid) + pendingInstallments.reduce((sum, inst) => sum + toCents(inst.amount), 0)
+
+    useEffect(() => {
+        if (!confirmPrice) return
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setConfirmPrice(false)
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [confirmPrice])
 
     async function handleCreate() {
         setCreating(true)
@@ -164,9 +271,8 @@ export function InvitationsClient() {
                 setShowForm(false)
                 setUserType('STUDENT')
                 setMode('pay_on_signup')
-                setAmountPaid('')
-                setPendingInstallments([])
                 setPaymentType('one_time')
+                resetPayment('pay_on_signup', 'one_time')
                 setInviteeName('')
                 setInviteeEmail('')
                 fetchInvitations()
@@ -260,7 +366,7 @@ export function InvitationsClient() {
                             {INVITE_MODES.map((m) => (
                                 <button
                                     key={m.value}
-                                    onClick={() => setMode(m.value)}
+                                    onClick={() => selectMode(m.value)}
                                     className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all text-left leading-tight ${
                                         mode === m.value
                                             ? m.value === 'free'
@@ -283,13 +389,13 @@ export function InvitationsClient() {
                         <>
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => { setPaymentType('one_time'); setPendingInstallments([]) }}
+                                    onClick={() => selectPaymentType('one_time')}
                                     className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${paymentType === 'one_time' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : 'bg-white/5 text-on-surface-variant border border-transparent'}`}
                                 >
                                     Pago completo
                                 </button>
                                 <button
-                                    onClick={() => setPaymentType('installment')}
+                                    onClick={() => selectPaymentType('installment')}
                                     className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${paymentType === 'installment' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : 'bg-white/5 text-on-surface-variant border border-transparent'}`}
                                 >
                                     Cuotas
@@ -307,10 +413,17 @@ export function InvitationsClient() {
                                     step="0.01"
                                     min="0"
                                     value={amountPaid}
-                                    onChange={e => setAmountPaid(e.target.value)}
+                                    onChange={e => changeAmount(e.target.value)}
                                     className="w-full bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-3 px-4 text-on-surface"
                                     placeholder="500.00"
                                 />
+                                {mode === 'pay_on_signup' && (
+                                    <p className="text-xs text-on-surface-variant">
+                                        {paymentType === 'one_time'
+                                            ? `Precio del curso: ${formatEur(coursePrice)}€`
+                                            : `Precio del curso en cuotas: ${formatEur(installmentPlanTotal)}€. Al poner la primera, el resto se reparte en ${followingInstallments} cuotas.`}
+                                    </p>
+                                )}
                             </div>
                         </>
                     )}
@@ -374,6 +487,20 @@ export function InvitationsClient() {
                                     </button>
                                 </div>
                             ))}
+                            {mode === 'pay_on_signup' && !!amountPaid && (
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                    <span className={planSum === installmentPlanTotal ? 'text-on-surface-variant' : 'text-amber-400'}>
+                                        Total del plan: {formatEur(planSum)}€
+                                        {planSum !== installmentPlanTotal &&
+                                            ` · ${formatEur(Math.abs(installmentPlanTotal - planSum))}€ ${planSum < installmentPlanTotal ? 'menos' : 'más'} que el precio en cuotas (${formatEur(installmentPlanTotal)}€)`}
+                                    </span>
+                                    {!autoSplit && (
+                                        <button onClick={resplit} className="font-bold text-blue-400 hover:text-blue-300 transition-colors">
+                                            Repartir el resto en {followingInstallments} cuotas
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             {pendingInstallments.length === 0 && (
                                 <p className="text-xs text-on-surface-variant text-center py-2">
                                     {mode === 'pay_on_signup'
@@ -385,7 +512,7 @@ export function InvitationsClient() {
                     )}
 
                     <button
-                        onClick={handleCreate}
+                        onClick={requestCreate}
                         disabled={creating || (!isFree && !amountPaid)}
                         className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:brightness-110 transition-all disabled:opacity-50"
                     >
@@ -490,6 +617,62 @@ export function InvitationsClient() {
                             )}
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Aviso: pago completo por un importe distinto del precio del curso */}
+            {confirmPrice && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-6"
+                    style={{ background: 'rgba(8,13,24,0.85)', backdropFilter: 'blur(8px)' }}
+                    onClick={() => setConfirmPrice(false)}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="confirm-price-title"
+                        className="w-full max-w-md bg-surface-container-low rounded-2xl p-6 border border-amber-500/30 space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <MaterialIcon name="warning" size="text-xl" className="text-amber-400" />
+                            </div>
+                            <h3 id="confirm-price-title" className="text-base font-bold text-on-surface">
+                                ¿Acceso a todo el curso por {formatEur(oneTimeCents)}€?
+                            </h3>
+                        </div>
+                        <div className="space-y-3 text-sm text-on-surface-variant leading-relaxed">
+                            <p>
+                                El precio del curso es <strong className="text-on-surface">{formatEur(coursePrice)}€</strong>.
+                                Con esta invitación, el estudiante tendrá <strong className="text-on-surface">acceso completo a todo el curso</strong>{' '}
+                                pagando <strong className="text-on-surface">{formatEur(oneTimeCents)}€</strong> en un único pago:{' '}
+                                {formatEur(Math.abs(coursePrice - oneTimeCents))}€ {oneTimeCents < coursePrice ? 'menos' : 'más'} que el precio normal.
+                            </p>
+                            <p>
+                                {oneTimeCents < coursePrice
+                                    ? 'No se le cobrará ninguna diferencia más adelante.'
+                                    : 'Es más que el precio del curso: revisa que el importe sea correcto.'}
+                            </p>
+                        </div>
+                        <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+                            <button
+                                onClick={() => setConfirmPrice(false)}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white/5 text-on-surface hover:bg-white/10 transition-colors"
+                            >
+                                Revisar importe
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setConfirmPrice(false)
+                                    handleCreate()
+                                }}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-amber-500 text-black hover:bg-amber-400 transition-colors"
+                            >
+                                Sí, generar por {formatEur(oneTimeCents)}€
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
