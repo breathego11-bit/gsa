@@ -20,6 +20,7 @@ interface Invitation {
     created_at: string
     closer_type: CloserType | null
     is_free: boolean
+    pay_on_signup: boolean
 }
 
 type UserType = 'STUDENT' | 'CRM_ONLY' | 'CRM_AND_COURSES'
@@ -32,6 +33,25 @@ const USER_TYPE_LABEL: Record<UserType, string> = {
 
 function formatEur(cents: number) {
     return (cents / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Cómo se cobra: el modo por defecto es el más seguro — un error pide un pago de más, no regala acceso. */
+type InviteMode = 'pay_on_signup' | 'paid_externally' | 'free'
+
+const INVITE_MODES: { value: InviteMode; label: string; hint: string }[] = [
+    { value: 'pay_on_signup', label: 'Pagará al registrarse', hint: 'Todo queda pendiente. Paga por Stripe desde su panel y entonces obtiene acceso.' },
+    { value: 'paid_externally', label: 'Ya pagó por fuera', hint: 'Cobraste por transferencia u otro medio: la cuota 1 se registra como pagada.' },
+    { value: 'free', label: 'Gratis', hint: 'Beca o cortesía. No genera pagos: nace con payment_status = complimentary.' },
+]
+
+/** "Pendiente de pago · 3 × 500,00 €" — lo que se le cobrará, sin que parezca ya cobrado. */
+function pendingPaymentLabel(inv: Invitation): string {
+    const amounts = [inv.amount_paid, ...(inv.installments ?? []).map((i) => i.amount)]
+    if (amounts.length === 1) return `Pendiente de pago · ${formatEur(amounts[0])}€`
+    const total = amounts.reduce((sum, a) => sum + a, 0)
+    return amounts.every((a) => a === amounts[0])
+        ? `Pendiente de pago · ${amounts.length} × ${formatEur(amounts[0])}€`
+        : `Pendiente de pago · ${formatEur(total)}€ en ${amounts.length} cuotas`
 }
 
 function formatDate(iso: string) {
@@ -47,7 +67,8 @@ export function InvitationsClient() {
 
     // Form state
     const [userType, setUserType] = useState<UserType>('STUDENT')
-    const [isFree, setIsFree] = useState(false)
+    const [mode, setMode] = useState<InviteMode>('pay_on_signup')
+    const isFree = mode === 'free'
     const [paymentType, setPaymentType] = useState<'one_time' | 'installment'>('one_time')
     const [amountPaid, setAmountPaid] = useState('')
     const [pendingInstallments, setPendingInstallments] = useState<PendingInst[]>([])
@@ -91,6 +112,7 @@ export function InvitationsClient() {
             const body: any = {
                 closerType: userType === 'STUDENT' ? null : userType,
                 isFree,
+                payOnSignup: mode === 'pay_on_signup',
             }
             if (inviteeEmail.trim()) body.inviteeEmail = inviteeEmail.trim()
             if (inviteeName.trim()) body.inviteeName = inviteeName.trim()
@@ -135,7 +157,7 @@ export function InvitationsClient() {
 
                 setShowForm(false)
                 setUserType('STUDENT')
-                setIsFree(false)
+                setMode('pay_on_signup')
                 setAmountPaid('')
                 setPendingInstallments([])
                 setPaymentType('one_time')
@@ -163,7 +185,7 @@ export function InvitationsClient() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="section-title">Invitaciones</h1>
-                    <p className="section-subtitle">Genera links únicos para registrar alumnos que pagaron por fuera</p>
+                    <p className="section-subtitle">Genera links únicos para registrar alumnos: que paguen al entrar, que ya pagaron o con acceso gratis</p>
                 </div>
                 <button
                     onClick={() => setShowForm(!showForm)}
@@ -225,21 +247,30 @@ export function InvitationsClient() {
                         </div>
                     </div>
 
-                    {/* Gratis toggle */}
-                    <label className="flex items-center gap-3 cursor-pointer rounded-xl px-3 py-2.5 bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-colors">
-                        <input
-                            type="checkbox"
-                            checked={isFree}
-                            onChange={(e) => setIsFree(e.target.checked)}
-                            className="w-4 h-4 rounded accent-emerald-500"
-                        />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-on-surface">Acceso gratis (complimentary)</p>
-                            <p className="text-xs text-on-surface-variant mt-0.5">
-                                No genera registros de pago. El usuario nace con <code className="font-mono">payment_status = complimentary</code>.
-                            </p>
+                    {/* Cómo se cobra */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Cobro</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {INVITE_MODES.map((m) => (
+                                <button
+                                    key={m.value}
+                                    onClick={() => setMode(m.value)}
+                                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all text-left leading-tight ${
+                                        mode === m.value
+                                            ? m.value === 'free'
+                                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                                : 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                            : 'bg-white/5 text-on-surface-variant border border-transparent'
+                                    }`}
+                                >
+                                    {m.label}
+                                </button>
+                            ))}
                         </div>
-                    </label>
+                        <p className="text-xs text-on-surface-variant">
+                            {INVITE_MODES.find((m) => m.value === mode)?.hint}
+                        </p>
+                    </div>
 
                     {/* Sección de pago — sólo si NO es gratis */}
                     {!isFree && (
@@ -261,7 +292,9 @@ export function InvitationsClient() {
 
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                                    {paymentType === 'one_time' ? 'Monto pagado (EUR)' : 'Primera cuota pagada (EUR)'}
+                                    {mode === 'pay_on_signup'
+                                        ? paymentType === 'one_time' ? 'Importe a pagar (EUR)' : 'Importe de la primera cuota (EUR)'
+                                        : paymentType === 'one_time' ? 'Monto pagado (EUR)' : 'Primera cuota pagada (EUR)'}
                                 </label>
                                 <input
                                     type="number"
@@ -279,7 +312,9 @@ export function InvitationsClient() {
                     {!isFree && paymentType === 'installment' && (
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Cuotas pendientes</label>
+                                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                                    {mode === 'pay_on_signup' ? 'Cuotas siguientes' : 'Cuotas pendientes'}
+                                </label>
                                 <button
                                     onClick={addInstallment}
                                     className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
@@ -318,7 +353,11 @@ export function InvitationsClient() {
                                 </div>
                             ))}
                             {pendingInstallments.length === 0 && (
-                                <p className="text-xs text-on-surface-variant text-center py-2">Sin cuotas pendientes — el alumno ya pagó todo</p>
+                                <p className="text-xs text-on-surface-variant text-center py-2">
+                                    {mode === 'pay_on_signup'
+                                        ? 'Sin más cuotas — solo pagará la primera'
+                                        : 'Sin cuotas pendientes — el alumno ya pagó todo'}
+                                </p>
                             )}
                         </div>
                     )}
@@ -383,7 +422,11 @@ export function InvitationsClient() {
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-bold text-on-surface">
-                                            {inv.is_free ? 'Gratis' : `${formatEur(inv.amount_paid)}€`}
+                                            {inv.is_free
+                                                ? 'Gratis'
+                                                : inv.pay_on_signup
+                                                    ? pendingPaymentLabel(inv)
+                                                    : `${formatEur(inv.amount_paid)}€`}
                                         </span>
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                                             inv.used ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'
@@ -400,7 +443,7 @@ export function InvitationsClient() {
                                                 {inv.closer_type === 'CRM_ONLY' ? 'Closer · CRM' : 'Closer · CRM + Cursos'}
                                             </span>
                                         )}
-                                        {!inv.is_free && inv.payment_type === 'installment' && inv.installments && (
+                                        {!inv.is_free && !inv.pay_on_signup && inv.payment_type === 'installment' && inv.installments && (
                                             <span className="text-[10px] text-on-surface-variant">
                                                 + {(inv.installments as any[]).length} cuotas pendientes
                                             </span>

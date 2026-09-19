@@ -1,9 +1,48 @@
 import { NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import type { Invitation, Prisma } from "@prisma/client";
 import crypto from "crypto";
 import { sendEmail } from "@/lib/email";
 import { WelcomeEmail } from "@/emails/WelcomeEmail";
+
+class InvitationAlreadyUsedError extends Error {}
+
+/**
+ * Pagos que genera una invitación de pago al registrarse. La cuota 1 (o el pago único) es
+ * `amount_paid`: cobrada por fuera, o con `pay_on_signup` pendiente y con vencimiento hoy.
+ * Las demás cuotas vienen de `installments`, siempre pendientes con sus fechas.
+ */
+function invitationPayments(invitation: Invitation, userId: string): Prisma.PaymentCreateManyInput[] {
+    const isInstallment = invitation.payment_type === 'installment';
+    const planId = isInstallment ? crypto.randomUUID() : null;
+    const first: Prisma.PaymentCreateManyInput = {
+        user_id: userId,
+        payment_type: invitation.payment_type,
+        amount: invitation.amount_paid,
+        currency: 'eur',
+        status: invitation.pay_on_signup ? 'pending' : 'completed',
+        installment_number: isInstallment ? 1 : null,
+        installment_plan_id: planId,
+        due_date: invitation.pay_on_signup ? new Date() : null,
+    };
+    if (!isInstallment) return [first];
+
+    const rest = (invitation.installments as { number: number; amount: number; dueDate: string }[] | null) ?? [];
+    return [
+        first,
+        ...rest.map((inst) => ({
+            user_id: userId,
+            payment_type: 'installment',
+            amount: inst.amount,
+            currency: 'eur',
+            status: 'pending',
+            installment_number: inst.number,
+            installment_plan_id: planId,
+            due_date: new Date(inst.dueDate),
+        })),
+    ];
+}
 
 export async function POST(req: Request) {
     try {
@@ -39,74 +78,52 @@ export async function POST(req: Request) {
         const hashedPassword = await bcryptjs.hash(password, 10);
 
         // Derive payment + closer fields from invitation (if any).
-        // - is_free invites → payment_status = 'complimentary', NO Payment records created.
-        // - paid invites → payment_status = 'active', completed Payment + pending installments created.
+        // - is_free       → 'complimentary', sin registros de pago.
+        // - pay_on_signup → 'none': todo el plan nace pendiente y la cuota 1 vence hoy; el acceso
+        //                   llega al pagarla por Stripe (spec_invitation_payment.md §3).
+        // - "ya pagó"     → 'active': cuota 1 (o pago único) completada + resto pendiente.
         // - closer_type from invitation flips closer_enabled = true automatically.
-        const paymentStatus = invitation
-            ? (invitation.is_free ? 'complimentary' : 'active')
-            : 'none';
+        const paymentStatus = !invitation
+            ? 'none'
+            : invitation.is_free
+                ? 'complimentary'
+                : invitation.pay_on_signup ? 'none' : 'active';
         const closerEnabled = invitation?.closer_type != null;
         const closerType = invitation?.closer_type ?? null;
 
-        const user = await prisma.user.create({
-            data: {
-                name,
-                last_name,
-                username,
-                email,
-                phone,
-                password: hashedPassword,
-                role: 'STUDENT',
-                payment_status: paymentStatus,
-                closer_enabled: closerEnabled,
-                closer_type: closerType,
-            }
-        });
-
-        // Payment records — only if invitation is paid (skip when is_free).
-        if (invitation && !invitation.is_free) {
-            const planId = crypto.randomUUID();
-
-            // Create completed payment for amount already paid
-            await prisma.payment.create({
+        // Usuario, plan de pagos e invitación en una sola transacción: un fallo a mitad no deja
+        // un usuario con medio plan creado ni una invitación consumida sin cuenta.
+        const user = await prisma.$transaction(async (tx) => {
+            const created = await tx.user.create({
                 data: {
-                    user_id: user.id,
-                    payment_type: invitation.payment_type,
-                    amount: invitation.amount_paid,
-                    currency: 'eur',
-                    status: 'completed',
-                    installment_number: invitation.payment_type === 'installment' ? 1 : null,
-                    installment_plan_id: invitation.payment_type === 'installment' ? planId : null,
-                },
-            });
-
-            // Create pending installments if any
-            const pendingInstallments = invitation.installments as { number: number; amount: number; dueDate: string }[] | null;
-            if (pendingInstallments?.length) {
-                for (const inst of pendingInstallments) {
-                    await prisma.payment.create({
-                        data: {
-                            user_id: user.id,
-                            payment_type: 'installment',
-                            amount: inst.amount,
-                            currency: 'eur',
-                            status: 'pending',
-                            installment_number: inst.number,
-                            installment_plan_id: planId,
-                            due_date: new Date(inst.dueDate),
-                        },
-                    });
+                    name,
+                    last_name,
+                    username,
+                    email,
+                    phone,
+                    password: hashedPassword,
+                    role: 'STUDENT',
+                    payment_status: paymentStatus,
+                    closer_enabled: closerEnabled,
+                    closer_type: closerType,
                 }
-            }
-        }
-
-        // Mark invitation as used (regardless of free/paid)
-        if (invitation) {
-            await prisma.invitation.update({
-                where: { id: invitation.id },
-                data: { used: true, used_by: user.id, used_at: new Date() },
             });
-        }
+
+            if (invitation) {
+                // Reclamo atómico: dos registros simultáneos con el mismo enlace no pueden usarlo ambos.
+                const claimed = await tx.invitation.updateMany({
+                    where: { id: invitation.id, used: false },
+                    data: { used: true, used_by: created.id, used_at: new Date() },
+                });
+                if (claimed.count === 0) throw new InvitationAlreadyUsedError();
+            }
+
+            if (invitation && !invitation.is_free) {
+                await tx.payment.createMany({ data: invitationPayments(invitation, created.id) });
+            }
+
+            return created;
+        });
 
         // Fire-and-forget welcome email. Failure logs but doesn't block account creation.
         const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -123,6 +140,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ message: "Account created" }, { status: 201 });
     } catch (error) {
+        if (error instanceof InvitationAlreadyUsedError) {
+            return NextResponse.json({ error: "Esta invitación ya fue utilizada" }, { status: 400 });
+        }
         console.error("[POST /api/auth/register] Error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }

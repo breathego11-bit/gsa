@@ -76,6 +76,15 @@ interface PaymentInfo {
     installment_plan_id: string | null
     due_date: string | null
     created_at: string
+    /** Lo debe de verdad (no es un checkout abandonado). */
+    owed: boolean
+    /** Cuota vencida de un plan con algo pagado: puede pausarle el acceso. */
+    overdue: boolean
+    /** Cobrado o iniciado por Stripe: no se puede devolver a pendiente desde aquí. */
+    via_stripe: boolean
+    overdue_notice_sent_at: string | null
+    pause_date: string | null
+    payment_link_sent_at: string | null
 }
 
 interface Props {
@@ -117,7 +126,7 @@ function initials(first: string, last: string): string {
 const paymentStatusLabels: Record<string, { label: string; color: string }> = {
     none: { label: 'Sin pago', color: 'bg-surface-variant text-on-surface-variant' },
     active: { label: 'Activo', color: 'bg-emerald-500/20 text-emerald-400' },
-    past_due: { label: 'Pago pendiente', color: 'bg-amber-500/20 text-amber-400' },
+    past_due: { label: 'Pausado por impago', color: 'bg-amber-500/20 text-amber-400' },
     cancelled: { label: 'Cancelado', color: 'bg-red-500/20 text-red-400' },
     complimentary: { label: 'Cortesía', color: 'bg-amber-500/15 text-amber-400' },
 }
@@ -132,6 +141,16 @@ interface ToastState {
 
 type ConfirmKind = 'closer-on' | 'closer-off' | 'delete-student'
 
+/** Acciones de "Información de pago" que piden confirmación. */
+type PaymentConfirm =
+    | { kind: 'mark-pending'; payment: PaymentInfo }
+    | { kind: 'mark-paid'; payment: PaymentInfo }
+    | { kind: 'send-link'; payment: PaymentInfo }
+
+function paymentLabel(p: Pick<PaymentInfo, 'payment_type' | 'installment_number'>): string {
+    return p.payment_type === 'installment' && p.installment_number ? `Cuota ${p.installment_number}` : 'Pago completo'
+}
+
 export function StudentDetailClient({ student, stats, timeline, courses, payments }: Props) {
     const router = useRouter()
 
@@ -142,6 +161,8 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
 
     const [toast, setToast] = useState<ToastState | null>(null)
     const [confirm, setConfirm] = useState<ConfirmKind | null>(null)
+    const [paymentConfirm, setPaymentConfirm] = useState<PaymentConfirm | null>(null)
+    const [busyPayment, setBusyPayment] = useState(false)
 
     const fullName = `${student.name} ${student.last_name}`.trim()
     const ini = initials(student.name, student.last_name)
@@ -155,13 +176,16 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
 
     // Escape closes confirm
     useEffect(() => {
-        if (!confirm) return
+        if (!confirm && !paymentConfirm) return
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setConfirm(null)
+            if (e.key === 'Escape' && !busyPayment) {
+                setConfirm(null)
+                setPaymentConfirm(null)
+            }
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-    }, [confirm])
+    }, [confirm, paymentConfirm, busyPayment])
 
     const showToast = (cfg: ToastState) => setToast(cfg)
 
@@ -279,9 +303,79 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
         }
     }
 
+    /** Marca un pago como pendiente o pagado; el servidor recalcula el acceso (el progreso no se toca). */
+    async function applyPaymentStatus(payment: PaymentInfo, status: 'pending' | 'completed') {
+        setBusyPayment(true)
+        try {
+            const res = await fetch(`/api/admin/students/${student.id}/payments/${payment.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                showToast({ tone: 'danger', icon: <AlertTriangle size={15} />, title: 'No se pudo cambiar el pago', body: data.error ?? 'Inténtalo de nuevo.' })
+                return
+            }
+            const label = paymentLabel(payment)
+            showToast(
+                status === 'pending'
+                    ? {
+                          tone: 'neutral',
+                          icon: <Clock size={15} />,
+                          title: `${label} pendiente de pago`,
+                          body:
+                              data.payment_status === 'none'
+                                  ? `${fullName} ya no tiene acceso a los cursos hasta que pague. Su progreso se conserva.`
+                                  : `${fullName} verá el pago pendiente en su panel.`,
+                      }
+                    : {
+                          tone: 'success',
+                          icon: <CheckCircle2 size={15} />,
+                          title: `${label} marcada como pagada`,
+                          body:
+                              data.payment_status === 'active'
+                                  ? `${fullName} tiene acceso a los cursos.`
+                                  : 'Acceso recalculado.',
+                      },
+            )
+            setPaymentConfirm(null)
+            router.refresh()
+        } finally {
+            setBusyPayment(false)
+        }
+    }
+
+    async function sendPaymentLink() {
+        setBusyPayment(true)
+        try {
+            const res = await fetch(`/api/admin/students/${student.id}/payment-link`, { method: 'POST' })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                showToast({ tone: 'danger', icon: <AlertTriangle size={15} />, title: 'No se envió el enlace', body: data.error ?? 'Inténtalo de nuevo.' })
+                return
+            }
+            showToast({ tone: 'success', icon: <Mail size={15} />, title: 'Enlace de pago enviado', body: `Correo enviado a ${data.to}.` })
+            setPaymentConfirm(null)
+            router.refresh()
+        } finally {
+            setBusyPayment(false)
+        }
+    }
+
     const totalPaid = payments
         .filter((p) => p.status === 'completed')
         .reduce((sum, p) => sum + p.amount, 0)
+    const completedCount = payments.filter((p) => p.status === 'completed').length
+    // Próximo pago a reclamar: el primero que debe por fecha (el mismo que cobra "Enviar enlace").
+    const nextOwed = payments
+        .filter((p) => p.owed)
+        .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') || (a.installment_number ?? 0) - (b.installment_number ?? 0))[0]
+    const lastLinkSentAt = payments
+        .map((p) => p.payment_link_sent_at)
+        .filter((d): d is string => !!d)
+        .sort()
+        .at(-1)
 
     const programLabel = stats.programName ?? 'Sin programa'
     const lastConnectionLabel = stats.lastConnectionAt ? relativeFromNow(stats.lastConnectionAt) : '—'
@@ -851,7 +945,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
             {/* Sección Pagos (existente, preservada) */}
             <div>
                 <h2 className="section-title mb-1">Información de Pago</h2>
-                <p className="section-subtitle mb-5">Pagos realizados por el estudiante</p>
+                <p className="section-subtitle mb-5">Pagos del estudiante y cobros pendientes</p>
 
                 <div
                     className="p-5 rounded-2xl"
@@ -862,7 +956,26 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                 >
                     {payments.length > 0 ? (
                         <>
-                            <div className="flex items-center justify-end mb-4">
+                            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                <div className="flex flex-col items-start gap-1.5">
+                                    {nextOwed && (
+                                        <button
+                                            onClick={() => setPaymentConfirm({ kind: 'send-link', payment: nextOwed })}
+                                            disabled={busyPayment || blocked}
+                                            title={blocked ? 'La cuenta está suspendida' : undefined}
+                                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                                            style={{ background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8' }}
+                                        >
+                                            <Mail size={14} />
+                                            Enviar enlace de pago
+                                        </button>
+                                    )}
+                                    {lastLinkSentAt && (
+                                        <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                                            Último enlace enviado el {formatDate(lastLinkSentAt)}
+                                        </p>
+                                    )}
+                                </div>
                                 <div className="text-right">
                                     <p className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
                                         {formatAmount(totalPaid, payments[0].currency)}
@@ -872,68 +985,118 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                                     </p>
                                 </div>
                             </div>
+
+                            {student.payment_status === 'past_due' ? (
+                                <PaymentNotice tone="amber">
+                                    Acceso a los cursos <strong>pausado por impago</strong>. Se reactiva en cuanto pague
+                                    la cuota vencida (o si la marcas como pagada). Su progreso se conserva.
+                                </PaymentNotice>
+                            ) : student.payment_status === 'none' && nextOwed ? (
+                                <PaymentNotice tone="neutral">
+                                    Sin acceso a los cursos hasta que pague la {paymentLabel(nextOwed).toLowerCase()}.
+                                    Su progreso se conserva.
+                                </PaymentNotice>
+                            ) : null}
+
                             <div className="space-y-3">
-                                {payments.map((p) => (
-                                    <div
-                                        key={p.id}
-                                        className="flex items-center justify-between p-4 rounded-xl"
-                                        style={{ background: 'var(--bg-raised)' }}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <MaterialIcon
-                                                name={p.payment_type === 'one_time' ? 'credit_card' : 'event_repeat'}
-                                                size="text-lg"
-                                                className={
-                                                    p.status === 'completed'
-                                                        ? 'text-emerald-400'
-                                                        : p.status === 'failed'
-                                                            ? 'text-red-400'
-                                                            : 'text-amber-400'
-                                                }
-                                            />
-                                            <div>
+                                {payments.map((p) => {
+                                    const abandoned = p.status === 'pending' && !p.owed
+                                    const tone =
+                                        p.status === 'completed'
+                                            ? 'text-emerald-400'
+                                            : p.status === 'failed'
+                                                ? 'text-red-400'
+                                                : abandoned
+                                                    ? 'text-on-surface-variant'
+                                                    : p.overdue
+                                                        ? 'text-red-400'
+                                                        : 'text-amber-400'
+                                    const details: string[] = []
+                                    if (p.status === 'completed') details.push(formatDate(p.created_at))
+                                    else details.push(p.due_date ? `Vence: ${formatDate(p.due_date)}` : formatDate(p.created_at))
+                                    if (p.status === 'pending' && p.overdue && p.overdue_notice_sent_at) {
+                                        details.push(`Aviso de impago el ${formatDate(p.overdue_notice_sent_at)}`)
+                                        if (p.pause_date && student.payment_status !== 'past_due') {
+                                            details.push(`se pausa el ${formatDate(p.pause_date)}`)
+                                        }
+                                    }
+                                    if (p.status === 'pending' && p.payment_link_sent_at) {
+                                        details.push(`Enlace enviado el ${formatDate(p.payment_link_sent_at)}`)
+                                    }
+                                    const canMarkPending = p.status === 'completed' && !p.via_stripe
+                                    const canMarkPaid = p.status !== 'completed'
+
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            className="flex items-center justify-between gap-3 p-4 rounded-xl"
+                                            style={{ background: 'var(--bg-raised)', opacity: abandoned ? 0.6 : 1 }}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <MaterialIcon
+                                                    name={p.payment_type === 'one_time' ? 'credit_card' : 'event_repeat'}
+                                                    size="text-lg"
+                                                    className={tone}
+                                                />
+                                                <div className="min-w-0">
+                                                    <p
+                                                        className="text-sm font-semibold"
+                                                        style={{ color: 'var(--text-primary)' }}
+                                                    >
+                                                        {paymentLabel(p)}
+                                                    </p>
+                                                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                        {details.join(' · ')}
+                                                    </p>
+                                                    {(canMarkPending || canMarkPaid) && (
+                                                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                                                            {canMarkPending && (
+                                                                <button
+                                                                    onClick={() => setPaymentConfirm({ kind: 'mark-pending', payment: p })}
+                                                                    disabled={busyPayment}
+                                                                    className="text-[11px] font-semibold text-amber-400 hover:underline disabled:opacity-50"
+                                                                >
+                                                                    Marcar como pendiente
+                                                                </button>
+                                                            )}
+                                                            {canMarkPaid && (
+                                                                <button
+                                                                    onClick={() => setPaymentConfirm({ kind: 'mark-paid', payment: p })}
+                                                                    disabled={busyPayment}
+                                                                    className="text-[11px] font-semibold text-emerald-400 hover:underline disabled:opacity-50"
+                                                                >
+                                                                    Marcar como pagada
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
                                                 <p
-                                                    className="text-sm font-semibold"
+                                                    className="text-sm font-bold"
                                                     style={{ color: 'var(--text-primary)' }}
                                                 >
-                                                    {p.payment_type === 'one_time'
-                                                        ? 'Pago Completo'
-                                                        : `Cuota ${p.installment_number}`}
+                                                    {formatAmount(p.amount, p.currency)}
                                                 </p>
-                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                <span
+                                                    className={`text-[10px] font-bold uppercase tracking-wider ${tone}`}
+                                                    title={abandoned ? 'Checkout de Stripe que no se completó: no se le reclama' : undefined}
+                                                >
                                                     {p.status === 'completed'
-                                                        ? formatDate(p.created_at)
-                                                        : p.due_date
-                                                            ? `Vence: ${formatDate(p.due_date)}`
-                                                            : formatDate(p.created_at)}
-                                                </p>
+                                                        ? 'Pagado'
+                                                        : p.status === 'failed'
+                                                            ? 'Fallido'
+                                                            : abandoned
+                                                                ? 'Sin completar'
+                                                                : p.overdue
+                                                                    ? 'Vencida'
+                                                                    : 'Pendiente'}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p
-                                                className="text-sm font-bold"
-                                                style={{ color: 'var(--text-primary)' }}
-                                            >
-                                                {formatAmount(p.amount, p.currency)}
-                                            </p>
-                                            <span
-                                                className={`text-[10px] font-bold uppercase tracking-wider ${
-                                                    p.status === 'completed'
-                                                        ? 'text-emerald-400'
-                                                        : p.status === 'failed'
-                                                            ? 'text-red-400'
-                                                            : 'text-amber-400'
-                                                }`}
-                                            >
-                                                {p.status === 'completed'
-                                                    ? 'Pagado'
-                                                    : p.status === 'failed'
-                                                        ? 'Fallido'
-                                                        : 'Pendiente'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </>
                     ) : student.payment_status === 'complimentary' ? (
@@ -1222,6 +1385,91 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                     onConfirm={applyDelete}
                 />
             )}
+            {paymentConfirm?.kind === 'mark-pending' && (
+                <ConfirmDialog
+                    icon={<Clock size={20} />}
+                    tone="amber"
+                    title={`Devolver la ${paymentLabel(paymentConfirm.payment).toLowerCase()} a pendiente`}
+                    body={
+                        <>
+                            {completedCount === 1 ? (
+                                <>
+                                    <strong style={{ color: '#dee2f2' }}>{fullName}</strong> se queda sin acceso a los cursos
+                                    hasta que la pague.
+                                </>
+                            ) : (
+                                <>
+                                    <strong style={{ color: '#dee2f2' }}>{fullName}</strong> tendrá que pagarla desde su panel.
+                                </>
+                            )}{' '}
+                            Su progreso se conserva. Vencerá{' '}
+                            {paymentConfirm.payment.due_date && new Date(paymentConfirm.payment.due_date) > new Date()
+                                ? `el ${formatDate(paymentConfirm.payment.due_date)}`
+                                : 'hoy'}
+                            .
+                        </>
+                    }
+                    confirmLabel="Marcar como pendiente"
+                    busy={busyPayment}
+                    onCancel={() => setPaymentConfirm(null)}
+                    onConfirm={() => applyPaymentStatus(paymentConfirm.payment, 'pending')}
+                />
+            )}
+            {paymentConfirm?.kind === 'mark-paid' && (
+                <ConfirmDialog
+                    icon={<CheckCircle2 size={20} />}
+                    tone="cyan"
+                    title={`Marcar la ${paymentLabel(paymentConfirm.payment).toLowerCase()} como pagada`}
+                    body={
+                        <>
+                            Úsalo solo si cobraste {formatAmount(paymentConfirm.payment.amount, paymentConfirm.payment.currency)}{' '}
+                            por fuera de Stripe (transferencia, efectivo…) o si Stripe lo cobró y no quedó registrado.
+                            El acceso de <strong style={{ color: '#dee2f2' }}>{fullName}</strong> se recalcula al momento.
+                        </>
+                    }
+                    confirmLabel="Marcar como pagada"
+                    busy={busyPayment}
+                    onCancel={() => setPaymentConfirm(null)}
+                    onConfirm={() => applyPaymentStatus(paymentConfirm.payment, 'completed')}
+                />
+            )}
+            {paymentConfirm?.kind === 'send-link' && (
+                <ConfirmDialog
+                    icon={<Mail size={20} />}
+                    tone="cyan"
+                    title="Enviar enlace de pago"
+                    body={
+                        <>
+                            Se enviará a <strong style={{ color: '#dee2f2' }}>{student.email}</strong> un correo con la{' '}
+                            {paymentLabel(paymentConfirm.payment).toLowerCase()} (
+                            {formatAmount(paymentConfirm.payment.amount, paymentConfirm.payment.currency)}) y un enlace a su
+                            página de pago en GSA.
+                            {lastLinkSentAt && <> El último enlace se envió el {formatDate(lastLinkSentAt)}.</>}
+                        </>
+                    }
+                    confirmLabel="Enviar correo"
+                    busy={busyPayment}
+                    onCancel={() => setPaymentConfirm(null)}
+                    onConfirm={sendPaymentLink}
+                />
+            )}
+        </div>
+    )
+}
+
+/** Aviso sobre el acceso del alumno en "Información de pago". */
+function PaymentNotice({ tone, children }: { tone: 'amber' | 'neutral'; children: React.ReactNode }) {
+    const c =
+        tone === 'amber'
+            ? { bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.25)', fg: '#fbbf24' }
+            : { bg: 'rgba(129,140,248,0.06)', border: 'rgba(129,140,248,0.2)', fg: '#c4c5d5' }
+    return (
+        <div
+            className="flex items-start gap-2.5 p-3.5 rounded-xl mb-4 text-[12.5px]"
+            style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.fg, lineHeight: 1.5 }}
+        >
+            <Lock size={14} className="shrink-0 mt-0.5" />
+            <div>{children}</div>
         </div>
     )
 }

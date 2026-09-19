@@ -7,6 +7,8 @@ interface Props {
     inviteUrl: string
     closerType: CloserType | null
     isFree: boolean
+    /** Invitación "pagará al registrarse": el acceso se activa al pagar desde su panel. */
+    payOnSignup?: boolean
     logoUrl?: string
 }
 
@@ -15,6 +17,7 @@ export function InvitationEmail({
     inviteUrl,
     closerType,
     isFree,
+    payOnSignup = false,
     logoUrl,
 }: Props) {
     const greeting = inviteeName ? `Hola, ${inviteeName}` : 'Hola'
@@ -90,6 +93,13 @@ export function InvitationEmail({
                 {isFree && (
                     <Text style={pInfo}>
                         Esta es una invitación de cortesía: no se te cobrará nada al activar tu cuenta.
+                    </Text>
+                )}
+
+                {payOnSignup && (
+                    <Text style={pInfo}>
+                        Después de crear tu cuenta podrás realizar el pago desde tu panel. El acceso a los
+                        cursos se activa en cuanto se confirme tu primer pago.
                     </Text>
                 )}
 

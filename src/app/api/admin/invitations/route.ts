@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         pendingInstallments?: { amount: number; dueDate: string }[]
         closerType?: CloserType | null
         isFree?: boolean
+        payOnSignup?: boolean // true = aún no pagó nada; amountPaid es la cuota 1 a cobrar
         inviteeEmail?: string
         inviteeName?: string
     }
@@ -41,13 +42,26 @@ export async function POST(req: NextRequest) {
     const closerType: CloserType | null =
         body.closerType && VALID_CLOSER_TYPES.includes(body.closerType) ? body.closerType : null
     const isFree = body.isFree === true
+    const payOnSignup = !isFree && body.payOnSignup === true
     const inviteeEmail = body.inviteeEmail?.trim().toLowerCase() || null
     const inviteeName = body.inviteeName?.trim() || null
 
-    // Paid validation only applies when the invite is not free.
+    // Paid validation only applies when the invite is not free. En "pagará al registrarse"
+    // amountPaid es lo que se le cobrará en la cuota 1; en "ya pagó por fuera", lo ya cobrado.
     if (!isFree) {
-        if (!body.paymentType || !body.amountPaid || body.amountPaid <= 0) {
+        if (
+            (body.paymentType !== 'one_time' && body.paymentType !== 'installment') ||
+            !Number.isInteger(body.amountPaid) || (body.amountPaid ?? 0) <= 0
+        ) {
             return NextResponse.json({ error: 'Datos de pago inválidos' }, { status: 400 })
+        }
+        const badInstallment = (body.pendingInstallments ?? []).some(
+            (inst) =>
+                !Number.isInteger(inst.amount) || inst.amount <= 0 ||
+                typeof inst.dueDate !== 'string' || Number.isNaN(new Date(inst.dueDate).getTime()),
+        )
+        if (badInstallment) {
+            return NextResponse.json({ error: 'Cada cuota pendiente necesita importe y fecha' }, { status: 400 })
         }
     }
 
@@ -62,7 +76,7 @@ export async function POST(req: NextRequest) {
     const installmentsData =
         !isFree && paymentType === 'installment' && body.pendingInstallments?.length
             ? body.pendingInstallments.map((inst, i) => ({
-                  number: i + 2, // starts at 2 (cuota 1 is the amount already paid)
+                  number: i + 2, // la cuota 1 es amount_paid (cobrada o, con pay_on_signup, a cobrar)
                   amount: inst.amount,
                   dueDate: inst.dueDate,
               }))
@@ -76,6 +90,7 @@ export async function POST(req: NextRequest) {
             installments: installmentsData as any,
             closer_type: closerType,
             is_free: isFree,
+            pay_on_signup: payOnSignup,
         },
     })
 
@@ -98,6 +113,7 @@ export async function POST(req: NextRequest) {
                 inviteUrl,
                 closerType,
                 isFree,
+                payOnSignup,
                 logoUrl,
             }),
         })

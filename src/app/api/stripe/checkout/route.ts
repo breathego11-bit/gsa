@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getStripe, getPricing, computeInstallments, ensureStripeCustomer } from '@/lib/stripe'
 import { hasActivePayment } from '@/lib/access'
+import { getOwedPayments } from '@/lib/payments'
+import { paymentLabel } from '@/lib/payment-rules'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
                 price_data: {
                     currency: payment.currency,
                     product_data: {
-                        name: `Growth Sales Academy — Cuota ${payment.installment_number}`,
+                        name: `Growth Sales Academy — ${paymentLabel(payment)}`,
                     },
                     unit_amount: payment.amount,
                 },
@@ -90,6 +92,16 @@ export async function POST(req: NextRequest) {
 
     if (hasActivePayment(user)) {
         return NextResponse.json({ error: 'Already paid' }, { status: 400 })
+    }
+
+    // Quien ya tiene un plan (asignado por invitación, o con cuotas vencidas que le pausaron el
+    // acceso) paga ese plan por `paymentId`; comprar el precio general le duplicaría el plan.
+    const owed = await getOwedPayments(session.user.id)
+    if (owed.length > 0) {
+        return NextResponse.json(
+            { error: 'Ya tienes un plan de pago pendiente. Págalo desde tu página de pago.' },
+            { status: 409 },
+        )
     }
 
     if (plan === 'one_time') {

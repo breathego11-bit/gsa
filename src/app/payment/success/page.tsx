@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { getStripe } from '@/lib/stripe'
+import { completeCheckoutSession } from '@/lib/payments'
 
 export default async function PaymentSuccessPage({
     searchParams,
@@ -21,18 +21,9 @@ export default async function PaymentSuccessPage({
             const checkoutSession = await stripe.checkout.sessions.retrieve(session_id)
 
             if (checkoutSession.payment_status === 'paid' || checkoutSession.status === 'complete') {
-                const userId = checkoutSession.metadata?.user_id
-                if (userId) {
-                    await prisma.user.update({
-                        where: { id: userId },
-                        data: { payment_status: 'active' },
-                    })
-
-                    await prisma.payment.updateMany({
-                        where: { stripe_checkout_id: checkoutSession.id },
-                        data: { status: 'completed' },
-                    })
-                }
+                // Marca el pago y recalcula el acceso: con otra cuota vencida y pasada la gracia,
+                // el alumno sigue en pausa aunque acabe de pagar esta.
+                await completeCheckoutSession(checkoutSession)
             }
         } catch {
             // Stripe verification failed — webhook will handle it

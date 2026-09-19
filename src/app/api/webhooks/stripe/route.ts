@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { prisma } from '@/lib/prisma'
+import { completeCheckoutSession } from '@/lib/payments'
 import Stripe from 'stripe'
 
 export async function POST(req: NextRequest) {
@@ -21,20 +21,7 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object as Stripe.Checkout.Session
-        const userId = session.metadata?.user_id
-        if (!userId) return NextResponse.json({ received: true })
-
-        // Mark the specific payment as completed
-        await prisma.payment.updateMany({
-            where: { stripe_checkout_id: session.id },
-            data: { status: 'completed' },
-        })
-
-        // Activate user access (first payment or one-time)
-        await prisma.user.update({
-            where: { id: userId },
-            data: { payment_status: 'active' },
-        })
+        await completeCheckoutSession(session)
     }
 
     return NextResponse.json({ received: true })

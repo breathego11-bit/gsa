@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import { StudentDetailClient, type TimelineEventDTO } from './StudentDetailClient'
 import type { CourseEnrollmentProgress } from '@/types'
+import { isOverdue, isOwed, livePlanIds, pauseDate } from '@/lib/payment-rules'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -11,7 +12,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     const { id } = await params
 
-    const [student, enrollments, progressRecords, payments, salesCount, recentSales] = await Promise.all([
+    const [student, enrollments, progressRecords, payments, salesCount, recentSales, paidInvitations] = await Promise.all([
         prisma.user.findUnique({
             where: { id, role: 'STUDENT' },
             select: {
@@ -80,6 +81,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 installment_plan_id: true,
                 due_date: true,
                 created_at: true,
+                stripe_checkout_id: true,
+                overdue_notice_sent_at: true,
+                payment_link_sent_at: true,
             },
             orderBy: [{ installment_plan_id: 'asc' }, { installment_number: 'asc' }],
         }),
@@ -90,6 +94,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             orderBy: { created_at: 'desc' },
             take: 5,
         }),
+        prisma.invitation.count({ where: { used_by: id, is_free: false } }),
     ])
 
     if (!student) notFound()
@@ -200,6 +205,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         .slice(0, 5)
         .map(({ sortDate: _sortDate, ...rest }) => rest)
 
+    // Qué debe de verdad y qué puede pausarle el acceso (mismas reglas que el cron y /payment).
+    const livePlans = livePlanIds(payments)
+    const now = new Date()
     const paymentData = payments.map((p) => ({
         id: p.id,
         payment_type: p.payment_type,
@@ -210,6 +218,12 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         installment_plan_id: p.installment_plan_id,
         due_date: p.due_date?.toISOString() ?? null,
         created_at: p.created_at.toISOString(),
+        owed: isOwed(p, livePlans, paidInvitations > 0),
+        overdue: isOverdue(p, livePlans, now),
+        via_stripe: !!p.stripe_checkout_id,
+        overdue_notice_sent_at: p.overdue_notice_sent_at?.toISOString() ?? null,
+        pause_date: pauseDate(p.overdue_notice_sent_at)?.toISOString() ?? null,
+        payment_link_sent_at: p.payment_link_sent_at?.toISOString() ?? null,
     }))
 
     return (

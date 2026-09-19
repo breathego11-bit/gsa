@@ -299,6 +299,8 @@ model Payment {
   installment_plan_id String?   // Groups related installments together
   due_date            DateTime? // When this installment is due
   reminder_sent_at    DateTime? // When the 7-day reminder email was last sent (null = not yet)
+  overdue_notice_sent_at DateTime? // Aviso "tu cuota ha vencido": arranca el plazo de gracia antes de pausar el acceso
+  payment_link_sent_at   DateTime? // Último "Enviar enlace de pago" desde la ficha del estudiante
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
 
@@ -365,6 +367,7 @@ model Invitation {
   expires_at   DateTime?
   closer_type  CloserType? // null = invitación de estudiante regular
   is_free      Boolean     @default(false)  // true = no genera Payment records al redimir
+  pay_on_signup Boolean    @default(false)  // true = aún no pagó nada: todo el plan nace pendiente (amount_paid = importe de la cuota 1 a cobrar)
   created_at   DateTime    @default(now())
 
   creator      User      @relation("InvitationCreator", fields: [created_by], references: [id])

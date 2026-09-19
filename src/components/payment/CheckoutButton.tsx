@@ -21,10 +21,13 @@ export function CheckoutButton({ plan, paymentId, children, className }: Checkou
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             })
-            const data = await res.json()
+            const data = await res.json().catch(() => ({}))
             if (data.url) {
                 window.location.href = data.url
+                return
             }
+            alert(data.error ?? 'No se pudo iniciar el pago. Inténtalo de nuevo.')
+            setLoading(false)
         } catch {
             setLoading(false)
         }

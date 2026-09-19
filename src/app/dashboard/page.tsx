@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { InstallmentBanner } from '@/components/payment/InstallmentBanner'
+import { getOwedPayments } from '@/lib/payments'
+import { paymentLabel, pauseDate } from '@/lib/payment-rules'
 import { WelcomeVideoBanner } from '@/components/dashboard/WelcomeVideoBanner'
 import {
     CourseCardRedesigned,
@@ -125,20 +127,13 @@ export default async function DashboardPage() {
         },
     })
 
-    // Check for pending installments (all, not just overdue)
-    const pendingInstallments = await prisma.payment.findMany({
-        where: {
-            user_id: session!.user.id,
-            payment_type: 'installment',
-            status: 'pending',
-        },
-        orderBy: { installment_number: 'asc' },
-    })
+    // Pagos pendientes que debe de verdad (sin checkouts abandonados), el primero el que toca.
+    const owedPayments = await getOwedPayments(session!.user.id)
 
     // Welcome video reminder: show if not uploaded and snooze (if any) has expired.
     const me = await prisma.user.findUnique({
         where: { id: session!.user.id },
-        select: { welcome_video_bunny_id: true, welcome_video_snoozed_until: true, onboarded_at: true },
+        select: { welcome_video_bunny_id: true, welcome_video_snoozed_until: true, onboarded_at: true, payment_status: true },
     })
     const showWelcomeVideoBanner =
         !!me?.onboarded_at &&
@@ -148,13 +143,15 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-12">
             {/* ── Installment Due Banner ─────────────────── */}
-            {pendingInstallments.length > 0 && (
+            {owedPayments.length > 0 && (
                 <InstallmentBanner
-                    installments={pendingInstallments.map(p => ({
+                    status={me?.payment_status ?? 'none'}
+                    installments={owedPayments.map(p => ({
                         id: p.id,
                         amount: p.amount,
-                        installmentNumber: p.installment_number!,
+                        label: paymentLabel(p),
                         dueDate: p.due_date?.toISOString() ?? null,
+                        pauseDate: pauseDate(p.overdue_notice_sent_at)?.toISOString() ?? null,
                     }))}
                 />
             )}
