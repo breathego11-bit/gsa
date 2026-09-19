@@ -59,6 +59,9 @@ function pendingPaymentLabel(inv: Invitation): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/** Mismo criterio que valida la API en POST /api/admin/invitations. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 /** Céntimos → valor del input en EUR ("1888.00"). */
 function toEurInput(cents: number) {
     return (cents / 100).toFixed(2)
@@ -207,6 +210,10 @@ export function InvitationsClient({ coursePrice, installmentPlanTotal, following
     // Suma del plan en cuotas frente a lo que cuesta el curso a plazos.
     const planSum = toCents(amountPaid) + pendingInstallments.reduce((sum, inst) => sum + toCents(inst.amount), 0)
 
+    // El correo es obligatorio: la invitación se manda por correo, el enlace copiado es el respaldo.
+    const email = inviteeEmail.trim()
+    const emailValid = EMAIL_RE.test(email)
+
     useEffect(() => {
         if (!confirmPrice) return
         const onKey = (e: KeyboardEvent) => {
@@ -225,7 +232,7 @@ export function InvitationsClient({ coursePrice, installmentPlanTotal, following
                 isFree,
                 payOnSignup: mode === 'pay_on_signup',
             }
-            if (inviteeEmail.trim()) body.inviteeEmail = inviteeEmail.trim()
+            body.inviteeEmail = inviteeEmail.trim()
             if (inviteeName.trim()) body.inviteeName = inviteeName.trim()
             if (!isFree) {
                 body.paymentType = paymentType
@@ -336,10 +343,11 @@ export function InvitationsClient({ coursePrice, installmentPlanTotal, following
                     {/* Datos del invitado (opcional, para envío de email) */}
                     <div className="space-y-1.5 rounded-xl px-3 py-3 bg-white/[0.03] border border-white/5">
                         <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                            Enviar invitación por correo (opcional)
+                            Enviar invitación por correo
                         </label>
                         <p className="text-xs text-on-surface-variant">
-                            Si llenas el email, le mandamos el link automáticamente. Si lo dejas vacío, solo se copia al portapapeles.
+                            El correo del invitado es obligatorio: le mandamos el link ahí. También se copia al portapapeles
+                            por si tienes que compartirlo a mano.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                             <input
@@ -353,10 +361,17 @@ export function InvitationsClient({ coursePrice, installmentPlanTotal, following
                                 type="email"
                                 value={inviteeEmail}
                                 onChange={(e) => setInviteeEmail(e.target.value)}
-                                placeholder="email@dominio.com"
-                                className="bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
+                                placeholder="email@dominio.com (obligatorio)"
+                                required
+                                aria-invalid={!!email && !emailValid}
+                                className={`bg-surface-container-lowest border-none rounded-xl focus:ring-1 text-sm py-2.5 px-3 text-on-surface ${
+                                    email && !emailValid ? 'ring-1 ring-red-500/50 focus:ring-red-500' : 'focus:ring-blue-500'
+                                }`}
                             />
                         </div>
+                        {!!email && !emailValid && (
+                            <p className="text-xs text-red-400">Ese correo no tiene un formato válido.</p>
+                        )}
                     </div>
 
                     {/* Cómo se cobra */}
@@ -513,7 +528,7 @@ export function InvitationsClient({ coursePrice, installmentPlanTotal, following
 
                     <button
                         onClick={requestCreate}
-                        disabled={creating || (!isFree && !amountPaid)}
+                        disabled={creating || !emailValid || (!isFree && !amountPaid)}
                         className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:brightness-110 transition-all disabled:opacity-50"
                     >
                         {creating ? 'Generando...' : 'Generar y copiar link'}

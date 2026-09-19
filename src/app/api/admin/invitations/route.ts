@@ -75,8 +75,11 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    // Basic email format validation if provided
-    if (inviteeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail)) {
+    // El correo del invitado es obligatorio: la invitación se envía por ahí.
+    if (!inviteeEmail) {
+        return NextResponse.json({ error: 'Falta el correo del invitado' }, { status: 400 })
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail)) {
         return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
     }
 
