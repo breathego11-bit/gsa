@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { CheckoutButton } from '@/components/payment/CheckoutButton'
 import { hasActivePayment } from '@/lib/access'
 import { getOwedPayments } from '@/lib/payments'
-import { paymentLabel, pauseDate } from '@/lib/payment-rules'
+import { offsetDueLabel, paymentLabel, pauseDate } from '@/lib/payment-rules'
 
 export const dynamic = 'force-dynamic'
 
@@ -240,7 +240,7 @@ function OwnPlan({ owed, status }: { owed: Awaited<ReturnType<typeof getOwedPaym
                                         <p className="text-sm font-bold text-on-surface">{paymentLabel(p)}</p>
                                         <p className={`text-xs mt-0.5 ${flagged ? 'text-amber-400' : 'text-on-surface-variant'}`}>
                                             {!p.due_date
-                                                ? 'Disponible para pagar'
+                                                ? offsetDueLabel(p.due_offset_days) ?? 'Disponible para pagar'
                                                 : isOverdue
                                                     ? flagged ? `Vencida el ${formatDate(p.due_date)}` : 'A pagar ahora'
                                                     : `Vence el ${formatDate(p.due_date)}`}

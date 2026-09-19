@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
         paymentType?: 'one_time' | 'installment'
         amountPaid?: number // cents
-        pendingInstallments?: { amount: number; dueDate: string }[]
+        // "Ya pagó por fuera": fecha fija. "Pagará al registrarse": días después del primer pago.
+        pendingInstallments?: { amount: number; dueDate?: string; offsetDays?: number }[]
         closerType?: CloserType | null
         isFree?: boolean
         payOnSignup?: boolean // true = aún no pagó nada; amountPaid es la cuota 1 a cobrar
@@ -58,10 +59,19 @@ export async function POST(req: NextRequest) {
         const badInstallment = (body.pendingInstallments ?? []).some(
             (inst) =>
                 !Number.isInteger(inst.amount) || inst.amount <= 0 ||
-                typeof inst.dueDate !== 'string' || Number.isNaN(new Date(inst.dueDate).getTime()),
+                (payOnSignup
+                    ? !Number.isInteger(inst.offsetDays) || inst.offsetDays! < 1 || inst.offsetDays! > 730
+                    : typeof inst.dueDate !== 'string' || Number.isNaN(new Date(inst.dueDate).getTime())),
         )
         if (badInstallment) {
-            return NextResponse.json({ error: 'Cada cuota pendiente necesita importe y fecha' }, { status: 400 })
+            return NextResponse.json(
+                {
+                    error: payOnSignup
+                        ? 'Cada cuota siguiente necesita importe y los días tras el primer pago (1 a 730)'
+                        : 'Cada cuota pendiente necesita importe y fecha',
+                },
+                { status: 400 },
+            )
         }
     }
 
@@ -78,7 +88,8 @@ export async function POST(req: NextRequest) {
             ? body.pendingInstallments.map((inst, i) => ({
                   number: i + 2, // la cuota 1 es amount_paid (cobrada o, con pay_on_signup, a cobrar)
                   amount: inst.amount,
-                  dueDate: inst.dueDate,
+                  // Con pay_on_signup las fechas se cuentan desde el primer pago (se fijan al cobrarlo).
+                  ...(payOnSignup ? { offsetDays: inst.offsetDays } : { dueDate: inst.dueDate }),
               }))
             : null
 

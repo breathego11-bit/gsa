@@ -29,7 +29,7 @@ export type ComputedPaymentStatus = 'none' | 'active' | 'past_due'
  * checkout general crea todas las cuotas antes de ir a Stripe) o una invitación aún sin pagar:
  * sus cuotas no pueden pausar el acceso de nadie.
  */
-export function livePlanIds(payments: PaymentRuleInput[]): Set<string> {
+export function livePlanIds(payments: Pick<PaymentRuleInput, 'status' | 'installment_plan_id'>[]): Set<string> {
     const ids = new Set<string>()
     for (const p of payments) {
         if (p.status === 'completed' && p.installment_plan_id) ids.add(p.installment_plan_id)
@@ -92,6 +92,14 @@ export function paymentLabel(p: { payment_type: string; installment_number: numb
     return p.payment_type === 'installment' && p.installment_number
         ? `Cuota ${p.installment_number}`
         : 'Pago completo'
+}
+
+/**
+ * Vencimiento de un pago pendiente en texto, para las cuotas que aún no tienen fecha porque se
+ * cuentan desde el primer pago del plan (invitaciones "pagará al registrarse").
+ */
+export function offsetDueLabel(offsetDays: number | null): string | null {
+    return offsetDays ? `Vence ${offsetDays} días después del primer pago` : null
 }
 
 /** Orden en que se cobran los pagos pendientes: primero el que vence antes. */

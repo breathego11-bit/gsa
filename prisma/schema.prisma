@@ -301,6 +301,7 @@ model Payment {
   reminder_sent_at    DateTime? // When the 7-day reminder email was last sent (null = not yet)
   overdue_notice_sent_at DateTime? // Aviso "tu cuota ha vencido": arranca el plazo de gracia antes de pausar el acceso
   payment_link_sent_at   DateTime? // Último "Enviar enlace de pago" desde la ficha del estudiante
+  due_offset_days        Int?      // Vence N días después del primer pago del plan: due_date se fija al cobrarse ese pago
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
 

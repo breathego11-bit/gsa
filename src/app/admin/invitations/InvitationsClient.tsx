@@ -6,14 +6,17 @@ import type { CloserType } from '@prisma/client'
 
 interface PendingInst {
     amount: string
+    /** "Ya pagó por fuera": fecha fija. */
     dueDate: string
+    /** "Pagará al registrarse": días después del primer pago. */
+    offsetDays: string
 }
 
 interface Invitation {
     id: string
     payment_type: string
     amount_paid: number
-    installments: { number: number; amount: number; dueDate: string }[] | null
+    installments: { number: number; amount: number; dueDate?: string; offsetDays?: number }[] | null
     used: boolean
     used_at: string | null
     redeemer: { name: string; last_name: string; email: string } | null
@@ -39,7 +42,7 @@ function formatEur(cents: number) {
 type InviteMode = 'pay_on_signup' | 'paid_externally' | 'free'
 
 const INVITE_MODES: { value: InviteMode; label: string; hint: string }[] = [
-    { value: 'pay_on_signup', label: 'Pagará al registrarse', hint: 'Todo queda pendiente. Paga por Stripe desde su panel y entonces obtiene acceso.' },
+    { value: 'pay_on_signup', label: 'Pagará al registrarse', hint: 'Todo queda pendiente. Paga por Stripe desde su panel y entonces obtiene acceso. Las cuotas siguientes se cuentan desde ese primer pago.' },
     { value: 'paid_externally', label: 'Ya pagó por fuera', hint: 'Cobraste por transferencia u otro medio: la cuota 1 se registra como pagada.' },
     { value: 'free', label: 'Gratis', hint: 'Beca o cortesía. No genera pagos: nace con payment_status = complimentary.' },
 ]
@@ -92,6 +95,7 @@ export function InvitationsClient() {
         setPendingInstallments([...pendingInstallments, {
             amount: '',
             dueDate: nextMonth.toISOString().split('T')[0],
+            offsetDays: String((pendingInstallments.length + 1) * 30),
         }])
     }
 
@@ -99,7 +103,7 @@ export function InvitationsClient() {
         setPendingInstallments(pendingInstallments.filter((_, i) => i !== idx))
     }
 
-    function updateInstallment(idx: number, field: 'amount' | 'dueDate', value: string) {
+    function updateInstallment(idx: number, field: 'amount' | 'dueDate' | 'offsetDays', value: string) {
         setPendingInstallments(pendingInstallments.map((inst, i) =>
             i === idx ? { ...inst, [field]: value } : inst
         ))
@@ -122,7 +126,9 @@ export function InvitationsClient() {
                 if (paymentType === 'installment' && pendingInstallments.length > 0) {
                     body.pendingInstallments = pendingInstallments.map(inst => ({
                         amount: Math.round(parseFloat(inst.amount || '0') * 100),
-                        dueDate: inst.dueDate,
+                        ...(mode === 'pay_on_signup'
+                            ? { offsetDays: parseInt(inst.offsetDays || '0', 10) }
+                            : { dueDate: inst.dueDate }),
                     }))
                 }
             }
@@ -341,12 +347,28 @@ export function InvitationsClient() {
                                         className="flex-1 min-w-0 basis-24 bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
                                         placeholder="EUR"
                                     />
-                                    <input
-                                        type="date"
-                                        value={inst.dueDate}
-                                        onChange={e => updateInstallment(idx, 'dueDate', e.target.value)}
-                                        className="min-w-0 basis-36 sm:basis-auto bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
-                                    />
+                                    {mode === 'pay_on_signup' ? (
+                                        // Las fechas se cuentan desde el día que pague la primera cuota.
+                                        <label className="flex items-center gap-2 min-w-0 basis-36 sm:basis-auto text-xs text-on-surface-variant">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="730"
+                                                step="1"
+                                                value={inst.offsetDays}
+                                                onChange={e => updateInstallment(idx, 'offsetDays', e.target.value)}
+                                                className="w-20 bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
+                                            />
+                                            días tras el 1.er pago
+                                        </label>
+                                    ) : (
+                                        <input
+                                            type="date"
+                                            value={inst.dueDate}
+                                            onChange={e => updateInstallment(idx, 'dueDate', e.target.value)}
+                                            className="min-w-0 basis-36 sm:basis-auto bg-surface-container-lowest border-none rounded-xl focus:ring-1 focus:ring-blue-500 text-sm py-2.5 px-3 text-on-surface"
+                                        />
+                                    )}
                                     <button onClick={() => removeInstallment(idx)} className="text-red-400 hover:text-red-300 shrink-0">
                                         <MaterialIcon name="close" size="text-sm" />
                                     </button>

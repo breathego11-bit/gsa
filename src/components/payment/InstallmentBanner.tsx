@@ -9,6 +9,8 @@ interface Installment {
     /** "Cuota 2" / "Pago completo" */
     label: string
     dueDate: string | null
+    /** Sin fecha aún: vence estos días después del primer pago del plan. */
+    offsetDays: number | null
     /** Día en que se pausa el acceso si sigue sin pagarse (solo cuotas ya avisadas). */
     pauseDate: string | null
 }
@@ -107,7 +109,9 @@ export function InstallmentBanner({ status, installments }: InstallmentBannerPro
                                 </p>
                                 <p className="text-xs text-on-surface-variant mt-0.5">
                                     {!inst.dueDate
-                                        ? 'Disponible para pagar'
+                                        ? inst.offsetDays
+                                            ? `Vence ${inst.offsetDays} días después de tu primer pago`
+                                            : 'Disponible para pagar'
                                         : isOverdue
                                             ? inst.dueDate.slice(0, 10) === today
                                                 ? 'Vence hoy'

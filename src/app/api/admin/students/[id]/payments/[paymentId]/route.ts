@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { syncPaymentStatus } from '@/lib/payments'
+import { anchorPlanDueDates, syncPaymentStatus } from '@/lib/payments'
 
 /**
  * Corrige a mano el estado de un pago desde "Información de pago" y recalcula el acceso.
@@ -69,6 +69,8 @@ export async function PATCH(
         return NextResponse.json({ error: 'El pago cambió mientras tanto; recarga la página' }, { status: 409 })
     }
 
+    // Cobrado a mano: si era el primer pago del plan, arranca el calendario del resto de cuotas.
+    if (status === 'completed') await anchorPlanDueDates(id, now)
     await syncPaymentStatus(id, now)
     const user = await prisma.user.findUnique({ where: { id }, select: { payment_status: true } })
     return NextResponse.json({ status, payment_status: user?.payment_status ?? null })

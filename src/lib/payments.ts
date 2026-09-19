@@ -26,6 +26,35 @@ export async function getOwedPayments(userId: string): Promise<Payment[]> {
     return payments.filter((p) => isOwed(p, live, invited)).sort(byDueDate)
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Fija las fechas de las cuotas que se cuentan "desde el primer pago" (invitaciones "pagará al
+ * registrarse"): nacen sin `due_date` y con `due_offset_days`; en cuanto su plan tiene un pago
+ * cobrado, cada una vence ese número de días después de `paidAt`. Solo toca cuotas aún sin fecha,
+ * así que llamarla de más no mueve nada.
+ */
+export async function anchorPlanDueDates(userId: string, paidAt = new Date()): Promise<void> {
+    const pending = await prisma.payment.findMany({
+        where: { user_id: userId, status: 'pending', due_date: null, due_offset_days: { not: null } },
+        select: { id: true, installment_plan_id: true, due_offset_days: true },
+    })
+    if (pending.length === 0) return
+
+    const paid = await prisma.payment.findMany({
+        where: { user_id: userId, status: 'completed' },
+        select: { status: true, installment_plan_id: true },
+    })
+    const live = livePlanIds(paid)
+    for (const p of pending) {
+        if (!p.installment_plan_id || !live.has(p.installment_plan_id)) continue
+        await prisma.payment.updateMany({
+            where: { id: p.id, due_date: null },
+            data: { due_date: new Date(paidAt.getTime() + p.due_offset_days! * DAY_MS) },
+        })
+    }
+}
+
 export interface PaymentStatusChange {
     previous: string
     current: string
@@ -85,5 +114,6 @@ export async function completeCheckoutSession(session: {
         })
     }
 
+    await anchorPlanDueDates(userId)
     await syncPaymentStatus(userId)
 }

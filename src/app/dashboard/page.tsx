@@ -151,6 +151,7 @@ export default async function DashboardPage() {
                         amount: p.amount,
                         label: paymentLabel(p),
                         dueDate: p.due_date?.toISOString() ?? null,
+                        offsetDays: p.due_offset_days,
                         pauseDate: pauseDate(p.overdue_notice_sent_at)?.toISOString() ?? null,
                     }))}
                 />

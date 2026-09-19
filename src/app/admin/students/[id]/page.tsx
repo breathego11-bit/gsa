@@ -84,6 +84,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 stripe_checkout_id: true,
                 overdue_notice_sent_at: true,
                 payment_link_sent_at: true,
+                due_offset_days: true,
             },
             orderBy: [{ installment_plan_id: 'asc' }, { installment_number: 'asc' }],
         }),
@@ -224,6 +225,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         overdue_notice_sent_at: p.overdue_notice_sent_at?.toISOString() ?? null,
         pause_date: pauseDate(p.overdue_notice_sent_at)?.toISOString() ?? null,
         payment_link_sent_at: p.payment_link_sent_at?.toISOString() ?? null,
+        due_offset_days: p.due_offset_days,
     }))
 
     return (

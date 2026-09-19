@@ -85,6 +85,8 @@ interface PaymentInfo {
     overdue_notice_sent_at: string | null
     pause_date: string | null
     payment_link_sent_at: string | null
+    /** Sin fecha aún: vence estos días después del primer pago del plan. */
+    due_offset_days: number | null
 }
 
 interface Props {
@@ -1013,7 +1015,9 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                                                         : 'text-amber-400'
                                     const details: string[] = []
                                     if (p.status === 'completed') details.push(formatDate(p.created_at))
-                                    else details.push(p.due_date ? `Vence: ${formatDate(p.due_date)}` : formatDate(p.created_at))
+                                    else if (p.due_date) details.push(`Vence: ${formatDate(p.due_date)}`)
+                                    else if (p.due_offset_days) details.push(`Vence ${p.due_offset_days} días tras el primer pago`)
+                                    else details.push(formatDate(p.created_at))
                                     if (p.status === 'pending' && p.overdue && p.overdue_notice_sent_at) {
                                         details.push(`Aviso de impago el ${formatDate(p.overdue_notice_sent_at)}`)
                                         if (p.pause_date && student.payment_status !== 'past_due') {

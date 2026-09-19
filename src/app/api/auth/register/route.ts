@@ -11,7 +11,9 @@ class InvitationAlreadyUsedError extends Error {}
 /**
  * Pagos que genera una invitación de pago al registrarse. La cuota 1 (o el pago único) es
  * `amount_paid`: cobrada por fuera, o con `pay_on_signup` pendiente y con vencimiento hoy.
- * Las demás cuotas vienen de `installments`, siempre pendientes con sus fechas.
+ * Las demás cuotas vienen de `installments`, siempre pendientes: con fecha fija ("ya pagó por
+ * fuera") o, con `pay_on_signup`, sin fecha y con `offsetDays` — la fecha se fija al cobrarse el
+ * primer pago (`anchorPlanDueDates`).
  */
 function invitationPayments(invitation: Invitation, userId: string): Prisma.PaymentCreateManyInput[] {
     const isInstallment = invitation.payment_type === 'installment';
@@ -28,7 +30,7 @@ function invitationPayments(invitation: Invitation, userId: string): Prisma.Paym
     };
     if (!isInstallment) return [first];
 
-    const rest = (invitation.installments as { number: number; amount: number; dueDate: string }[] | null) ?? [];
+    const rest = (invitation.installments as { number: number; amount: number; dueDate?: string; offsetDays?: number }[] | null) ?? [];
     return [
         first,
         ...rest.map((inst) => ({
@@ -39,7 +41,8 @@ function invitationPayments(invitation: Invitation, userId: string): Prisma.Paym
             status: 'pending',
             installment_number: inst.number,
             installment_plan_id: planId,
-            due_date: new Date(inst.dueDate),
+            due_date: inst.offsetDays ? null : new Date(inst.dueDate!),
+            due_offset_days: inst.offsetDays ?? null,
         })),
     ];
 }
