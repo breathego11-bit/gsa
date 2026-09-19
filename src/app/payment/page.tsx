@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { CheckoutButton } from '@/components/payment/CheckoutButton'
 import { hasActivePayment } from '@/lib/access'
 import { getOwedPayments } from '@/lib/payments'
-import { paymentLabel } from '@/lib/payment-rules'
+import { paymentLabel, pauseDate } from '@/lib/payment-rules'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,13 +47,15 @@ export default async function PaymentPage() {
         )
     }
 
-    if (user && hasActivePayment(user)) redirect('/dashboard')
-
-    // Plan propio (invitación o cuotas vencidas): se paga ese plan, nunca el precio general.
+    // Plan propio (invitación, cuotas por pagar o vencidas): se paga ese plan, nunca el precio
+    // general. También para alumnos activos: los correos de cuota vencida y de enlace de pago
+    // traen aquí.
     const owed = await getOwedPayments(session.user.id)
     if (owed.length > 0) {
-        return <OwnPlan owed={owed} paused={user?.payment_status === 'past_due'} />
+        return <OwnPlan owed={owed} status={user?.payment_status ?? 'none'} />
     }
+
+    if (user && hasActivePayment(user)) redirect('/dashboard')
 
     const pricing = await getPricing()
     const installments = computeInstallments(pricing)
@@ -174,12 +176,34 @@ export default async function PaymentPage() {
 
 /**
  * Pagos pendientes del propio alumno. Se cobra primero el que vence antes, por el flujo
- * `paymentId` del checkout. `paused` = acceso pausado por impago (`past_due`).
+ * `paymentId` del checkout. `status` es su `payment_status`: `none` aún sin acceso,
+ * `past_due` acceso pausado por impago, `active` con acceso (paga cuotas por adelantado o en gracia).
  */
-function OwnPlan({ owed, paused }: { owed: Awaited<ReturnType<typeof getOwedPayments>>; paused: boolean }) {
+function OwnPlan({ owed, status }: { owed: Awaited<ReturnType<typeof getOwedPayments>>; status: string }) {
     const next = owed[0]
     const now = new Date()
     const total = owed.reduce((sum, p) => sum + p.amount, 0)
+    const paused = status === 'past_due'
+    const hasAccess = status === 'active' || status === 'complimentary'
+    const overdue = owed.filter((p) => !!p.due_date && p.due_date <= now)
+    const pauseAt = overdue.map((p) => pauseDate(p.overdue_notice_sent_at)).find((d) => !!d)
+
+    const title = paused
+        ? 'Tu acceso está pausado'
+        : hasAccess
+            ? overdue.length > 0 ? 'Tienes una cuota vencida' : 'Tu plan de pago'
+            : 'Activa tu acceso'
+    const intro = paused
+        ? 'Tienes una cuota vencida. Págala para recuperar el acceso a los cursos: tu progreso se conserva y sigues justo donde lo dejaste.'
+        : hasAccess
+            ? overdue.length > 0
+                ? pauseAt
+                    ? `Págala antes del ${formatDate(pauseAt)} para no perder el acceso a los cursos.`
+                    : 'Págala cuanto antes para mantener tu acceso a los cursos.'
+                : 'Puedes adelantar el pago de tus próximas cuotas cuando quieras.'
+            : next.payment_type === 'installment'
+                ? 'Paga tu primera cuota para acceder a los cursos de Growth Sales Academy.'
+                : 'Completa tu pago para acceder a los cursos de Growth Sales Academy.'
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ background: 'var(--bg-base)' }}>
@@ -188,16 +212,8 @@ function OwnPlan({ owed, paused }: { owed: Awaited<ReturnType<typeof getOwedPaym
                     <Link href="/" className="inline-block mb-4">
                         <img src="/logo_dark.png" alt="GSA" className="h-16 w-auto mx-auto" />
                     </Link>
-                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-on-surface">
-                        {paused ? 'Tu acceso está pausado' : 'Activa tu acceso'}
-                    </h1>
-                    <p className="text-on-surface-variant max-w-md mx-auto">
-                        {paused
-                            ? 'Tienes una cuota vencida. Págala para recuperar el acceso a los cursos: tu progreso se conserva y sigues justo donde lo dejaste.'
-                            : next.payment_type === 'installment'
-                                ? 'Paga tu primera cuota para acceder a los cursos de Growth Sales Academy.'
-                                : 'Completa tu pago para acceder a los cursos de Growth Sales Academy.'}
-                    </p>
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-on-surface">{title}</h1>
+                    <p className="text-on-surface-variant max-w-md mx-auto">{intro}</p>
                 </div>
 
                 <div className="bg-surface-container-low rounded-2xl p-6 sm:p-8 border border-outline-variant/15 space-y-6">
@@ -210,7 +226,9 @@ function OwnPlan({ owed, paused }: { owed: Awaited<ReturnType<typeof getOwedPaym
 
                     <div className="space-y-2">
                         {owed.map((p) => {
-                            const overdue = !!p.due_date && p.due_date <= now
+                            const isOverdue = !!p.due_date && p.due_date <= now
+                            // Sin acceso aún (primer pago) lo vencido es "a pagar ahora", no una deuda.
+                            const flagged = isOverdue && status !== 'none'
                             return (
                                 <div
                                     key={p.id}
@@ -220,11 +238,11 @@ function OwnPlan({ owed, paused }: { owed: Awaited<ReturnType<typeof getOwedPaym
                                 >
                                     <div>
                                         <p className="text-sm font-bold text-on-surface">{paymentLabel(p)}</p>
-                                        <p className={`text-xs mt-0.5 ${overdue && paused ? 'text-amber-400' : 'text-on-surface-variant'}`}>
+                                        <p className={`text-xs mt-0.5 ${flagged ? 'text-amber-400' : 'text-on-surface-variant'}`}>
                                             {!p.due_date
                                                 ? 'Disponible para pagar'
-                                                : overdue
-                                                    ? paused ? `Vencida el ${formatDate(p.due_date)}` : 'A pagar ahora'
+                                                : isOverdue
+                                                    ? flagged ? `Vencida el ${formatDate(p.due_date)}` : 'A pagar ahora'
                                                     : `Vence el ${formatDate(p.due_date)}`}
                                         </p>
                                     </div>
