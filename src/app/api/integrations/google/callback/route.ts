@@ -3,6 +3,22 @@ import { prisma } from '@/lib/prisma'
 import { exchangeCode, GOOGLE_SCOPES } from '@/lib/calendar/google'
 import { verifyState } from '@/lib/calendar/state'
 import { encryptToken } from '@/lib/calendar/crypto'
+import { isCloser } from '@/lib/access'
+
+/**
+ * Adónde se vuelve tras el consentimiento: cada rol tiene su propia pantalla de calendario.
+ * Mandar siempre a `/admin/leads` dejaba al closer en la pantalla de login (todo `/admin` es solo
+ * para admins), así que parecía que la conexión había fallado cuando en realidad ya estaba hecha.
+ */
+async function landingFor(userId: string): Promise<string> {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, payment_status: true, closer_enabled: true, closer_type: true },
+    })
+    if (!user) return '/dashboard'
+    if (user.role === 'ADMIN') return '/admin/leads'
+    return isCloser(user) ? '/dashboard/agenda' : '/dashboard'
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -16,16 +32,22 @@ export async function GET(req: NextRequest) {
     // Base pública para el redirect: detrás de Caddy, req.url trae la dirección interna
     // del contenedor (0.0.0.0:3000), así que usamos NEXTAUTH_URL (el dominio real).
     const baseUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin
-    const back = (status: string) => NextResponse.redirect(new URL(`/admin/leads?google=${status}`, baseUrl))
+
+    /*
+     * El destino sale del `state`, que es lo único firmado que identifica al usuario. Se resuelve
+     * antes que nada para que también los errores (consentimiento cancelado, código ausente)
+     * devuelvan a cada uno a su propia pantalla.
+     */
+    const state = sp.get('state')
+    const valid = state ? verifyState(state) : null
+    const dest = valid ? await landingFor(valid.userId) : '/admin/leads'
+    const back = (status: string) => NextResponse.redirect(new URL(`${dest}?google=${status}`, baseUrl))
 
     const error = sp.get('error')
     if (error) return back('denied')
 
     const code = sp.get('code')
-    const state = sp.get('state')
     if (!code || !state) return back('error')
-
-    const valid = verifyState(state)
     if (!valid) return back('badstate')
 
     try {

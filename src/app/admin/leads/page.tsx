@@ -4,45 +4,17 @@ import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/Card'
 import Link from 'next/link'
 import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
-import type { LeadStatus } from '@prisma/client'
+import {
+    GOOGLE_CONNECT_BANNER,
+    LEAD_STATUS_META,
+    fmtLeadDate,
+    fmtMeetingShort,
+    igHandle,
+} from '@/lib/leads/display'
 import { CheckCircle2, AlertTriangle, CalendarPlus, Video } from 'lucide-react'
 import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
 import { describeWorkingHours } from '@/lib/calendar/availability'
-
-const STATUS_META: Record<LeadStatus, { label: string; bg: string; color: string }> = {
-    NUEVO: { label: 'Nuevo', bg: 'rgba(56,189,248,0.15)', color: '#38bdf8' },
-    CONTACTADO: { label: 'Contactado', bg: 'rgba(251,191,36,0.15)', color: '#fbbf24' },
-    AGENDADO: { label: 'Agendado', bg: 'rgba(52,211,153,0.15)', color: '#34d399' },
-    DESCARTADO: { label: 'Descartado', bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' },
-}
-
-const GOOGLE_BANNER: Record<string, { ok: boolean; msg: string }> = {
-    connected: { ok: true, msg: 'Google Calendar conectado correctamente.' },
-    denied: { ok: false, msg: 'Conexión cancelada.' },
-    norefresh: { ok: false, msg: 'Google no devolvió un refresh token. Revocá el acceso previo en tu cuenta de Google y reconectá.' },
-    badstate: { ok: false, msg: 'No se pudo validar la solicitud de conexión. Intentá de nuevo.' },
-    error: { ok: false, msg: 'No se pudo conectar con Google. Intentá de nuevo.' },
-}
-
-function fmtDate(d: Date): string {
-    return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-function fmtMeeting(d: Date | null, tz: string | null): string {
-    if (!d) return '—'
-    try {
-        return new Date(d).toLocaleString('es-ES', {
-            day: '2-digit',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: tz ?? undefined,
-        })
-    } catch {
-        return new Date(d).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-    }
-}
 
 interface PageProps {
     searchParams: Promise<{ assignee?: string; google?: string }>
@@ -51,7 +23,7 @@ interface PageProps {
 export default async function AdminLeadsPage({ searchParams }: PageProps) {
     const sp = await searchParams
     const assigneeFilter = typeof sp.assignee === 'string' && sp.assignee ? sp.assignee : undefined
-    const banner = sp.google ? GOOGLE_BANNER[sp.google] : undefined
+    const banner = sp.google ? GOOGLE_CONNECT_BANNER[sp.google] : undefined
 
     const session = await getServerSession(authOptions)
     const myUserId = session?.user?.id
@@ -250,7 +222,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                                         {conn.account_email}
                                                         <span style={{ opacity: 0.6 }}>
                                                             {' '}
-                                                            · desde el {fmtDate(conn.connected_at)} · {m.booking_timezone}
+                                                            · desde el {fmtLeadDate(conn.connected_at)} · {m.booking_timezone}
                                                         </span>
                                                         {/* El horario decide qué huecos ve el lead. Enseñarlo evita
                                                             el caso de un horario mal puesto que nadie detecta hasta
@@ -271,7 +243,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                             style={{ background: tone.bg, color: tone.fg }}
                                             title={
                                                 conn
-                                                    ? `Conectado el ${fmtDate(conn.connected_at)}`
+                                                    ? `Conectado el ${fmtLeadDate(conn.connected_at)}`
                                                     : 'Está en el round-robin pero no puede recibir reuniones'
                                             }
                                         >
@@ -326,8 +298,8 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                             </thead>
                             <tbody>
                                 {leads.map((lead) => {
-                                    const st = STATUS_META[lead.status]
-                                    const ig = lead.instagram.startsWith('@') ? lead.instagram : `@${lead.instagram}`
+                                    const st = LEAD_STATUS_META[lead.status]
+                                    const ig = igHandle(lead.instagram)
                                     const assignedName = lead.assignee
                                         ? `${lead.assignee.name} ${lead.assignee.last_name}`.trim()
                                         : '—'
@@ -356,7 +328,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                                 {lead.utm_campaign ?? <span style={{ opacity: 0.4 }}>—</span>}
                                             </td>
                                             <td className="py-4 pr-4 hidden md:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                <div>{fmtMeeting(lead.meeting_at, lead.meeting_tz_iana)}</div>
+                                                <div>{fmtMeetingShort(lead.meeting_at, lead.meeting_tz_iana)}</div>
                                                 {lead.meeting_link && (
                                                     <a href={lead.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-0.5" style={{ color: 'var(--blue-accent)' }}>
                                                         <Video size={12} /> Meet
@@ -369,7 +341,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                                     {st.label}
                                                 </span>
                                             </td>
-                                            <td className="py-4 text-right hidden lg:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>{fmtDate(lead.created_at)}</td>
+                                            <td className="py-4 text-right hidden lg:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>{fmtLeadDate(lead.created_at)}</td>
                                         </tr>
                                     )
                                 })}

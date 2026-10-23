@@ -29,7 +29,19 @@ interface Draft {
  * hueco que aplica y VSL pueden ofrecer a un lead. Así se ve de un vistazo qué le queda libre a
  * Iván sin tener que cruzar mentalmente su horario con su calendario.
  */
-export function AgendaWeek({ week, canCreate }: { week: AgendaWeekModel; canCreate: boolean }) {
+export function AgendaWeek({
+    week,
+    canCreate,
+    basePath = '/admin/agenda',
+    leadHrefBase = '/admin/leads',
+}: {
+    week: AgendaWeekModel
+    canCreate: boolean
+    /** Ruta de esta agenda: las flechas de semana navegan sobre ella (admin o closer). */
+    basePath?: string
+    /** Dónde abre la ficha de un lead desde su reunión. */
+    leadHrefBase?: string
+}) {
     const [draft, setDraft] = useState<Draft | null>(null)
 
     const height = (week.endMin - week.startMin) * PX_PER_MIN
@@ -50,13 +62,13 @@ export function AgendaWeek({ week, canCreate }: { week: AgendaWeekModel; canCrea
         <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <Link href={`/admin/agenda?week=${week.prevWeek}`} className="inline-flex items-center justify-center h-8 min-w-8 rounded-lg transition-colors" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} aria-label="Semana anterior">
+                    <Link href={`${basePath}?week=${week.prevWeek}`} className="inline-flex items-center justify-center h-8 min-w-8 rounded-lg transition-colors" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} aria-label="Semana anterior">
                         <ChevronLeft size={16} />
                     </Link>
-                    <Link href="/admin/agenda" className="inline-flex items-center justify-center h-8 min-w-8 rounded-lg transition-colors px-3 text-xs font-semibold" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                    <Link href={basePath} className="inline-flex items-center justify-center h-8 min-w-8 rounded-lg transition-colors px-3 text-xs font-semibold" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
                         Hoy
                     </Link>
-                    <Link href={`/admin/agenda?week=${week.nextWeek}`} className="inline-flex items-center justify-center h-8 min-w-8 rounded-lg transition-colors" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} aria-label="Semana siguiente">
+                    <Link href={`${basePath}?week=${week.nextWeek}`} className="inline-flex items-center justify-center h-8 min-w-8 rounded-lg transition-colors" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} aria-label="Semana siguiente">
                         <ChevronRight size={16} />
                     </Link>
                     <span className="ml-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -102,7 +114,7 @@ export function AgendaWeek({ week, canCreate }: { week: AgendaWeekModel; canCrea
                             {week.days.map((d) => (
                                 <div key={d.ymd} className="p-1 space-y-1" style={{ borderLeft: '1px solid var(--border)' }}>
                                     {d.allDay.map((ev) => (
-                                        <EventLink key={ev.id} leadId={ev.leadId} htmlLink={ev.htmlLink}>
+                                        <EventLink key={ev.id} leadId={ev.leadId} htmlLink={ev.htmlLink} leadHrefBase={leadHrefBase}>
                                             <div
                                                 className="truncate rounded px-1.5 py-0.5 text-[11px]"
                                                 style={eventStyle(Boolean(ev.leadId), ev.busy)}
@@ -171,7 +183,7 @@ export function AgendaWeek({ week, canCreate }: { week: AgendaWeekModel; canCrea
                                     />
                                 ))}
                                 {d.segments.map((seg) => (
-                                    <SegmentBlock key={`${seg.id}-${seg.startMin}`} seg={seg} startMin={week.startMin} />
+                                    <SegmentBlock key={`${seg.id}-${seg.startMin}`} seg={seg} startMin={week.startMin} leadHrefBase={leadHrefBase} />
                                 ))}
                             </div>
                         ))}
@@ -202,11 +214,11 @@ function eventStyle(isLead: boolean, busy: boolean): React.CSSProperties {
         : { background: 'rgba(129,140,248,0.18)', border: '1px solid rgba(129,140,248,0.5)', color: 'var(--text-primary)' }
 }
 
-function SegmentBlock({ seg, startMin }: { seg: AgendaSegment; startMin: number }) {
+function SegmentBlock({ seg, startMin, leadHrefBase }: { seg: AgendaSegment; startMin: number; leadHrefBase: string }) {
     const top = (seg.startMin - startMin) * PX_PER_MIN
     const heightPx = Math.max(seg.endMin - seg.startMin, MIN_VISUAL_MIN) * PX_PER_MIN
     return (
-        <EventLink leadId={seg.leadId} htmlLink={seg.htmlLink}>
+        <EventLink leadId={seg.leadId} htmlLink={seg.htmlLink} leadHrefBase={leadHrefBase}>
             <div
                 className="absolute overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] leading-tight"
                 style={{
@@ -226,8 +238,18 @@ function SegmentBlock({ seg, startMin }: { seg: AgendaSegment; startMin: number 
 }
 
 /** Las reuniones de leads abren su ficha del CRM; el resto, el evento en Google Calendar. */
-function EventLink({ leadId, htmlLink, children }: { leadId: string | null; htmlLink: string; children: React.ReactNode }) {
-    if (leadId) return <Link href={`/admin/leads/${leadId}`}>{children}</Link>
+function EventLink({
+    leadId,
+    htmlLink,
+    leadHrefBase,
+    children,
+}: {
+    leadId: string | null
+    htmlLink: string
+    leadHrefBase: string
+    children: React.ReactNode
+}) {
+    if (leadId) return <Link href={`${leadHrefBase}/${leadId}`}>{children}</Link>
     if (htmlLink) {
         return (
             <a href={htmlLink} target="_blank" rel="noopener noreferrer">

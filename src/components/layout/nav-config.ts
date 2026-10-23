@@ -14,6 +14,7 @@ import {
     TrendingUp,
     Wallet,
     CalendarDays,
+    UserCheck,
     type LucideIcon,
 } from 'lucide-react'
 import type { CloserType } from '@prisma/client'
@@ -180,6 +181,17 @@ export function buildStudentGroups(
                             ? { kind: 'count', value: badges.salesCount }
                             : undefined,
                 },
+                {
+                    href: '/dashboard/leads',
+                    label: 'Mis leads',
+                    Icon: UserCheck,
+                    badge:
+                        typeof badges.leadsNew === 'number' && badges.leadsNew > 0
+                            ? { kind: 'notif', value: badges.leadsNew }
+                            : undefined,
+                },
+                // Donde el closer conecta su Google Calendar: sin eso, el reparto no le asigna leads.
+                { href: '/dashboard/agenda', label: 'Mi agenda', Icon: CalendarDays },
             ],
         })
     }

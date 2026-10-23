@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    const [salesCount, user] = await Promise.all([
+    const [salesCount, leadsNew, user] = await Promise.all([
         isCloser
             ? prisma.sale.count({
                   where: {
@@ -28,6 +28,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
                       sale_date: { gte: monthStart, lte: monthEnd },
                   },
               })
+            : Promise.resolve(0),
+        // Leads propios sin contactar: el badge de "Mis leads".
+        isCloser
+            ? prisma.lead.count({ where: { assigned_to: session.user.id, status: 'NUEVO' } })
             : Promise.resolve(0),
         prisma.user.findUnique({
             where: { id: session.user.id },
@@ -37,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
     if (!user) redirect('/api/auth/clear-session')
 
-    const badges = isCloser ? { salesCount } : {}
+    const badges = isCloser ? { salesCount, leadsNew } : {}
 
     return (
         <div className="flex h-[100svh] lg:h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>
