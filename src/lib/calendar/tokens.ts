@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
 import { encryptToken, decryptToken, tryDecryptToken } from './crypto'
 import { authorizedClient, type CalendarAuthClient } from './google'
 
@@ -22,13 +23,16 @@ export type ConnRecord = Prisma.CalendarConnectionGetPayload<{
     }
 }>
 
-/** Pool de miembros bookables: lead_booking_enabled + conexión activa. */
+/**
+ * Pool de miembros bookables: conexión activa + `POOL_MEMBER_WHERE` (autorizado y, además, admin o
+ * closer). Ver `pool.ts`.
+ */
 export function loadBookableConnections(): Promise<ConnRecord[]> {
     return prisma.calendarConnection.findMany({
         where: {
             status: 'active',
             provider: 'GOOGLE',
-            user: { lead_booking_enabled: true },
+            user: POOL_MEMBER_WHERE,
         },
         include: {
             user: {

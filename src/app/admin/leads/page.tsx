@@ -15,6 +15,7 @@ import { CheckCircle2, AlertTriangle, CalendarPlus, Video } from 'lucide-react'
 import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
 import { describeWorkingHours } from '@/lib/calendar/availability'
+import { POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
 
 interface PageProps {
     searchParams: Promise<{ assignee?: string; google?: string }>
@@ -61,7 +62,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
          * los 7 días, así que las conexiones se rompen de forma rutinaria.
          */
         prisma.user.findMany({
-            where: { lead_booking_enabled: true },
+            where: POOL_MEMBER_WHERE,
             select: {
                 id: true,
                 name: true,

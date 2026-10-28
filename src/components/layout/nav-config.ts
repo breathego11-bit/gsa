@@ -63,6 +63,12 @@ export interface SidebarBadges {
     monthCashCents?: number
     salesCount?: number
     leadsNew?: number
+    /**
+     * El closer ve "Mis leads" (autorizado a recibir leads o con leads asignados de antes; ver
+     * `showsOwnLeads` en pool.ts). No es un badge, pero viaja con ellos porque se calcula en la
+     * misma consulta del layout y ya llega a los dos menús, el de escritorio y el móvil.
+     */
+    leadsAccess?: boolean
 }
 
 export function fmtMoneyShort(cents: number): string {
@@ -182,16 +188,22 @@ export function buildStudentGroups(
                             ? { kind: 'count', value: badges.salesCount }
                             : undefined,
                 },
-                {
-                    href: CLOSER_NAV.leads,
-                    label: 'Mis leads',
-                    Icon: UserCheck,
-                    badge:
-                        typeof badges.leadsNew === 'number' && badges.leadsNew > 0
-                            ? { kind: 'notif', value: badges.leadsNew }
-                            : undefined,
-                },
-                // Donde el closer conecta su Google Calendar: sin eso, el reparto no le asigna leads.
+                // Solo a quien recibe leads (lo autoriza un admin) o tiene alguno de antes: al resto
+                // de closers no se les enseña una pantalla que siempre estaría vacía.
+                ...(badges.leadsAccess
+                    ? [
+                          {
+                              href: CLOSER_NAV.leads,
+                              label: 'Mis leads',
+                              Icon: UserCheck,
+                              badge:
+                                  typeof badges.leadsNew === 'number' && badges.leadsNew > 0
+                                      ? ({ kind: 'notif', value: badges.leadsNew } as const)
+                                      : undefined,
+                          },
+                      ]
+                    : []),
+                // Su Google Calendar dentro de GSA. Conectarlo no lo mete en el reparto: eso lo decide un admin.
                 { href: CLOSER_NAV.agenda, label: 'Mi agenda', Icon: CalendarDays },
             ],
         })

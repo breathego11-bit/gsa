@@ -14,9 +14,10 @@ export const metadata = { title: 'Mi agenda · GSA' }
 /**
  * Agenda del closer: su Google Calendar dentro de GSA.
  *
- * Es la pantalla que le faltaba para poder **conectar su calendario**: hasta tenerla, el botón solo
- * existía en `/admin`, y como el reparto de leads exige calendario conectado
- * (`lead_booking_enabled` se activa en el callback de OAuth), un closer nunca entraba al reparto.
+ * Es la pantalla donde **conecta su calendario**: hasta tenerla, el botón solo existía en `/admin`.
+ * Conectarlo no lo mete en el reparto de leads —eso lo autoriza un admin desde su ficha
+ * (`pool.ts`)—, pero el reparto sí exige calendario conectado, así que sin esta pantalla un closer
+ * autorizado no tenía forma de empezar a recibir.
  */
 export default async function CloserAgendaPage({
     searchParams,

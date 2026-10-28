@@ -71,7 +71,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const user = await prisma.user.update({
         where: { id },
-        data: { closer_enabled: closerEnabled, closer_type: closerType },
+        data: {
+            closer_enabled: closerEnabled,
+            closer_type: closerType,
+            // Sin rol de closer no hay autorización para recibir leads: si se conservara, volvería a
+            // entrar al reparto en cuanto alguien le reactivara el rol, sin que nadie lo decidiera.
+            ...(closerEnabled ? {} : { lead_booking_enabled: false }),
+        },
         select: { id: true, closer_enabled: true, closer_type: true },
     })
 

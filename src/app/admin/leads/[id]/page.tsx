@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { notFound, redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
 import { AttributionCard } from '@/components/leads/AttributionCard'
 import { LeadAssigneeControl } from '@/components/leads/LeadAssigneeControl'
 import { LeadDetailView, LEAD_DETAIL_SELECT } from '@/components/leads/LeadDetailView'
@@ -27,7 +28,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             where: {
                 OR: [
                     { calendars: { some: { provider: 'GOOGLE', status: 'active' } } },
-                    { lead_booking_enabled: true },
+                    POOL_MEMBER_WHERE,
                 ],
             },
             select: {

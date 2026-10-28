@@ -24,6 +24,7 @@ import {
     X,
     ArrowRight,
     Gift,
+    UserCheck,
 } from 'lucide-react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { BunnyVideoPreview } from '@/components/admin/BunnyVideoPreview'
@@ -43,6 +44,12 @@ interface StudentInfo {
     blocked: boolean
     closer_enabled: boolean
     closer_type: CloserType | null
+    /** Autorizado por un admin a recibir leads (ver pool.ts). */
+    lead_booking_enabled: boolean
+    /** Estado de su Google Calendar: sin conexión activa, la autorización no le trae nada. */
+    calendar_status: string | null
+    /** Reuniones futuras que tiene asignadas: las conserva aunque se le retire la autorización. */
+    future_meetings: number
     welcome_video_bunny_id: string | null
     welcome_video_status: string | null
     welcome_video_uploaded_at: string | null
@@ -159,7 +166,8 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
     const [blocked, setBlocked] = useState(student.blocked)
     const [closerEnabled, setCloserEnabled] = useState(student.closer_enabled)
     const [closerType, setCloserType] = useState<CloserType | null>(student.closer_type)
-    const [busyToggle, setBusyToggle] = useState<'block' | 'closer' | 'delete' | 'closer_type' | null>(null)
+    const [leadBooking, setLeadBooking] = useState(student.lead_booking_enabled)
+    const [busyToggle, setBusyToggle] = useState<'block' | 'closer' | 'delete' | 'closer_type' | 'leads' | null>(null)
 
     const [toast, setToast] = useState<ToastState | null>(null)
     const [confirm, setConfirm] = useState<ConfirmKind | null>(null)
@@ -238,6 +246,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
             if (res.ok) {
                 setCloserEnabled(next)
                 setCloserType(desiredType)
+                if (!next) setLeadBooking(false) // el servidor retira la autorización junto con el rol
                 showToast(
                     next
                         ? {
@@ -286,6 +295,55 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
             }
         } catch {
             setCloserType(prev)
+        } finally {
+            setBusyToggle(null)
+        }
+    }
+
+    /** Autoriza o retira la entrada del closer al reparto de reuniones de aplica y VSL. */
+    async function toggleLeadBooking() {
+        if (busyToggle) return
+        const next = !leadBooking
+        setBusyToggle('leads')
+        try {
+            const res = await fetch(`/api/admin/students/${student.id}/lead-booking`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: next }),
+            })
+            const data = (await res.json().catch(() => ({}))) as {
+                error?: string
+                calendar_status?: string | null
+                future_meetings?: number
+            }
+            if (!res.ok) {
+                showToast({ tone: 'danger', icon: <AlertTriangle size={15} />, title: 'No se pudo cambiar', body: data.error ?? 'Inténtalo de nuevo.' })
+                return
+            }
+            setLeadBooking(next)
+            const pending = data.future_meetings ?? 0
+            showToast(
+                next
+                    ? {
+                          tone: 'success',
+                          icon: <UserCheck size={15} />,
+                          title: 'Recibe leads',
+                          body:
+                              data.calendar_status === 'active'
+                                  ? `${fullName} ya entra en el reparto de reuniones.`
+                                  : `${fullName} entrará en el reparto en cuanto conecte su Google Calendar desde Mi agenda.`,
+                      }
+                    : {
+                          tone: 'neutral',
+                          icon: <Lock size={15} />,
+                          title: 'Ya no recibe leads nuevos',
+                          body:
+                              pending > 0
+                                  ? `Conserva sus ${pending} ${pending === 1 ? 'reunión pendiente' : 'reuniones pendientes'}: si hay que moverlas, usa Reasignar en cada lead.`
+                                  : `${fullName} sale del reparto de reuniones.`,
+                      },
+            )
+            router.refresh()
         } finally {
             setBusyToggle(null)
         }
@@ -713,6 +771,19 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                                 badge="NUEVO"
                                 onChange={() => setConfirm(closerEnabled ? 'closer-off' : 'closer-on')}
                             />
+
+                            {closerEnabled && (
+                                <ToggleRow
+                                    icon={<UserCheck size={16} />}
+                                    iconTone={leadBooking ? 'cyan' : 'gray'}
+                                    label="Recibe leads"
+                                    helper={leadBookingHelper(leadBooking, student.calendar_status, student.future_meetings)}
+                                    checked={leadBooking}
+                                    disabled={busyToggle === 'leads'}
+                                    activeColor="#38bdf8"
+                                    onChange={toggleLeadBooking}
+                                />
+                            )}
                         </div>
 
                         {closerEnabled && (
@@ -1476,6 +1547,27 @@ function PaymentNotice({ tone, children }: { tone: 'amber' | 'neutral'; children
             <div>{children}</div>
         </div>
     )
+}
+
+/**
+ * Lo que de verdad pasa con el reparto para este closer. Autorizado sin calendario no le trae
+ * nada, y decirlo evita que Iván crea que ya le están llegando reuniones.
+ */
+function leadBookingHelper(enabled: boolean, calendarStatus: string | null, futureMeetings: number): string {
+    if (!enabled) {
+        const pending =
+            futureMeetings > 0
+                ? ` Conserva ${futureMeetings} ${futureMeetings === 1 ? 'reunión pendiente' : 'reuniones pendientes'}.`
+                : ''
+        return `No entra al reparto de reuniones de aplica y del VSL. Puede usar el CRM de ventas y ver su agenda igualmente.${pending}`
+    }
+    if (calendarStatus === 'active') {
+        return 'En el reparto: le llegan reuniones de aplica y del VSL según su horario laboral.'
+    }
+    if (calendarStatus === 'error') {
+        return 'Autorizado, pero su conexión con Google caducó: no le llega nada hasta que la reconecte en Mi agenda.'
+    }
+    return 'Autorizado, pero aún no ha conectado su Google Calendar: no le llegará nada hasta que lo conecte en Mi agenda.'
 }
 
 /* ── Local components ──────────────────────────────────────── */

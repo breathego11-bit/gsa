@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canAccessCRM } from '@/lib/access'
+import { connectionTogglesPool } from '@/lib/calendar/pool'
 import { revokeToken } from '@/lib/calendar/google'
 import { decryptToken } from '@/lib/calendar/crypto'
 import { transferAllMeetings } from '@/lib/calendar/transfer'
@@ -101,10 +102,15 @@ export async function POST(req: NextRequest) {
         console.error('[google] no se pudo revocar el token al desconectar:', err)
     }
 
-    // 3. Borrar la conexión y sacar al miembro del round-robin.
+    // 3. Borrar la conexión. Sin calendario activo ya no entra al reparto en ningún caso; la bandera
+    //    solo se toca en los admins, porque en un closer es la autorización del admin y debe
+    //    sobrevivir a una desconexión (si reconecta, vuelve a recibir sin pedir permiso otra vez).
+    const target = await prisma.user.findUnique({ where: { id: targetUserId }, select: { role: true } })
     await prisma.$transaction([
         prisma.calendarConnection.delete({ where: { id: conn.id } }),
-        prisma.user.update({ where: { id: targetUserId }, data: { lead_booking_enabled: false } }),
+        ...(target && connectionTogglesPool(target.role)
+            ? [prisma.user.update({ where: { id: targetUserId }, data: { lead_booking_enabled: false } })]
+            : []),
     ])
 
     return NextResponse.json({ ok: true, transferred, pastReassigned, warnings })

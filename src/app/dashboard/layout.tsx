@@ -7,6 +7,7 @@ import { MobileNav } from '@/components/layout/MobileNav'
 import { MainContent } from '@/components/layout/MainContent'
 import { AnimatedBackground } from '@/components/layout/AnimatedBackground'
 import { Watermark } from '@/components/layout/Watermark'
+import { canReceiveLeads, showsOwnLeads } from '@/lib/calendar/pool'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions)
@@ -20,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    const [salesCount, leadsNew, user] = await Promise.all([
+    const [salesCount, leadsNew, leadsAssigned, me] = await Promise.all([
         isCloser
             ? prisma.sale.count({
                   where: {
@@ -33,15 +34,31 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isCloser
             ? prisma.lead.count({ where: { assigned_to: session.user.id, status: 'NUEVO' } })
             : Promise.resolve(0),
+        // Cualquier lead asignado: aunque le retiren la autorización, los que ya tiene siguen siendo suyos.
+        isCloser ? prisma.lead.count({ where: { assigned_to: session.user.id } }) : Promise.resolve(0),
         prisma.user.findUnique({
             where: { id: session.user.id },
-            select: { name: true, last_name: true, email: true, profile_image: true },
+            select: {
+                name: true,
+                last_name: true,
+                email: true,
+                profile_image: true,
+                role: true,
+                closer_enabled: true,
+                closer_type: true,
+                lead_booking_enabled: true,
+            },
         }),
     ])
 
-    if (!user) redirect('/api/auth/clear-session')
+    if (!me) redirect('/api/auth/clear-session')
 
-    const badges = isCloser ? { salesCount, leadsNew } : {}
+    // Al menú (componente de cliente) solo le llega lo que pinta; los campos de permisos se quedan aquí.
+    const { role: _role, closer_enabled: _ce, closer_type: _ct, lead_booking_enabled: _lbe, ...user } = me
+
+    const badges = isCloser
+        ? { salesCount, leadsNew, leadsAccess: showsOwnLeads(canReceiveLeads(me), leadsAssigned) }
+        : {}
 
     return (
         <div className="flex h-[100svh] lg:h-screen overflow-hidden relative" style={{ background: 'var(--bg-base)' }}>

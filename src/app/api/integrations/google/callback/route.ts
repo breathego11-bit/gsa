@@ -4,6 +4,7 @@ import { exchangeCode, GOOGLE_SCOPES } from '@/lib/calendar/google'
 import { verifyState } from '@/lib/calendar/state'
 import { encryptToken } from '@/lib/calendar/crypto'
 import { isCloser } from '@/lib/access'
+import { connectionTogglesPool } from '@/lib/calendar/pool'
 
 /**
  * Adónde se vuelve tras el consentimiento: cada rol tiene su propia pantalla de calendario.
@@ -24,8 +25,8 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Callback OAuth de Google. Valida el `state`, intercambia el code por tokens,
- * y hace upsert de la CalendarConnection (refresh_token cifrado). Conectar con éxito
- * marca al miembro como bookable (`lead_booking_enabled = true`).
+ * y hace upsert de la CalendarConnection (refresh_token cifrado). Conectar con éxito mete a un
+ * admin en el reparto (`lead_booking_enabled = true`); a un closer, no (ver `pool.ts`).
  */
 export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams
@@ -71,8 +72,15 @@ export async function GET(req: NextRequest) {
             update: enc,
         })
 
-        // Conectar = entrar al pool de miembros bookables.
-        await prisma.user.update({ where: { id: valid.userId }, data: { lead_booking_enabled: true } })
+        /*
+         * Conectar mete en el reparto solo a los admins, que se gestionan solos. A un closer lo
+         * autoriza un admin desde su ficha: si conectar bastara, cualquier closer se metería él
+         * mismo en el reparto con un clic y absorbería los siguientes leads.
+         */
+        const owner = await prisma.user.findUnique({ where: { id: valid.userId }, select: { role: true } })
+        if (owner && connectionTogglesPool(owner.role)) {
+            await prisma.user.update({ where: { id: valid.userId }, data: { lead_booking_enabled: true } })
+        }
 
         return back('connected')
     } catch {

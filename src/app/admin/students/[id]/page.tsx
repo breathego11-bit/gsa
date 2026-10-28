@@ -5,6 +5,7 @@ import { notFound, redirect } from 'next/navigation'
 import { StudentDetailClient, type TimelineEventDTO } from './StudentDetailClient'
 import type { CourseEnrollmentProgress } from '@/types'
 import { isOverdue, isOwed, livePlanIds, pauseDate } from '@/lib/payment-rules'
+import { countFutureMeetings } from '@/lib/calendar/transfer'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -12,7 +13,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     const { id } = await params
 
-    const [student, enrollments, progressRecords, payments, salesCount, recentSales, paidInvitations] = await Promise.all([
+    const [student, enrollments, progressRecords, payments, salesCount, recentSales, paidInvitations, calendar, futureMeetings] = await Promise.all([
         prisma.user.findUnique({
             where: { id, role: 'STUDENT' },
             select: {
@@ -29,6 +30,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 blocked: true,
                 closer_enabled: true,
                 closer_type: true,
+                lead_booking_enabled: true,
                 welcome_video_bunny_id: true,
                 welcome_video_status: true,
                 welcome_video_uploaded_at: true,
@@ -96,6 +98,12 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             take: 5,
         }),
         prisma.invitation.count({ where: { used_by: id, is_free: false } }),
+        // Para el interruptor "Recibe leads": autorizado no sirve de nada sin calendario conectado.
+        prisma.calendarConnection.findUnique({
+            where: { user_id_provider: { user_id: id, provider: 'GOOGLE' } },
+            select: { status: true },
+        }),
+        countFutureMeetings(id),
     ])
 
     if (!student) notFound()
@@ -243,6 +251,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 blocked: student.blocked,
                 closer_enabled: student.closer_enabled,
                 closer_type: student.closer_type,
+                lead_booking_enabled: student.lead_booking_enabled,
+                calendar_status: calendar?.status ?? null,
+                future_meetings: futureMeetings,
                 welcome_video_bunny_id: student.welcome_video_bunny_id,
                 welcome_video_status: student.welcome_video_status,
                 welcome_video_uploaded_at: student.welcome_video_uploaded_at?.toISOString() ?? null,

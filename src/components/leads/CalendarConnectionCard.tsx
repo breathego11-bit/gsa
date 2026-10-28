@@ -1,5 +1,6 @@
 import { CalendarPlus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { POOL_MEMBER_WHERE, canReceiveLeads } from '@/lib/calendar/pool'
 import { Card } from '@/components/ui/Card'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
 import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
@@ -8,11 +9,15 @@ import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
  * Tarjeta de conexión del Google Calendar **del propio usuario**: conectar, reconectar y
  * desconectar traspasando sus reuniones.
  *
- * Conectar equivale a entrar al reparto de leads (`lead_booking_enabled` se activa en el callback
- * de OAuth), así que el texto lo dice explícitamente: es la consecuencia que importa.
+ * Para un closer, conectar NO lo mete en el reparto: eso lo autoriza un admin (ver `pool.ts`). El
+ * texto distingue los casos, porque "conectado" a secas hacía pensar que ya iban a llegarle leads.
  */
 export async function CalendarConnectionCard({ userId }: { userId: string }) {
-    const [connection, futureMeetings, members] = await Promise.all([
+    const [me, connection, futureMeetings, members] = await Promise.all([
+        prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, closer_enabled: true, closer_type: true, lead_booking_enabled: true },
+        }),
         prisma.calendarConnection.findUnique({
             where: { user_id_provider: { user_id: userId, provider: 'GOOGLE' } },
             select: { status: true, account_email: true },
@@ -28,8 +33,8 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
          */
         prisma.user.findMany({
             where: {
+                ...POOL_MEMBER_WHERE,
                 id: { not: userId },
-                lead_booking_enabled: true,
                 calendars: { some: { provider: 'GOOGLE', status: 'active' } },
             },
             select: { id: true, name: true, last_name: true },
@@ -38,6 +43,20 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
     ])
 
     const connected = connection?.status === 'active'
+    const authorized = me ? canReceiveLeads(me) : false
+    const account = connection?.account_email || 'tu cuenta'
+
+    const status = connected
+        ? authorized
+            ? `Conectado · ${account} — ya entras en el reparto de leads`
+            : `Conectado · ${account} — ves tu agenda aquí. Recibir leads lo activa un admin`
+        : connection?.status === 'error'
+          ? authorized
+              ? 'Conexión con error — reconéctala para volver a recibir reuniones'
+              : 'Conexión con error — reconéctala para volver a ver tu agenda'
+          : authorized
+            ? 'Conecta tu Google para empezar a recibir leads y que se creen tus reuniones'
+            : 'Conecta tu Google para ver tu agenda aquí'
     const transferTargets = members.map((m) => ({ id: m.id, name: `${m.name} ${m.last_name}`.trim() }))
 
     return (
@@ -58,11 +77,7 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
                             Google Calendar
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                            {connected
-                                ? `Conectado · ${connection?.account_email || 'tu cuenta'} — ya entras en el reparto de leads`
-                                : connection?.status === 'error'
-                                  ? 'Conexión con error — reconéctala para volver a recibir reuniones'
-                                  : 'Conecta tu Google para que te asignen leads y se creen tus reuniones'}
+                            {status}
                         </p>
                     </div>
                 </div>

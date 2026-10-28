@@ -5,6 +5,7 @@ import { CalendarPlus, Video } from 'lucide-react'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isCloser } from '@/lib/access'
+import { canReceiveLeads } from '@/lib/calendar/pool'
 import { Card } from '@/components/ui/Card'
 import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
 import { LEAD_STATUS_META, fmtLeadDate, fmtMeetingShort, igHandle, sortOwnLeads } from '@/lib/leads/display'
@@ -23,7 +24,7 @@ export default async function CloserLeadsPage() {
     if (!session) redirect('/auth')
     if (!isCloser(session.user)) redirect(session.user.role === 'ADMIN' ? '/admin/leads' : '/dashboard')
 
-    const [leads, connection] = await Promise.all([
+    const [leads, connection, me] = await Promise.all([
         prisma.lead.findMany({
             where: { assigned_to: session.user.id },
             orderBy: [{ meeting_at: 'asc' }, { created_at: 'desc' }],
@@ -48,12 +49,18 @@ export default async function CloserLeadsPage() {
             where: { user_id_provider: { user_id: session.user.id, provider: 'GOOGLE' } },
             select: { status: true },
         }),
+        prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true, closer_enabled: true, closer_type: true, lead_booking_enabled: true },
+        }),
     ])
 
     const sorted = sortOwnLeads(leads)
 
     const nuevos = leads.filter((l) => l.status === 'NUEVO').length
     const connected = connection?.status === 'active'
+    // Recibir leads lo autoriza un admin; conectar el calendario no basta (ver pool.ts).
+    const authorized = me ? canReceiveLeads(me) : false
 
     return (
         <div className="space-y-6">
@@ -66,10 +73,29 @@ export default async function CloserLeadsPage() {
             </div>
 
             {/*
-              * Sin calendario conectado el reparto no le asigna nada, así que un closer nuevo
-              * vería esta pantalla vacía sin entender por qué. El aviso lo manda a conectarlo.
+              * Sin autorización no le llega ningún lead nuevo. Se dice claramente para que no lo
+              * interprete como un fallo: los que ya tenía siguen aquí y los puede gestionar.
               */}
-            {!connected && (
+            {!authorized && (
+                <div
+                    className="px-4 py-3 rounded-xl text-sm"
+                    style={{ background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)' }}
+                >
+                    <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                        Ahora mismo no recibes leads nuevos
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                        El reparto de reuniones lo activa un admin. Los leads que ya tienes asignados siguen siendo
+                        tuyos y los puedes gestionar desde aquí.
+                    </p>
+                </div>
+            )}
+
+            {/*
+              * Autorizado pero sin calendario: el reparto no le asigna nada, así que vería esta
+              * pantalla vacía sin entender por qué. El aviso lo manda a conectarlo.
+              */}
+            {authorized && !connected && (
                 <div
                     className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm"
                     style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}
