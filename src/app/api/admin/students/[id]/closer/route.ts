@@ -35,6 +35,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
     }
 
+    // El rol de closer es de estudiantes. Sin esta comprobación, la API dejaba "quitarle el rol"
+    // a un admin y tocar sus datos de reparto.
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    if (!target) return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
+    if (target.role !== 'STUDENT') {
+        return NextResponse.json({ error: 'Solo se puede hacer closer a un estudiante' }, { status: 400 })
+    }
+
     let closerEnabled: boolean
     let closerType: CloserType | null
 
@@ -76,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             closer_type: closerType,
             // Sin rol de closer no hay autorización para recibir leads: si se conservara, volvería a
             // entrar al reparto en cuanto alguien le reactivara el rol, sin que nadie lo decidiera.
-            ...(closerEnabled ? {} : { lead_booking_enabled: false }),
+            ...(closerEnabled ? {} : { lead_booking_authorized: false }),
         },
         select: { id: true, closer_enabled: true, closer_type: true },
     })

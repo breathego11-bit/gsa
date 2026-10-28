@@ -1,54 +1,83 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { POOL_MEMBER_WHERE, canReceiveLeads, connectionTogglesPool, showsOwnLeads, type PoolCandidate } from './pool.ts'
+import {
+    POOL_MEMBER_WHERE,
+    TEAM_MEMBER_WHERE,
+    canReceiveLeads,
+    disconnectRevokesAuthorization,
+    isLeadAuthorized,
+    showsOwnLeads,
+    type PoolCandidate,
+} from './pool.ts'
 
 /**
- * Quién entra al reparto de leads (spec_closer_leads_access.md). Es la regla que evita que un
+ * Quién entra al reparto de leads (spec_closer_leads_review_fixes.md). Es la regla que evita que un
  * closer se meta solo en el reparto y absorba las reuniones de aplica y del VSL.
+ *
+ * `lead_booking_enabled`    = conectó su calendario para el reparto (lo escriben conectar/desconectar).
+ * `lead_booking_authorized` = un admin autorizó a este closer.
  */
 
 function who(over: Partial<PoolCandidate>): PoolCandidate {
-    return { role: 'STUDENT', closer_enabled: false, closer_type: null, lead_booking_enabled: false, ...over }
+    return {
+        role: 'STUDENT',
+        closer_enabled: false,
+        closer_type: null,
+        lead_booking_enabled: false,
+        lead_booking_authorized: false,
+        ...over,
+    }
 }
 
-const ADMIN_IN = who({ role: 'ADMIN', lead_booking_enabled: true })
-const ADMIN_OUT = who({ role: 'ADMIN', lead_booking_enabled: false })
-const CLOSER_AUTH = who({ closer_enabled: true, closer_type: 'CRM_ONLY', lead_booking_enabled: true })
-const CLOSER_NOAUTH = who({ closer_enabled: true, closer_type: 'CRM_AND_COURSES', lead_booking_enabled: false })
+const CLOSER = { closer_enabled: true, closer_type: 'CRM_ONLY' as const }
 
-test('entra al reparto: admin o closer, y autorizado', () => {
-    assert.ok(canReceiveLeads(ADMIN_IN))
-    assert.ok(canReceiveLeads(CLOSER_AUTH))
+test('el admin entra al reparto con solo conectar; no necesita autorización', () => {
+    assert.ok(canReceiveLeads(who({ role: 'ADMIN', lead_booking_enabled: true })))
+    assert.ok(!canReceiveLeads(who({ role: 'ADMIN', lead_booking_enabled: false })))
+    assert.ok(isLeadAuthorized(who({ role: 'ADMIN' })))
 })
 
-test('un closer sin autorización no recibe leads aunque conecte su calendario', () => {
-    assert.ok(!canReceiveLeads(CLOSER_NOAUTH))
-    assert.ok(!canReceiveLeads(ADMIN_OUT))
+test('un closer necesita las dos cosas: calendario conectado y autorización del admin', () => {
+    assert.ok(canReceiveLeads(who({ ...CLOSER, lead_booking_enabled: true, lead_booking_authorized: true })))
+    // Conectó por su cuenta, pero nadie lo autorizó: es el caso que había que cerrar.
+    assert.ok(!canReceiveLeads(who({ ...CLOSER, lead_booking_enabled: true, lead_booking_authorized: false })))
+    // Autorizado, pero sin calendario: no hay dónde crearle las reuniones.
+    assert.ok(!canReceiveLeads(who({ ...CLOSER, lead_booking_enabled: false, lead_booking_authorized: true })))
 })
 
-test('a quien se le quitó el rol de closer no recibe leads aunque conserve la bandera', () => {
-    // El hueco que había: el reparto solo miraba la bandera, no si seguía siendo closer.
-    const exCloser = who({ closer_enabled: false, closer_type: null, lead_booking_enabled: true })
-    const halfCloser = who({ closer_enabled: true, closer_type: null, lead_booking_enabled: true })
-    const student = who({ lead_booking_enabled: true })
-    for (const u of [exCloser, halfCloser, student]) {
+test('al desplegar, un closer que ya había conectado con la regla vieja NO queda autorizado', () => {
+    // La columna nueva nace en false: conserva lead_booking_enabled, pero eso ya no basta.
+    const legacy = who({ ...CLOSER, lead_booking_enabled: true })
+    assert.ok(!isLeadAuthorized(legacy))
+    assert.ok(!canReceiveLeads(legacy))
+})
+
+test('sin rol de closer no hay reparto, aunque conserve las dos banderas', () => {
+    const flags = { lead_booking_enabled: true, lead_booking_authorized: true }
+    for (const u of [
+        who({ ...flags }), // estudiante
+        who({ ...flags, closer_enabled: false, closer_type: null }), // ex-closer
+        who({ ...flags, closer_enabled: true, closer_type: null }), // interruptor sin tipo
+    ]) {
         assert.ok(!canReceiveLeads(u))
+        assert.ok(!isLeadAuthorized(u))
     }
 })
 
 test('la condición de Prisma exige lo mismo que la versión pura', () => {
-    // No se puede ejecutar la consulta sin base de datos, pero sí comprobar que pide las dos cosas.
+    // No se puede ejecutar la consulta sin base de datos, pero sí comprobar que pide las tres cosas.
     assert.equal(POOL_MEMBER_WHERE.lead_booking_enabled, true)
     assert.deepEqual(POOL_MEMBER_WHERE.OR, [
         { role: 'ADMIN' },
-        { closer_enabled: true, closer_type: { not: null } },
+        { closer_enabled: true, closer_type: { not: null }, lead_booking_authorized: true },
     ])
+    // El equipo (para asignar a mano) no exige autorización, pero sí ser admin o closer.
+    assert.deepEqual(TEAM_MEMBER_WHERE.OR, [{ role: 'ADMIN' }, { closer_enabled: true, closer_type: { not: null } }])
 })
 
-test('conectar o desconectar solo mueve del reparto a los admins', () => {
-    assert.ok(connectionTogglesPool('ADMIN'))
-    // En un closer la bandera es la autorización del admin: ni la da conectar ni la quita desconectar.
-    assert.ok(!connectionTogglesPool('STUDENT'))
+test('desconectar a otro es una baja: retira la autorización; desconectarse a sí mismo, no', () => {
+    assert.ok(disconnectRevokesAuthorization('admin_1', 'closer_9'))
+    assert.ok(!disconnectRevokesAuthorization('closer_9', 'closer_9'))
 })
 
 test('"Mis leads" se ve si está autorizado o si tiene leads de antes', () => {

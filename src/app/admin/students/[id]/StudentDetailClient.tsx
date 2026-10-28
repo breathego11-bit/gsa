@@ -44,8 +44,8 @@ interface StudentInfo {
     blocked: boolean
     closer_enabled: boolean
     closer_type: CloserType | null
-    /** Autorizado por un admin a recibir leads (ver pool.ts). */
-    lead_booking_enabled: boolean
+    /** Autorizado por un admin a recibir leads (`lead_booking_authorized`, ver pool.ts). */
+    lead_booking_authorized: boolean
     /** Estado de su Google Calendar: sin conexión activa, la autorización no le trae nada. */
     calendar_status: string | null
     /** Reuniones futuras que tiene asignadas: las conserva aunque se le retire la autorización. */
@@ -166,7 +166,7 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
     const [blocked, setBlocked] = useState(student.blocked)
     const [closerEnabled, setCloserEnabled] = useState(student.closer_enabled)
     const [closerType, setCloserType] = useState<CloserType | null>(student.closer_type)
-    const [leadBooking, setLeadBooking] = useState(student.lead_booking_enabled)
+    const [leadBooking, setLeadBooking] = useState(student.lead_booking_authorized)
     const [busyToggle, setBusyToggle] = useState<'block' | 'closer' | 'delete' | 'closer_type' | 'leads' | null>(null)
 
     const [toast, setToast] = useState<ToastState | null>(null)

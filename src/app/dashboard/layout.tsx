@@ -7,7 +7,8 @@ import { MobileNav } from '@/components/layout/MobileNav'
 import { MainContent } from '@/components/layout/MainContent'
 import { AnimatedBackground } from '@/components/layout/AnimatedBackground'
 import { Watermark } from '@/components/layout/Watermark'
-import { canReceiveLeads, showsOwnLeads } from '@/lib/calendar/pool'
+import { isLeadAuthorized, showsOwnLeads } from '@/lib/calendar/pool'
+import { getAccessProfile } from '@/lib/access-profile'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions)
@@ -36,28 +37,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
             : Promise.resolve(0),
         // Cualquier lead asignado: aunque le retiren la autorización, los que ya tiene siguen siendo suyos.
         isCloser ? prisma.lead.count({ where: { assigned_to: session.user.id } }) : Promise.resolve(0),
-        prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: {
-                name: true,
-                last_name: true,
-                email: true,
-                profile_image: true,
-                role: true,
-                closer_enabled: true,
-                closer_type: true,
-                lead_booking_enabled: true,
-            },
-        }),
+        // Cacheado por petición: la página y la tarjeta de conexión lo vuelven a pedir sin otra consulta.
+        getAccessProfile(session.user.id),
     ])
 
     if (!me) redirect('/api/auth/clear-session')
 
     // Al menú (componente de cliente) solo le llega lo que pinta; los campos de permisos se quedan aquí.
-    const { role: _role, closer_enabled: _ce, closer_type: _ct, lead_booking_enabled: _lbe, ...user } = me
+    const user = { name: me.name, last_name: me.last_name, email: me.email, profile_image: me.profile_image }
 
     const badges = isCloser
-        ? { salesCount, leadsNew, leadsAccess: showsOwnLeads(canReceiveLeads(me), leadsAssigned) }
+        ? { salesCount, leadsNew, leadsAccess: showsOwnLeads(isLeadAuthorized(me), leadsAssigned) }
         : {}
 
     return (

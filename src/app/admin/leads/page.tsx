@@ -29,7 +29,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
     const session = await getServerSession(authOptions)
     const myUserId = session?.user?.id
 
-    const [leads, members, myConnection, myFutureMeetings] = await Promise.all([
+    const [leads, members, myConnection, myFutureMeetings, pendingClosers] = await Promise.all([
         prisma.lead.findMany({
             where: assigneeFilter ? { assigned_to: assigneeFilter } : {},
             orderBy: { created_at: 'desc' },
@@ -85,6 +85,21 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
         // Reuniones futuras propias: hay que saberlas ANTES de ofrecer la desconexión, porque son
         // las que quedarían atrapadas en el calendario si se suelta la conexión sin traspasarlas.
         myUserId ? countFutureMeetings(myUserId) : Promise.resolve(0),
+        /*
+         * Closers que ya conectaron su calendario pero a los que nadie ha autorizado a recibir leads.
+         * No están en el reparto, así que no salen en la tabla de arriba; sin esta lista, Iván no
+         * vería en ningún sitio quién está listo para que lo active.
+         */
+        prisma.user.findMany({
+            where: {
+                closer_enabled: true,
+                closer_type: { not: null },
+                lead_booking_authorized: false,
+                calendars: { some: { provider: 'GOOGLE', status: 'active' } },
+            },
+            select: { id: true, name: true, last_name: true },
+            orderBy: { name: 'asc' },
+        }),
     ])
 
     // En el pool del round-robin pero sin calendario activo: no pueden recibir reuniones.
@@ -253,6 +268,31 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                     </div>
                                 )
                             })}
+                        </div>
+                    </div>
+                )}
+
+                {pendingClosers.length > 0 && (
+                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                        <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>
+                            Conectados que todavía no reciben leads
+                        </p>
+                        <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+                            Tienen su calendario conectado, pero no entran al reparto hasta que actives
+                            &quot;Recibe leads&quot; en su ficha.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {pendingClosers.map((c) => (
+                                <Link
+                                    key={c.id}
+                                    href={`/admin/students/${c.id}`}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                >
+                                    {`${c.name} ${c.last_name}`.trim()}
+                                    <span style={{ color: 'var(--blue-accent)' }}>· Activar</span>
+                                </Link>
+                            ))}
                         </div>
                     </div>
                 )}

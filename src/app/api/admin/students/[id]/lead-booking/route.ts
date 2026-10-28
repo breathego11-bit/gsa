@@ -6,10 +6,11 @@ import { isCloser } from '@/lib/access'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
 
 /**
- * Interruptor "Recibe leads" de un closer: autoriza o retira su entrada al reparto de reuniones.
+ * Interruptor "Recibe leads" de un closer: autoriza o retira su entrada al reparto de reuniones
+ * (`lead_booking_authorized`).
  *
- * Conectar el calendario ya no basta para que a un closer le lleguen leads (ver `pool.ts`): lo
- * decide un admin desde aquí. Retirarlo solo corta los leads **nuevos**; las reuniones que ya
+ * Conectar el calendario no basta para que a un closer le lleguen leads (ver `pool.ts`): lo decide
+ * un admin desde aquí. Retirarlo solo corta los leads **nuevos**; las reuniones que ya
  * tiene siguen siendo suyas y se mueven con "Reasignar" en cada lead.
  *
  * Body: { enabled: boolean }
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         select: { role: true, payment_status: true, closer_enabled: true, closer_type: true },
     })
     if (!user) return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
-    // Los admins entran y salen del reparto conectando y desconectando su calendario.
+    // Los admins no necesitan autorización: entran y salen del reparto conectando y desconectando.
     if (user.role === 'ADMIN') {
         return NextResponse.json({ error: 'Los admins entran al reparto al conectar su calendario' }, { status: 400 })
     }
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const [, connection, futureMeetings] = await Promise.all([
-        prisma.user.update({ where: { id }, data: { lead_booking_enabled: body.enabled } }),
+        prisma.user.update({ where: { id }, data: { lead_booking_authorized: body.enabled } }),
         prisma.calendarConnection.findUnique({
             where: { user_id_provider: { user_id: id, provider: 'GOOGLE' } },
             select: { status: true },

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canAccessCRM } from '@/lib/access'
-import { connectionTogglesPool } from '@/lib/calendar/pool'
+import { disconnectRevokesAuthorization } from '@/lib/calendar/pool'
 import { revokeToken } from '@/lib/calendar/google'
 import { decryptToken } from '@/lib/calendar/crypto'
 import { transferAllMeetings } from '@/lib/calendar/transfer'
@@ -102,15 +102,17 @@ export async function POST(req: NextRequest) {
         console.error('[google] no se pudo revocar el token al desconectar:', err)
     }
 
-    // 3. Borrar la conexión. Sin calendario activo ya no entra al reparto en ningún caso; la bandera
-    //    solo se toca en los admins, porque en un closer es la autorización del admin y debe
-    //    sobrevivir a una desconexión (si reconecta, vuelve a recibir sin pedir permiso otra vez).
-    const target = await prisma.user.findUnique({ where: { id: targetUserId }, select: { role: true } })
+    // 3. Borrar la conexión y sacar al miembro del round-robin (como siempre, para todos los roles).
+    //    Si es un admin quien desconecta a OTRA persona, es una baja del equipo: se le retira también
+    //    la autorización de closer, porque si no podría volver a conectar y seguir recibiendo leads.
+    //    Si se desconecta él mismo, la conserva y al reconectar vuelve a recibir sin pedir permiso.
+    const revoke = disconnectRevokesAuthorization(session.user.id, targetUserId)
     await prisma.$transaction([
         prisma.calendarConnection.delete({ where: { id: conn.id } }),
-        ...(target && connectionTogglesPool(target.role)
-            ? [prisma.user.update({ where: { id: targetUserId }, data: { lead_booking_enabled: false } })]
-            : []),
+        prisma.user.update({
+            where: { id: targetUserId },
+            data: { lead_booking_enabled: false, ...(revoke ? { lead_booking_authorized: false } : {}) },
+        }),
     ])
 
     return NextResponse.json({ ok: true, transferred, pastReassigned, warnings })

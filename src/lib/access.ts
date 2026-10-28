@@ -26,8 +26,10 @@ export function hasActivePayment(u: { payment_status: string }): boolean {
     return u.payment_status === 'active' || u.payment_status === 'complimentary'
 }
 
-/** True when the user has been enabled as a closer AND has a type assigned. */
-export function isCloser(u: AccessUser): boolean {
+/** True when the user has been enabled as a closer AND has a type assigned.
+ *  Solo pide los dos campos que mira: así la usan también el reparto (`pool.ts`) y los permisos del
+ *  CRM (`leads/permissions.ts`) sin reescribir la regla en cada sitio. */
+export function isCloser(u: Pick<AccessUser, 'closer_enabled' | 'closer_type'>): boolean {
     return u.closer_enabled === true && u.closer_type !== null
 }
 

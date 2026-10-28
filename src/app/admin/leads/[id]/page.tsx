@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { notFound, redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
+import { POOL_MEMBER_WHERE, TEAM_MEMBER_WHERE } from '@/lib/calendar/pool'
 import { AttributionCard } from '@/components/leads/AttributionCard'
 import { LeadAssigneeControl } from '@/components/leads/LeadAssigneeControl'
 import { LeadDetailView, LEAD_DETAIL_SELECT } from '@/components/leads/LeadDetailView'
@@ -23,12 +23,22 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
          * esté activo ahora mismo: con el consent screen en modo Testing los tokens caducan cada
          * 7 días, así que el responsable actual de un lead puede tener la conexión caída de forma
          * rutinaria. Si se filtrara solo por activos, su propio lead aparecería como "Sin asignar".
+         *
+         * Y siempre gente del equipo (admin o closer): un ex-closer conserva su calendario
+         * conectado, y ofrecerlo terminaba en "El destinatario no tiene acceso al CRM". Un closer
+         * sin autorización para el reparto SÍ sale: asignarle un lead a mano es una decisión
+         * explícita del admin; la autorización solo gobierna el reparto automático.
          */
         prisma.user.findMany({
             where: {
-                OR: [
-                    { calendars: { some: { provider: 'GOOGLE', status: 'active' } } },
-                    POOL_MEMBER_WHERE,
+                AND: [
+                    TEAM_MEMBER_WHERE,
+                    {
+                        OR: [
+                            { calendars: { some: { provider: 'GOOGLE', status: 'active' } } },
+                            POOL_MEMBER_WHERE,
+                        ],
+                    },
                 ],
             },
             select: {

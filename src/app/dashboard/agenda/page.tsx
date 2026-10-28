@@ -57,7 +57,13 @@ export default async function CloserAgendaPage({
                 </div>
             )}
 
-            <AgendaView agenda={agenda} stats={stats} basePath="/dashboard/agenda" leadHrefBase="/dashboard/leads">
+            <AgendaView
+                agenda={agenda}
+                stats={stats}
+                basePath="/dashboard/agenda"
+                leadHrefBase="/dashboard/leads"
+                connectionCardShown
+            >
                 <CalendarConnectionCard userId={session.user.id} />
             </AgendaView>
         </div>

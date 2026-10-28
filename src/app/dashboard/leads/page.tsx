@@ -5,7 +5,8 @@ import { CalendarPlus, Video } from 'lucide-react'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isCloser } from '@/lib/access'
-import { canReceiveLeads } from '@/lib/calendar/pool'
+import { isLeadAuthorized } from '@/lib/calendar/pool'
+import { getAccessProfile } from '@/lib/access-profile'
 import { Card } from '@/components/ui/Card'
 import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
 import { LEAD_STATUS_META, fmtLeadDate, fmtMeetingShort, igHandle, sortOwnLeads } from '@/lib/leads/display'
@@ -26,8 +27,8 @@ export default async function CloserLeadsPage() {
 
     const [leads, connection, me] = await Promise.all([
         prisma.lead.findMany({
+            // Sin `orderBy`: el orden lo decide `sortOwnLeads` (próxima reunión primero).
             where: { assigned_to: session.user.id },
-            orderBy: [{ meeting_at: 'asc' }, { created_at: 'desc' }],
             select: {
                 id: true,
                 full_name: true,
@@ -49,10 +50,7 @@ export default async function CloserLeadsPage() {
             where: { user_id_provider: { user_id: session.user.id, provider: 'GOOGLE' } },
             select: { status: true },
         }),
-        prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true, closer_enabled: true, closer_type: true, lead_booking_enabled: true },
-        }),
+        getAccessProfile(session.user.id),
     ])
 
     const sorted = sortOwnLeads(leads)
@@ -60,7 +58,7 @@ export default async function CloserLeadsPage() {
     const nuevos = leads.filter((l) => l.status === 'NUEVO').length
     const connected = connection?.status === 'active'
     // Recibir leads lo autoriza un admin; conectar el calendario no basta (ver pool.ts).
-    const authorized = me ? canReceiveLeads(me) : false
+    const authorized = me ? isLeadAuthorized(me) : false
 
     return (
         <div className="space-y-6">

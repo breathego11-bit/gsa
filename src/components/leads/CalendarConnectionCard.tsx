@@ -1,6 +1,7 @@
 import { CalendarPlus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
-import { POOL_MEMBER_WHERE, canReceiveLeads } from '@/lib/calendar/pool'
+import { POOL_MEMBER_WHERE, isLeadAuthorized } from '@/lib/calendar/pool'
+import { getAccessProfile } from '@/lib/access-profile'
 import { Card } from '@/components/ui/Card'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
 import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
@@ -14,10 +15,7 @@ import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
  */
 export async function CalendarConnectionCard({ userId }: { userId: string }) {
     const [me, connection, futureMeetings, members] = await Promise.all([
-        prisma.user.findUnique({
-            where: { id: userId },
-            select: { role: true, closer_enabled: true, closer_type: true, lead_booking_enabled: true },
-        }),
+        getAccessProfile(userId),
         prisma.calendarConnection.findUnique({
             where: { user_id_provider: { user_id: userId, provider: 'GOOGLE' } },
             select: { status: true, account_email: true },
@@ -43,7 +41,7 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
     ])
 
     const connected = connection?.status === 'active'
-    const authorized = me ? canReceiveLeads(me) : false
+    const authorized = me ? isLeadAuthorized(me) : false
     const account = connection?.account_email || 'tu cuenta'
 
     const status = connected

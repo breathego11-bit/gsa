@@ -1,4 +1,6 @@
 import type { CloserType, LeadStatus } from '@prisma/client'
+// Ruta relativa (no `@/`) para que los tests la carguen sin el bundler de Next.
+import { isCloser } from '../access.ts'
 
 /**
  * Quién puede editar qué lead desde el CRM — decisión PURA, sin Prisma ni sesión, para poder
@@ -41,8 +43,7 @@ export type LeadPatchDecision =
  */
 export function decideLeadPatch(user: LeadEditor, body: LeadPatchBody): LeadPatchDecision {
     const isAdmin = user.role === 'ADMIN'
-    const isCloser = user.closer_enabled === true && user.closer_type !== null
-    if (!isAdmin && !isCloser) {
+    if (!isAdmin && !isCloser(user)) {
         return { ok: false, code: 403, error: 'Sin acceso al CRM' }
     }
 
