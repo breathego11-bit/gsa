@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canAccessCRM } from '@/lib/access'
-import { disconnectRevokesAuthorization } from '@/lib/calendar/pool'
+import { SELF_SERVICE_TARGET_WHERE, disconnectRevokesAuthorization } from '@/lib/calendar/pool'
 import { revokeToken } from '@/lib/calendar/google'
 import { decryptToken } from '@/lib/calendar/crypto'
 import { transferAllMeetings } from '@/lib/calendar/transfer'
@@ -44,6 +44,20 @@ export async function POST(req: NextRequest) {
     }
     if (transferTo === targetUserId) {
         return NextResponse.json({ error: 'No se pueden transferir las reuniones al mismo miembro' }, { status: 400 })
+    }
+    /*
+     * Un closer solo puede pasar sus reuniones a alguien del reparto con el calendario activo: es la
+     * misma lista que le enseña el diálogo, pero hay que exigirla aquí porque la API aceptaba
+     * cualquier `transfer_to`. Un admin puede pasarlas a cualquier miembro del equipo.
+     */
+    if (transferTo && session.user.role !== 'ADMIN') {
+        const allowed = await prisma.user.count({ where: { ...SELF_SERVICE_TARGET_WHERE, id: transferTo } })
+        if (allowed === 0) {
+            return NextResponse.json(
+                { error: 'Solo puedes pasar tus reuniones a alguien que esté recibiendo leads' },
+                { status: 400 },
+            )
+        }
     }
 
     const conn = await prisma.calendarConnection.findUnique({

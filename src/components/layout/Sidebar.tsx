@@ -12,6 +12,7 @@ import {
     isNavItemActive,
     type NavItem,
     type Role,
+    type NavCaps,
     type SidebarBadges,
     type UserBrief,
 } from './nav-config'
@@ -26,6 +27,7 @@ interface SidebarProps {
     closerType?: CloserType | null
     user: UserBrief
     badges?: SidebarBadges
+    caps?: NavCaps
 }
 
 // `.v2` a propósito: la clave anterior se escribía sola en cada carga, así que sus valores
@@ -34,13 +36,13 @@ const COLLAPSE_KEY = 'gsa.sidebar.collapsed.v2'
 const WIDTH_EXPANDED = 264
 const WIDTH_COLLAPSED = 68
 
-export function Sidebar({ role, closerEnabled = false, closerType = null, user, badges }: SidebarProps) {
+export function Sidebar({ role, closerEnabled = false, closerType = null, user, badges, caps }: SidebarProps) {
     const pathname = usePathname()
     const isAdmin = role === 'ADMIN'
     const isCloser = closerEnabled && closerType !== null
     const groups = isAdmin
         ? buildAdminGroups(badges)
-        : buildStudentGroups(closerEnabled, closerType, badges)
+        : buildStudentGroups(closerEnabled, closerType, badges, caps)
 
     /*
      * Colapsado por defecto; `localStorage` solo guarda decisiones EXPLÍCITAS.

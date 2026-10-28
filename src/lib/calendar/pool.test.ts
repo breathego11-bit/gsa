@@ -1,7 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+    CLOSER_WHERE,
     POOL_MEMBER_WHERE,
+    SELF_SERVICE_TARGET_WHERE,
     TEAM_MEMBER_WHERE,
     canReceiveLeads,
     disconnectRevokesAuthorization,
@@ -73,6 +75,22 @@ test('la condición de Prisma exige lo mismo que la versión pura', () => {
     ])
     // El equipo (para asignar a mano) no exige autorización, pero sí ser admin o closer.
     assert.deepEqual(TEAM_MEMBER_WHERE.OR, [{ role: 'ADMIN' }, { closer_enabled: true, closer_type: { not: null } }])
+})
+
+test('un closer solo puede pasar sus reuniones a alguien del reparto con calendario activo', () => {
+    // Es lo que exige /google/disconnect a un no-admin: sin esto, la API aceptaba cualquier
+    // transfer_to con acceso al CRM, incluido alguien que el admin dejó fuera del reparto.
+    assert.equal(SELF_SERVICE_TARGET_WHERE.lead_booking_enabled, true)
+    assert.deepEqual(SELF_SERVICE_TARGET_WHERE.OR, POOL_MEMBER_WHERE.OR)
+    assert.deepEqual(SELF_SERVICE_TARGET_WHERE.calendars, { some: { provider: 'GOOGLE', status: 'active' } })
+})
+
+test('la definición de closer es una sola en todas las consultas', () => {
+    assert.deepEqual(CLOSER_WHERE, { closer_enabled: true, closer_type: { not: null } })
+    assert.deepEqual(TEAM_MEMBER_WHERE.OR[1], CLOSER_WHERE)
+    const { lead_booking_authorized, ...closerPart } = POOL_MEMBER_WHERE.OR[1] as Record<string, unknown>
+    assert.equal(lead_booking_authorized, true)
+    assert.deepEqual(closerPart, CLOSER_WHERE)
 })
 
 test('desconectar a otro es una baja: retira la autorización; desconectarse a sí mismo, no', () => {

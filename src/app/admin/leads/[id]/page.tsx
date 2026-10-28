@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { POOL_MEMBER_WHERE, TEAM_MEMBER_WHERE } from '@/lib/calendar/pool'
 import { AttributionCard } from '@/components/leads/AttributionCard'
 import { LeadAssigneeControl } from '@/components/leads/LeadAssigneeControl'
-import { LeadDetailView, LEAD_DETAIL_SELECT } from '@/components/leads/LeadDetailView'
+import { LeadDetailView, LEAD_ADMIN_DETAIL_SELECT } from '@/components/leads/LeadDetailView'
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -14,7 +14,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
     const { id } = await params
 
     const [lead, bookableMembers] = await Promise.all([
-        prisma.lead.findUnique({ where: { id }, select: LEAD_DETAIL_SELECT }),
+        prisma.lead.findUnique({ where: { id }, select: LEAD_ADMIN_DETAIL_SELECT }),
         /*
          * Quien puede RECIBIR la reunión: solo miembros con calendario activo, porque sin conexión
          * no hay dónde crear el evento.

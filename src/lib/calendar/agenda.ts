@@ -30,7 +30,17 @@ export interface LoadedAgenda {
     workingHours: unknown
 }
 
-export async function loadAgenda(userId: string, weekParam: unknown): Promise<LoadedAgenda> {
+/**
+ * `ownLeadsOnly`: solo enlaza a la ficha las reuniones de leads **asignados a este usuario**. Lo usa
+ * la agenda del closer, cuya ficha (`/dashboard/leads/[id]`) solo abre sus propios leads: si un lead
+ * se reasignó y el evento siguió en su calendario, el enlace acababa en un 404. El admin puede abrir
+ * cualquier lead, así que en su agenda se enlazan todos.
+ */
+export async function loadAgenda(
+    userId: string,
+    weekParam: unknown,
+    { ownLeadsOnly = false }: { ownLeadsOnly?: boolean } = {},
+): Promise<LoadedAgenda> {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -97,7 +107,7 @@ export async function loadAgenda(userId: string, weekParam: unknown): Promise<Lo
     const ids = events.map((e) => e.id)
     const leads = ids.length
         ? await prisma.lead.findMany({
-              where: { google_event_id: { in: ids } },
+              where: { google_event_id: { in: ids }, ...(ownLeadsOnly ? { assigned_to: userId } : {}) },
               select: { id: true, google_event_id: true },
           })
         : []

@@ -12,7 +12,9 @@ export const dynamic = 'force-dynamic'
  *
  * Body: { from_user_id, to_user_id }
  *
- * Cada uno puede mover lo suyo; un ADMIN puede mover lo de cualquiera.
+ * Solo admins. Un closer pasa sus reuniones al desconectar su calendario (`/google/disconnect`),
+ * que además limita el destino a gente del reparto; por aquí podía colocarlas en cualquiera con
+ * acceso al CRM, incluido alguien que el admin dejó fuera del reparto.
  */
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
@@ -31,8 +33,8 @@ export async function POST(req: NextRequest) {
 
     if (!from || !to) return NextResponse.json({ error: 'from_user_id y to_user_id son obligatorios' }, { status: 400 })
     if (from === to) return NextResponse.json({ error: 'El origen y el destino son el mismo miembro' }, { status: 400 })
-    if (from !== session.user.id && session.user.role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Solo un admin puede transferir las reuniones de otro' }, { status: 403 })
+    if (session.user.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Solo un admin puede transferir reuniones' }, { status: 403 })
     }
 
     const { results, pastReassigned } = await transferAllMeetings(from, to)

@@ -1,19 +1,19 @@
 import { CalendarPlus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
-import { POOL_MEMBER_WHERE, isLeadAuthorized } from '@/lib/calendar/pool'
+import { SELF_SERVICE_TARGET_WHERE, isLeadAuthorized } from '@/lib/calendar/pool'
 import { getAccessProfile } from '@/lib/access-profile'
-import { Card } from '@/components/ui/Card'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
 import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
 
 /**
- * Tarjeta de conexión del Google Calendar **del propio usuario**: conectar, reconectar y
- * desconectar traspasando sus reuniones.
+ * Fila de conexión del Google Calendar **del propio usuario**: conectar, reconectar y desconectar
+ * traspasando sus reuniones. Sin tarjeta alrededor, para que la usen tanto la agenda del closer como
+ * la tarjeta de calendarios del admin en `/admin/leads` (antes cada una tenía su copia).
  *
  * Para un closer, conectar NO lo mete en el reparto: eso lo autoriza un admin (ver `pool.ts`). El
  * texto distingue los casos, porque "conectado" a secas hacía pensar que ya iban a llegarle leads.
  */
-export async function CalendarConnectionCard({ userId }: { userId: string }) {
+export async function CalendarConnectionRow({ userId }: { userId: string }) {
     const [me, connection, futureMeetings, members] = await Promise.all([
         getAccessProfile(userId),
         prisma.calendarConnection.findUnique({
@@ -30,11 +30,8 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
          * criterio que usa `/admin/leads`.
          */
         prisma.user.findMany({
-            where: {
-                ...POOL_MEMBER_WHERE,
-                id: { not: userId },
-                calendars: { some: { provider: 'GOOGLE', status: 'active' } },
-            },
+            // La misma condición que exige la API al desconectar (SELF_SERVICE_TARGET_WHERE).
+            where: { ...SELF_SERVICE_TARGET_WHERE, id: { not: userId } },
             select: { id: true, name: true, last_name: true },
             orderBy: { name: 'asc' },
         }),
@@ -58,8 +55,7 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
     const transferTargets = members.map((m) => ({ id: m.id, name: `${m.name} ${m.last_name}`.trim() }))
 
     return (
-        <Card>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div
                         className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
@@ -84,7 +80,6 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
                     futureMeetings={futureMeetings}
                     transferTargets={transferTargets}
                 />
-            </div>
-        </Card>
+        </div>
     )
 }

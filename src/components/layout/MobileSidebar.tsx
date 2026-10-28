@@ -13,6 +13,7 @@ import {
     isNavItemActive,
     type NavItem,
     type Role,
+    type NavCaps,
     type SidebarBadges,
     type UserBrief,
 } from './nav-config'
@@ -28,6 +29,7 @@ interface MobileSidebarProps {
     closerType?: CloserType | null
     user: UserBrief
     badges?: SidebarBadges
+    caps?: NavCaps
 }
 
 export function MobileSidebar({
@@ -38,13 +40,14 @@ export function MobileSidebar({
     closerType = null,
     user,
     badges,
+    caps,
 }: MobileSidebarProps) {
     const pathname = usePathname()
     const isAdmin = role === 'ADMIN'
     const isCloser = closerEnabled && closerType !== null
     const groups = isAdmin
         ? buildAdminGroups(badges)
-        : buildStudentGroups(closerEnabled, closerType, badges)
+        : buildStudentGroups(closerEnabled, closerType, badges, caps)
 
     const isActive = (href: string) => isNavItemActive(href, pathname)
 

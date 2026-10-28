@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isCloser } from '@/lib/access'
 import { countFutureMeetings } from '@/lib/calendar/transfer'
+import { CLOSER_WHERE } from '@/lib/calendar/pool'
 
 /**
  * Interruptor "Recibe leads" de un closer: autoriza o retira su entrada al reparto de reuniones
@@ -39,8 +40,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: 'Primero actívalo como closer' }, { status: 400 })
     }
 
-    const [, connection, futureMeetings] = await Promise.all([
-        prisma.user.update({ where: { id }, data: { lead_booking_authorized: body.enabled } }),
+    /*
+     * Al autorizar, la condición de closer viaja en el propio UPDATE: si otra pestaña le quita el rol
+     * entre la comprobación de arriba y esta escritura, no se autoriza a alguien que ya no es closer
+     * (volvería a entrar al reparto en cuanto le reactivaran el rol, sin que nadie lo decidiera).
+     */
+    const updated = await prisma.user.updateMany({
+        where: body.enabled ? { id, ...CLOSER_WHERE } : { id },
+        data: { lead_booking_authorized: body.enabled },
+    })
+    if (updated.count === 0) {
+        return NextResponse.json({ error: 'Ya no es closer: recarga la ficha' }, { status: 409 })
+    }
+
+    const [connection, futureMeetings] = await Promise.all([
         prisma.calendarConnection.findUnique({
             where: { user_id_provider: { user_id: id, provider: 'GOOGLE' } },
             select: { status: true },
@@ -49,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ])
 
     return NextResponse.json({
-        lead_booking_enabled: body.enabled,
+        lead_booking_authorized: body.enabled,
         calendar_status: connection?.status ?? null,
         future_meetings: futureMeetings,
     })

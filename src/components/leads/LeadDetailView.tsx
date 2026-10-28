@@ -21,7 +21,10 @@ import { LEAD_STATUS_META, fmtMeetingLong, igHandle, waLink } from '@/lib/leads/
  * `/admin/leads/[id]`, y duplicarlo habría obligado a mantener dos diseños en paralelo.
  */
 
-/** Campos que necesita la vista. Lo usan las dos páginas para que no se desincronicen. */
+/**
+ * Campos que necesita la vista. Sin la atribución de campaña: esa es solo del admin, y así la ficha
+ * del closer ni la lee de la base (ver `LEAD_ADMIN_DETAIL_SELECT`).
+ */
 export const LEAD_DETAIL_SELECT = {
     id: true,
     full_name: true,
@@ -44,6 +47,12 @@ export const LEAD_DETAIL_SELECT = {
     submitted_at: true,
     created_at: true,
     assigned_at: true,
+    assignee: { select: { id: true, name: true, last_name: true } },
+} satisfies Prisma.LeadSelect
+
+/** La del admin añade la atribución de campaña, que pinta su `AttributionCard`. */
+export const LEAD_ADMIN_DETAIL_SELECT = {
+    ...LEAD_DETAIL_SELECT,
     utm_source: true,
     utm_medium: true,
     utm_campaign: true,
@@ -54,7 +63,6 @@ export const LEAD_DETAIL_SELECT = {
     referrer: true,
     attribution_first: true,
     attribution_last: true,
-    assignee: { select: { id: true, name: true, last_name: true } },
 } satisfies Prisma.LeadSelect
 
 export type LeadDetail = Prisma.LeadGetPayload<{ select: typeof LEAD_DETAIL_SELECT }>

@@ -1,12 +1,12 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
-import { CheckCircle2, AlertTriangle } from 'lucide-react'
 import { authOptions } from '@/lib/auth'
 import { isCloser } from '@/lib/access'
 import { loadAgenda, loadMeetingStats } from '@/lib/calendar/agenda'
 import { AgendaView } from '@/components/agenda/AgendaView'
-import { CalendarConnectionCard } from '@/components/leads/CalendarConnectionCard'
-import { GOOGLE_CONNECT_BANNER } from '@/lib/leads/display'
+import { CalendarConnectionRow } from '@/components/leads/CalendarConnectionRow'
+import { GoogleConnectBanner } from '@/components/leads/GoogleConnectBanner'
+import { Card } from '@/components/ui/Card'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Mi agenda · GSA' }
@@ -30,8 +30,10 @@ export default async function CloserAgendaPage({
     if (!isCloser(session.user)) redirect(session.user.role === 'ADMIN' ? '/admin/agenda' : '/dashboard')
 
     const sp = await searchParams
-    const banner = sp.google ? GOOGLE_CONNECT_BANNER[sp.google] : undefined
-    const [agenda, stats] = await Promise.all([loadAgenda(session.user.id, sp.week), loadMeetingStats(session.user.id)])
+    const [agenda, stats] = await Promise.all([
+        loadAgenda(session.user.id, sp.week, { ownLeadsOnly: true }),
+        loadMeetingStats(session.user.id),
+    ])
 
     return (
         <div className="space-y-6">
@@ -43,29 +45,19 @@ export default async function CloserAgendaPage({
                 </p>
             </div>
 
-            {banner && (
-                <div
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                    style={{
-                        background: banner.ok ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
-                        border: `1px solid ${banner.ok ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'}`,
-                        color: banner.ok ? '#34d399' : '#f87171',
-                    }}
-                >
-                    {banner.ok ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                    {banner.msg}
-                </div>
-            )}
+            <GoogleConnectBanner status={sp.google} />
 
             <AgendaView
                 agenda={agenda}
                 stats={stats}
                 basePath="/dashboard/agenda"
                 leadHrefBase="/dashboard/leads"
-                connectionCardShown
-            >
-                <CalendarConnectionCard userId={session.user.id} />
-            </AgendaView>
+                connection={
+                    <Card>
+                        <CalendarConnectionRow userId={session.user.id} />
+                    </Card>
+                }
+            />
         </div>
     )
 }

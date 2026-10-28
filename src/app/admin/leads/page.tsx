@@ -5,17 +5,16 @@ import { Card } from '@/components/ui/Card'
 import Link from 'next/link'
 import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
 import {
-    GOOGLE_CONNECT_BANNER,
     LEAD_STATUS_META,
     fmtLeadDate,
     fmtMeetingShort,
     igHandle,
 } from '@/lib/leads/display'
-import { CheckCircle2, AlertTriangle, CalendarPlus, Video } from 'lucide-react'
-import { GoogleCalendarActions } from '@/components/leads/GoogleCalendarActions'
-import { countFutureMeetings } from '@/lib/calendar/transfer'
+import { AlertTriangle, Video } from 'lucide-react'
+import { CalendarConnectionRow } from '@/components/leads/CalendarConnectionRow'
+import { GoogleConnectBanner } from '@/components/leads/GoogleConnectBanner'
 import { describeWorkingHours } from '@/lib/calendar/availability'
-import { POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
+import { CLOSER_WHERE, POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
 
 interface PageProps {
     searchParams: Promise<{ assignee?: string; google?: string }>
@@ -24,12 +23,11 @@ interface PageProps {
 export default async function AdminLeadsPage({ searchParams }: PageProps) {
     const sp = await searchParams
     const assigneeFilter = typeof sp.assignee === 'string' && sp.assignee ? sp.assignee : undefined
-    const banner = sp.google ? GOOGLE_CONNECT_BANNER[sp.google] : undefined
 
     const session = await getServerSession(authOptions)
     const myUserId = session?.user?.id
 
-    const [leads, members, myConnection, myFutureMeetings, pendingClosers] = await Promise.all([
+    const [leads, members, pendingClosers] = await Promise.all([
         prisma.lead.findMany({
             where: assigneeFilter ? { assigned_to: assigneeFilter } : {},
             orderBy: { created_at: 'desc' },
@@ -76,28 +74,25 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
             },
             orderBy: { name: 'asc' },
         }),
-        myUserId
-            ? prisma.calendarConnection.findUnique({
-                  where: { user_id_provider: { user_id: myUserId, provider: 'GOOGLE' } },
-                  select: { status: true, account_email: true },
-              })
-            : Promise.resolve(null),
-        // Reuniones futuras propias: hay que saberlas ANTES de ofrecer la desconexión, porque son
-        // las que quedarían atrapadas en el calendario si se suelta la conexión sin traspasarlas.
-        myUserId ? countFutureMeetings(myUserId) : Promise.resolve(0),
         /*
          * Closers que ya conectaron su calendario pero a los que nadie ha autorizado a recibir leads.
          * No están en el reparto, así que no salen en la tabla de arriba; sin esta lista, Iván no
          * vería en ningún sitio quién está listo para que lo active.
          */
+        // Cualquier conexión, no solo las activas: con la app de Google en modo de pruebas caducan a
+        // los 7 días, y un closer con la conexión caída no saldría en ningún sitio de esta pantalla.
         prisma.user.findMany({
             where: {
-                closer_enabled: true,
-                closer_type: { not: null },
+                ...CLOSER_WHERE,
                 lead_booking_authorized: false,
-                calendars: { some: { provider: 'GOOGLE', status: 'active' } },
+                calendars: { some: { provider: 'GOOGLE' } },
             },
-            select: { id: true, name: true, last_name: true },
+            select: {
+                id: true,
+                name: true,
+                last_name: true,
+                calendars: { where: { provider: 'GOOGLE' }, select: { status: true } },
+            },
             orderBy: { name: 'asc' },
         }),
     ])
@@ -106,15 +101,6 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
     const sinCalendario = members.filter((m) => m.calendars[0]?.status !== 'active').length
 
     const nuevos = leads.filter((l) => l.status === 'NUEVO').length
-    const connected = myConnection?.status === 'active'
-
-    /*
-     * A quién se le puede traspasar una reunión: solo miembros con el calendario ACTIVO. Sin
-     * conexión activa no hay dónde crear el evento, así que ofrecerlos sería ofrecer un error.
-     */
-    const transferTargets = members
-        .filter((m) => m.id !== myUserId && m.calendars[0]?.status === 'active')
-        .map((m) => ({ id: m.id, name: `${m.name} ${m.last_name}`.trim() }))
 
     return (
         <div className="space-y-6">
@@ -126,53 +112,12 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                 </p>
             </div>
 
-            {/* Banner de resultado OAuth */}
-            {banner && (
-                <div
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                    style={{
-                        background: banner.ok ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
-                        border: `1px solid ${banner.ok ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'}`,
-                        color: banner.ok ? '#34d399' : '#f87171',
-                    }}
-                >
-                    {banner.ok ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                    {banner.msg}
-                </div>
-            )}
+            <GoogleConnectBanner status={sp.google} />
 
             {/* Conexión de Google Calendar (per-member) */}
             <Card>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div
-                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                            style={{
-                                background: connected ? 'rgba(52,211,153,0.12)' : 'rgba(56,189,248,0.12)',
-                                color: connected ? '#34d399' : '#38bdf8',
-                            }}
-                        >
-                            <CalendarPlus size={18} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                                Google Calendar
-                            </p>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                                {connected
-                                    ? `Conectado · ${myConnection?.account_email || 'tu cuenta'} — entrás al round-robin de leads`
-                                    : myConnection?.status === 'error'
-                                      ? 'Conexión con error — reconectá para volver a recibir reuniones'
-                                      : 'Conectá tu Google para crear las reuniones de tus leads asignados'}
-                            </p>
-                        </div>
-                    </div>
-                    <GoogleCalendarActions
-                        connected={connected}
-                        futureMeetings={myFutureMeetings}
-                        transferTargets={transferTargets}
-                    />
-                </div>
+                {/* Mi conexión: la misma fila que ve el closer en su agenda (traspaso incluido). */}
+                {myUserId && <CalendarConnectionRow userId={myUserId} />}
 
                 {/*
                   * Estado del equipo. El round-robin solo puede asignar reuniones a quien
@@ -278,8 +223,9 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                             Conectados que todavía no reciben leads
                         </p>
                         <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
-                            Tienen su calendario conectado, pero no entran al reparto hasta que actives
-                            &quot;Recibe leads&quot; en su ficha.
+                            Han conectado su calendario, pero no entran al reparto hasta que actives
+                            &quot;Recibe leads&quot; en su ficha. Si la conexión caducó, tendrán que
+                            reconectarla para empezar a recibir.
                         </p>
                         <div className="flex flex-wrap gap-2">
                             {pendingClosers.map((c) => (
@@ -290,6 +236,9 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
                                     style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                                 >
                                     {`${c.name} ${c.last_name}`.trim()}
+                                    {c.calendars[0]?.status !== 'active' && (
+                                        <span style={{ color: '#fbbf24' }}>· conexión caducada</span>
+                                    )}
                                     <span style={{ color: 'var(--blue-accent)' }}>· Activar</span>
                                 </Link>
                             ))}

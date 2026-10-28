@@ -63,12 +63,15 @@ export interface SidebarBadges {
     monthCashCents?: number
     salesCount?: number
     leadsNew?: number
-    /**
-     * El closer ve "Mis leads" (autorizado a recibir leads o con leads asignados de antes; ver
-     * `showsOwnLeads` en pool.ts). No es un badge, pero viaja con ellos porque se calcula en la
-     * misma consulta del layout y ya llega a los dos menús, el de escritorio y el móvil.
-     */
-    leadsAccess?: boolean
+}
+
+/**
+ * Qué secciones opcionales ve el usuario en el menú. Separado de los badges a propósito: un badge
+ * es un número decorativo, esto decide si un item existe.
+ */
+export interface NavCaps {
+    /** "Mis leads": autorizado a recibir leads o con leads asignados de antes (`showsOwnLeads`). */
+    leads?: boolean
 }
 
 export function fmtMoneyShort(cents: number): string {
@@ -152,6 +155,7 @@ export function buildStudentGroups(
     closerEnabled: boolean,
     closerType: CloserType | null,
     badges: SidebarBadges = {},
+    caps: NavCaps = {},
 ): NavGroup[] {
     // Matrix:
     //   regular student            (closer_enabled=false)         → Dashboard, Cursos, Método, Perfil
@@ -190,7 +194,7 @@ export function buildStudentGroups(
                 },
                 // Solo a quien recibe leads (lo autoriza un admin) o tiene alguno de antes: al resto
                 // de closers no se les enseña una pantalla que siempre estaría vacía.
-                ...(badges.leadsAccess
+                ...(caps.leads
                     ? [
                           {
                               href: CLOSER_NAV.leads,

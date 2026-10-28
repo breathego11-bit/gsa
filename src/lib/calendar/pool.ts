@@ -20,15 +20,32 @@ import { isCloser } from '../access.ts'
  * activas, y el resto de consultas lo filtra en su propio `where`.
  */
 
-/** Miembros del equipo: admins y closers con tipo. Es quien puede tener un lead a su nombre. */
+/** Closers: interruptor activado y con tipo. Misma regla que `isCloser`, en forma de consulta. */
+export const CLOSER_WHERE = {
+    closer_enabled: true,
+    closer_type: { not: null },
+} satisfies Prisma.UserWhereInput
+
+/** Miembros del equipo: admins y closers. Es quien puede tener un lead a su nombre. */
 export const TEAM_MEMBER_WHERE = {
-    OR: [{ role: 'ADMIN' }, { closer_enabled: true, closer_type: { not: null } }],
+    OR: [{ role: 'ADMIN' }, CLOSER_WHERE],
 } satisfies Prisma.UserWhereInput
 
 /** Condición de Prisma sobre `User` para estar en el reparto (sin la parte del calendario). */
 export const POOL_MEMBER_WHERE = {
     lead_booking_enabled: true,
-    OR: [{ role: 'ADMIN' }, { closer_enabled: true, closer_type: { not: null }, lead_booking_authorized: true }],
+    OR: [{ role: 'ADMIN' }, { ...CLOSER_WHERE, lead_booking_authorized: true }],
+} satisfies Prisma.UserWhereInput
+
+/**
+ * A quién puede un **closer** pasarle sus reuniones (al desconectar su calendario): a alguien que
+ * esté en el reparto y con el calendario activo. Sin esto, la API aceptaba cualquier `transfer_to`
+ * con acceso al CRM y un closer podía colocar leads en alguien que el admin dejó fuera del reparto.
+ * Un admin sí puede asignar a mano a cualquier miembro del equipo.
+ */
+export const SELF_SERVICE_TARGET_WHERE = {
+    ...POOL_MEMBER_WHERE,
+    calendars: { some: { provider: 'GOOGLE', status: 'active' } },
 } satisfies Prisma.UserWhereInput
 
 export interface PoolCandidate {

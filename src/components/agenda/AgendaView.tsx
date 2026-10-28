@@ -40,8 +40,7 @@ export function AgendaView({
     stats,
     basePath,
     leadHrefBase,
-    connectionCardShown = false,
-    children,
+    connection,
 }: {
     agenda: Agenda
     stats: Stats
@@ -50,18 +49,16 @@ export function AgendaView({
     /** Dónde abre la ficha de un lead desde su reunión. */
     leadHrefBase: string
     /**
-     * La página ya enseña una tarjeta de conexión de Google (la del closer). Entonces los avisos de
-     * "conecta / reconecta" sobran: saldrían dos botones de conectar, y su texto da por hecho que el
-     * usuario está en el reparto, cosa que en un closer depende de que un admin lo autorice. La
-     * tarjeta ya explica bien su caso.
+     * Bloque de conexión de Google propio de la página (el closer lo tiene en su agenda). Si se
+     * pasa, **sustituye** a los avisos de "conecta / reconecta": con los dos saldrían dos botones de
+     * conectar, y el texto de los avisos da por hecho que el usuario está en el reparto, cosa que en
+     * un closer depende de que un admin lo autorice. El bloque propio ya explica bien su caso.
      */
-    connectionCardShown?: boolean
-    /** Bloques extra arriba, como la tarjeta de conexión de Google del closer. */
-    children?: React.ReactNode
+    connection?: React.ReactNode
 }) {
     const connectionStatus = agenda.status === 'not-connected' || agenda.status === 'connection-error'
     const banner =
-        agenda.status === 'ok' || (connectionCardShown && connectionStatus) ? null : STATUS_BANNER[agenda.status]
+        agenda.status === 'ok' || (connection && connectionStatus) ? null : STATUS_BANNER[agenda.status]
     const isCustom = agenda.workingHours !== null && agenda.workingHours !== undefined
     const effective = parseWorkingHours(agenda.workingHours)
 
@@ -106,7 +103,7 @@ export function AgendaView({
                 />
             </div>
 
-            {children}
+            {connection}
 
             {banner && (
                 <div
