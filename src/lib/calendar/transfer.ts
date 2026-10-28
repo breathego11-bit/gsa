@@ -1,7 +1,20 @@
 import { prisma } from '@/lib/prisma'
 import { clientForConnection } from '@/lib/calendar/tokens'
 import { createEvent, deleteEvent, getEvent } from '@/lib/calendar/google'
-import { canAccessCRM } from '@/lib/access'
+import { TEAM_MEMBER_WHERE } from '@/lib/calendar/pool'
+
+/**
+ * ¿Puede este usuario quedarse con leads? Tiene que ser del equipo: admin o closer, y **no
+ * bloqueado**. Es la misma condición que el PATCH y el selector de la ficha (`TEAM_MEMBER_WHERE`).
+ *
+ * Antes se usaba `canAccessCRM`, que no mira `blocked`: se podían pasar reuniones a alguien que ni
+ * puede iniciar sesión. Y en el traspaso en bloque solo se comprobaba dentro de cada reunión, así
+ * que si el origen no tenía reuniones futuras, la cartera entera se escribía en cualquier id.
+ */
+export async function isValidLeadRecipient(userId: string): Promise<boolean> {
+    const n = await prisma.user.count({ where: { ...TEAM_MEMBER_WHERE, id: userId } })
+    return n > 0
+}
 
 /**
  * Traspaso de una reunión agendada de un miembro a otro.
@@ -56,18 +69,16 @@ export async function transferLeadMeeting(leadId: string, toUserId: string): Pro
     if (!lead) return { leadId, ok: false, movedEvent: false, error: 'Lead no encontrado' }
 
     /*
-     * El destinatario tiene que existir Y poder trabajar el CRM. Comprobar solo que la fila existe
-     * dejaba pasar el id de cualquier alumno: se le podían entregar leads a alguien que ni siquiera
-     * ve la sección. Y sin la comprobación de existencia, un id inventado revienta con un P2003 de
-     * Prisma (500 opaco) y, en el traspaso en bloque, lo haría DESPUÉS de mover eventos.
+     * El destinatario tiene que existir Y ser del equipo (admin o closer, no bloqueado). Comprobar
+     * solo que la fila existe dejaba pasar el id de cualquier alumno; y sin la comprobación de
+     * existencia, un id inventado revienta con un P2003 de Prisma (500 opaco).
      */
-    const target = await prisma.user.findUnique({
-        where: { id: toUserId },
-        select: { id: true, name: true, last_name: true, role: true, closer_enabled: true, closer_type: true, payment_status: true },
+    const target = await prisma.user.findFirst({
+        where: { ...TEAM_MEMBER_WHERE, id: toUserId },
+        select: { id: true, name: true, last_name: true },
     })
-    if (!target) return { leadId, ok: false, movedEvent: false, error: 'El destinatario no existe' }
-    if (!canAccessCRM(target)) {
-        return { leadId, ok: false, movedEvent: false, error: 'El destinatario no tiene acceso al CRM' }
+    if (!target) {
+        return { leadId, ok: false, movedEvent: false, error: 'El destinatario no es un miembro activo del equipo' }
     }
 
     /*
@@ -223,8 +234,15 @@ export async function transferAllMeetings(
     fromUserId: string,
     toUserId: string,
     { wholePortfolio = true }: { wholePortfolio?: boolean } = {},
-): Promise<{ results: TransferResult[]; pastReassigned: number }> {
+): Promise<{ results: TransferResult[]; pastReassigned: number; error?: string }> {
     const now = new Date()
+
+    // El destinatario se valida ANTES de nada: si el origen no tiene reuniones futuras, la
+    // comprobación de `transferLeadMeeting` nunca corre y el `updateMany` de abajo escribiría la
+    // cartera en cualquier id (o reventaría con un P2003 si no existe).
+    if (!(await isValidLeadRecipient(toUserId))) {
+        return { results: [], pastReassigned: 0, error: 'El destinatario no es un miembro activo del equipo' }
+    }
 
     // Los descartados no cuentan como reunión futura: su evento no se recrea (ver
     // `transferLeadMeeting`), así que se tratan con el resto en el updateMany de abajo.

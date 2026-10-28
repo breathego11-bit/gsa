@@ -6,7 +6,9 @@ import { GOOGLE_CONNECT_BANNER } from '@/lib/leads/display'
  * pantalla de leads del admin y la agenda del closer, que es adonde devuelve cada rol el callback.
  */
 export function GoogleConnectBanner({ status }: { status?: string }) {
-    const banner = status ? GOOGLE_CONNECT_BANNER[status] : undefined
+    // `Object.hasOwn`: con `?google=constructor` el objeto devolvería una función heredada y se
+    // pintaría un aviso de error vacío.
+    const banner = status && Object.hasOwn(GOOGLE_CONNECT_BANNER, status) ? GOOGLE_CONNECT_BANNER[status] : undefined
     if (!banner) return null
     return (
         <div

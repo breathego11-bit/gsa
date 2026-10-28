@@ -104,15 +104,17 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     // Para el interruptor "Recibe leads", que solo se enseña a los closers: autorizado no sirve de
     // nada sin calendario conectado. A los demás alumnos (la mayoría) no se les hacen estas consultas.
-    const [calendar, futureMeetings] = student.closer_enabled
+    // `assignedLeads` avisa al quitarle el rol de closer: esos leads se quedarían sin nadie que los vea.
+    const [calendar, futureMeetings, assignedLeads] = student.closer_enabled
         ? await Promise.all([
               prisma.calendarConnection.findUnique({
                   where: { user_id_provider: { user_id: id, provider: 'GOOGLE' } },
                   select: { status: true },
               }),
               countFutureMeetings(id),
+              prisma.lead.count({ where: { assigned_to: id, status: { not: 'DESCARTADO' } } }),
           ])
-        : [null, 0]
+        : [null, 0, 0]
 
     const progressMap = new Map(progressRecords.map((p) => [p.lesson_id, p]))
 
@@ -260,6 +262,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 lead_booking_authorized: student.lead_booking_authorized,
                 calendar_status: calendar?.status ?? null,
                 future_meetings: futureMeetings,
+                assigned_leads: assignedLeads,
                 welcome_video_bunny_id: student.welcome_video_bunny_id,
                 welcome_video_status: student.welcome_video_status,
                 welcome_video_uploaded_at: student.welcome_video_uploaded_at?.toISOString() ?? null,

@@ -27,9 +27,9 @@ jobs:
       - run: npm run build
 
   # Los tests son lógica pura (permisos del CRM, acceso por rol y reglas de cobro) y corren con
-  # el runner de Node, sin dependencias. Van en su propio job con Node 22 porque ejecutar
-  # TypeScript directamente necesita >= 22.6, mientras el build se queda en 20 para calcar la
-  # imagen de Docker.
+  # el runner de Node, sin dependencias. Van en su propio job con Node 24 porque ejecutar
+  # TypeScript sin ningún flag necesita Node >= 22.18 (o >= 23.6); el build se queda en 20 para
+  # calcar la imagen de Docker.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -37,7 +37,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       # Sin `prisma generate`: los tests solo importan tipos de @prisma/client, que Node elimina

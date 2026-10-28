@@ -94,10 +94,12 @@ test('"Mis leads" se ve si está autorizado o si tiene leads de antes', () => {
 
 // ── Desconectar ───────────────────────────────────────────────────────────────
 
-test('desconectar a otro es una baja; desconectarse a sí mismo, no', () => {
-    // En una baja se retira la autorización y se pasa toda la cartera; si se desconecta él
-    // mismo, conserva la autorización y solo se le mueven las reuniones futuras.
-    assert.ok(isOffboarding('admin_1', 'closer_9'))
-    assert.ok(!isOffboarding('closer_9', 'closer_9'))
-    assert.ok(!isOffboarding('admin_1', 'admin_1'))
+test('una baja tiene que pedirse explícitamente y para otra persona', () => {
+    // Baja: se retira la autorización y se pasa toda la cartera.
+    assert.ok(isOffboarding({ actorId: 'admin_1', targetId: 'closer_9', requested: true }))
+    // Un admin que desconecta el calendario caducado de un closer para ayudarle NO lo da de baja.
+    assert.ok(!isOffboarding({ actorId: 'admin_1', targetId: 'closer_9', requested: false }))
+    // Nadie se da de baja a sí mismo: desconectarse solo mueve sus reuniones futuras.
+    assert.ok(!isOffboarding({ actorId: 'closer_9', targetId: 'closer_9', requested: true }))
+    assert.ok(!isOffboarding({ actorId: 'admin_1', targetId: 'admin_1', requested: true }))
 })

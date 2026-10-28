@@ -3,15 +3,10 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/Card'
 import Link from 'next/link'
-import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
-import {
-    LEAD_STATUS_META,
-    fmtLeadDate,
-    fmtMeetingShort,
-    igHandle,
-} from '@/lib/leads/display'
-import { AlertTriangle, Video } from 'lucide-react'
+import { fmtLeadDate } from '@/lib/leads/display'
+import { AlertTriangle } from 'lucide-react'
 import { CalendarConnectionRow } from '@/components/leads/CalendarConnectionRow'
+import { LeadsTable } from '@/components/leads/LeadsTable'
 import { GoogleConnectBanner } from '@/components/leads/GoogleConnectBanner'
 import { describeWorkingHours } from '@/lib/calendar/availability'
 import { CLOSER_WHERE, POOL_MEMBER_WHERE } from '@/lib/calendar/pool'
@@ -101,17 +96,23 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
          * pool: a un closer sin autorización (o con ella retirada) le siguen quedando leads, y sin
          * esto desaparecía del filtro y no había forma de ver los suyos.
          */
-        prisma.lead.findMany({
-            where: { assigned_to: { not: null } },
-            distinct: ['assigned_to'],
-            select: { assignee: { select: { id: true, name: true, last_name: true } } },
-        }),
+        // `groupBy` y no `findMany({ distinct })`: Prisma hace el distinct en memoria, así que traería
+        // todos los leads asignados en cada carga. Aquí la base devuelve solo un id por responsable.
+        prisma.lead.groupBy({ by: ['assigned_to'], where: { assigned_to: { not: null } } }),
     ])
+
+    const assigneeIds = assignees.map((a) => a.assigned_to).filter((id): id is string => !!id)
+    const assigneeUsers = assigneeIds.length
+        ? await prisma.user.findMany({
+              where: { id: { in: assigneeIds } },
+              select: { id: true, name: true, last_name: true },
+          })
+        : []
 
     // Opciones del filtro: el pool más cualquiera con leads asignados, sin repetir.
     const filterPeople = new Map<string, { id: string; name: string; last_name: string }>()
     for (const m of members) filterPeople.set(m.id, m)
-    for (const a of assignees) if (a.assignee) filterPeople.set(a.assignee.id, a.assignee)
+    for (const u of assigneeUsers) filterPeople.set(u.id, u)
     const filterOptions = [...filterPeople.values()].sort((a, b) => a.name.localeCompare(b.name))
 
     // En el pool del round-robin pero sin calendario activo: no pueden recibir reuniones.
@@ -280,82 +281,16 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
             )}
 
             <Card>
-                {leads.length === 0 ? (
-                    <div className="flex flex-col items-center py-12 text-center">
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            {assigneeFilter
-                                ? 'No hay leads asignados a este miembro.'
-                                : 'Aún no hay leads. Llegan automáticamente desde el formulario de la landing.'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Lead</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>WhatsApp</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--text-secondary)' }}>Situación</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--text-secondary)' }}>Campaña</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Cita</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Asignado</th>
-                                    <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Estado</th>
-                                    <th className="pb-3.5 text-right text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>Alta</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {leads.map((lead) => {
-                                    const st = LEAD_STATUS_META[lead.status]
-                                    const ig = igHandle(lead.instagram)
-                                    const assignedName = lead.assignee
-                                        ? `${lead.assignee.name} ${lead.assignee.last_name}`.trim()
-                                        : '—'
-                                    return (
-                                        <tr key={lead.id} className="table-row-base">
-                                            <td className="py-4 pr-4">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    {/* Enlace al detalle: es donde viven las respuestas del formulario y la atribución. */}
-                                                    <Link href={`/admin/leads/${lead.id}`} className="font-medium hover:underline" style={{ color: 'var(--text-primary)' }}>
-                                                        {lead.full_name}
-                                                    </Link>
-                                                    <span
-                                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
-                                                        style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
-                                                        title={`source: ${lead.source}`}
-                                                    >
-                                                        {sourceLabel(lead.source)}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{lead.email}</p>
-                                                <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>{ig}</p>
-                                            </td>
-                                            <td className="py-4 pr-4 hidden lg:table-cell text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{lead.whatsapp}</td>
-                                            <td className="py-4 pr-4 hidden xl:table-cell text-xs" style={{ color: 'var(--text-secondary)' }} title={`Inversión: ${investmentLabel(lead.investment, lead.source)}`}>{situationLabel(lead.situation, lead.source)}</td>
-                                            <td className="py-4 pr-4 hidden xl:table-cell text-xs font-mono" style={{ color: 'var(--text-secondary)' }} title={lead.utm_source ? `source: ${lead.utm_source}` : undefined}>
-                                                {lead.utm_campaign ?? <span style={{ opacity: 0.4 }}>—</span>}
-                                            </td>
-                                            <td className="py-4 pr-4 hidden md:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                <div>{fmtMeetingShort(lead.meeting_at, lead.meeting_tz_iana)}</div>
-                                                {lead.meeting_link && (
-                                                    <a href={lead.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-0.5" style={{ color: 'var(--blue-accent)' }}>
-                                                        <Video size={12} /> Meet
-                                                    </a>
-                                                )}
-                                            </td>
-                                            <td className="py-4 pr-4 hidden sm:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>{assignedName}</td>
-                                            <td className="py-4 pr-4 text-center">
-                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: st.bg, color: st.color }} title={`Urgencia: ${urgencyLabel(lead.urgency, lead.source)}`}>
-                                                    {st.label}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 text-right hidden lg:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>{fmtLeadDate(lead.created_at)}</td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <LeadsTable
+                    leads={leads}
+                    hrefBase="/admin/leads"
+                    adminColumns
+                    emptyText={
+                        assigneeFilter
+                            ? 'No hay leads asignados a este miembro.'
+                            : 'Aún no hay leads. Llegan automáticamente desde el formulario de la landing.'
+                    }
+                />
             </Card>
         </div>
     )

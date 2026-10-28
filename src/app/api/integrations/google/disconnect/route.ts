@@ -13,10 +13,11 @@ export const dynamic = 'force-dynamic'
 /**
  * Desconecta el Google Calendar de un miembro.
  *
- * Cada uno desconecta el suyo; un ADMIN puede desconectar el de otro (caso "se fue del equipo")
- * pasando `user_id`.
+ * Cada uno desconecta el suyo; un ADMIN puede desconectar el de otro pasando `user_id`. Si además
+ * pasa `offboard: true` es una baja del equipo: le retira la autorización para recibir leads y le
+ * pasa la cartera entera a `transfer_to` (ver `isOffboarding`).
  *
- * Body (todo opcional): { user_id?: string, transfer_to?: string }
+ * Body (todo opcional): { user_id?: string, transfer_to?: string, offboard?: boolean }
  *
  * ⚠️ El ORDEN es lo importante de este endpoint. Mover un evento entre calendarios exige los
  * tokens de las dos partes, así que la transferencia va ANTES de soltar la conexión. Si se
@@ -66,18 +67,25 @@ export async function POST(req: NextRequest) {
     })
     if (!conn) return NextResponse.json({ error: 'No hay ninguna conexión que desconectar' }, { status: 404 })
 
-    // Baja del equipo (un admin desconecta a otra persona) o desconexión propia: ver `isOffboarding`.
-    const offboarding = isOffboarding(session.user.id, targetUserId)
+    // Baja del equipo: solo si un admin la pide explícitamente para otra persona (ver `isOffboarding`).
+    const offboarding = isOffboarding({
+        actorId: session.user.id,
+        targetId: targetUserId,
+        requested: body.offboard === true,
+    })
 
     // 1. Transferir PRIMERO, mientras los tokens del origen siguen vivos.
     let transferred = 0
     let pastReassigned = 0
     let warnings: { leadId: string; warning: string }[] = []
     if (transferTo) {
-        // En una baja se pasa la cartera entera; si se desconecta él mismo, solo las reuniones.
-        const { results, pastReassigned: past } = await transferAllMeetings(targetUserId, transferTo, {
-            wholePortfolio: offboarding,
-        })
+        // En una baja se pasa la cartera entera; en cualquier otra desconexión, solo las reuniones.
+        const {
+            results,
+            pastReassigned: past,
+            error: recipientError,
+        } = await transferAllMeetings(targetUserId, transferTo, { wholePortfolio: offboarding })
+        if (recipientError) return NextResponse.json({ error: recipientError }, { status: 400 })
         const failed = results.filter((r) => !r.ok)
         if (failed.length > 0) {
             /*

@@ -58,9 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
     }
 
-    // Escalares a propósito (no `assignee: { connect }`): el UPDATE va por `updateMany`, que solo
-    // acepta campos planos, y así la condición de dueño viaja dentro de la misma consulta.
-    const data: Prisma.LeadUncheckedUpdateManyInput = {}
+    const data: Prisma.LeadUncheckedUpdateInput = {}
     if (decision.status !== undefined) data.status = decision.status
     if (decision.assignedTo !== undefined) {
         data.assigned_to = decision.assignedTo
@@ -69,19 +67,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     try {
         /*
-         * `updateMany` con el dueño en el `where` (y no `update` tras comprobarlo aparte) para que
-         * la condición viaje en el propio UPDATE: no hay ventana entre leer el lead y escribirlo.
-         * A un closer, el lead de otro responde 404 igual que uno inexistente: no se confirma que
-         * exista.
+         * Una sola consulta con el dueño dentro del `where`: la condición viaja en el propio UPDATE,
+         * así que no hay ventana entre comprobar de quién es el lead y escribirlo. Si no cuadra
+         * (o el lead no existe), Prisma lanza P2025 → 404: a un closer, el lead de otro responde
+         * igual que uno inexistente y no se confirma que exista.
          */
-        const res = await prisma.lead.updateMany({
+        const lead = await prisma.lead.update({
             where: decision.onlyOwn ? { id, assigned_to: session.user.id } : { id },
             data,
-        })
-        if (res.count === 0) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
-
-        const lead = await prisma.lead.findUnique({
-            where: { id },
             select: { id: true, status: true, assigned_to: true },
         })
         return NextResponse.json(lead)

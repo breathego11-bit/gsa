@@ -1,15 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarPlus, Video } from 'lucide-react'
+import { CalendarPlus } from 'lucide-react'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isCloser } from '@/lib/access'
 import { isLeadAuthorized } from '@/lib/calendar/pool'
 import { getAccessProfile } from '@/lib/access-profile'
 import { Card } from '@/components/ui/Card'
-import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
-import { LEAD_STATUS_META, fmtLeadDate, fmtMeetingShort, igHandle, sortOwnLeads } from '@/lib/leads/display'
+import { LeadsTable } from '@/components/leads/LeadsTable'
+import { sortOwnLeads } from '@/lib/leads/display'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Mis leads · GSA' }
@@ -119,71 +119,11 @@ export default async function CloserLeadsPage() {
             )}
 
             <Card>
-                {leads.length === 0 ? (
-                    <div className="flex flex-col items-center py-12 text-center">
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            Todavía no tienes leads asignados. Llegan solos cuando alguien reserva una llamada y le toca
-                            tu turno en el reparto.
-                        </p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Lead</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>WhatsApp</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--text-secondary)' }}>Situación</th>
-                                    <th className="pb-3.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Cita</th>
-                                    <th className="pb-3.5 text-center text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Estado</th>
-                                    <th className="pb-3.5 text-right text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>Alta</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sorted.map((lead) => {
-                                    const st = LEAD_STATUS_META[lead.status]
-                                    return (
-                                        <tr key={lead.id} className="table-row-base">
-                                            <td className="py-4 pr-4">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    {/* El detalle es donde están las respuestas del formulario: lo que necesita antes de llamar. */}
-                                                    <Link href={`/dashboard/leads/${lead.id}`} className="font-medium hover:underline" style={{ color: 'var(--text-primary)' }}>
-                                                        {lead.full_name}
-                                                    </Link>
-                                                    <span
-                                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
-                                                        style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}
-                                                        title={`source: ${lead.source}`}
-                                                    >
-                                                        {sourceLabel(lead.source)}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{lead.email}</p>
-                                                <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>{igHandle(lead.instagram)}</p>
-                                            </td>
-                                            <td className="py-4 pr-4 hidden lg:table-cell text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{lead.whatsapp}</td>
-                                            <td className="py-4 pr-4 hidden xl:table-cell text-xs" style={{ color: 'var(--text-secondary)' }} title={`Inversión: ${investmentLabel(lead.investment, lead.source)}`}>{situationLabel(lead.situation, lead.source)}</td>
-                                            <td className="py-4 pr-4 hidden md:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                <div>{fmtMeetingShort(lead.meeting_at, lead.meeting_tz_iana)}</div>
-                                                {lead.meeting_link && (
-                                                    <a href={lead.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-0.5" style={{ color: 'var(--blue-accent)' }}>
-                                                        <Video size={12} /> Meet
-                                                    </a>
-                                                )}
-                                            </td>
-                                            <td className="py-4 pr-4 text-center">
-                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: st.bg, color: st.color }} title={`Urgencia: ${urgencyLabel(lead.urgency, lead.source)}`}>
-                                                    {st.label}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 text-right hidden lg:table-cell text-xs" style={{ color: 'var(--text-secondary)' }}>{fmtLeadDate(lead.created_at)}</td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <LeadsTable
+                    leads={sorted}
+                    hrefBase="/dashboard/leads"
+                    emptyText="Todavía no tienes leads asignados. Llegan solos cuando alguien reserva una llamada y le toca tu turno en el reparto."
+                />
             </Card>
         </div>
     )

@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Solo un admin puede transferir reuniones' }, { status: 403 })
     }
 
-    const { results, pastReassigned } = await transferAllMeetings(from, to)
+    const { results, pastReassigned, error } = await transferAllMeetings(from, to)
+    if (error) return NextResponse.json({ error }, { status: 400 })
     const failed = results.filter((r) => !r.ok)
 
     return NextResponse.json(

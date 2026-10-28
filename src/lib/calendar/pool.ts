@@ -80,15 +80,26 @@ export function showsOwnLeads(authorized: boolean, assignedLeads: number): boole
 }
 
 /**
- * ¿Esta desconexión es una **baja** del equipo? Lo es si un admin desconecta el calendario de otra
- * persona; si alguien se desconecta a sí mismo (cambia de cuenta, se va de vacaciones), no.
+ * ¿Esta desconexión es una **baja** del equipo? Solo si un admin desconecta el calendario de
+ * **otra** persona **y lo pide explícitamente** (`offboard: true`).
+ *
+ * No se deduce solo de que sea otra persona: un admin también desconecta el calendario caducado de
+ * un closer para ayudarle (en modo de pruebas de Google caducan cada 7 días), y eso no debe
+ * costarle al closer su autorización ni su cartera.
  *
  * Decide dos cosas en `/google/disconnect`:
  *   - Se retira la autorización del closer. Sin esto podía volver a conectar y seguir recibiendo.
- *   - Se le pasa **toda la cartera** al destinatario, no solo las reuniones futuras. A quien se
- *     desconecta él mismo solo se le mueven las reuniones (es lo que le promete el diálogo): sus
- *     demás leads siguen siendo suyos.
+ *   - Se le pasa **toda la cartera** al destinatario, no solo las reuniones futuras. En cualquier
+ *     otra desconexión solo se mueven las reuniones (es lo que promete el diálogo).
  */
-export function isOffboarding(actorId: string, targetId: string): boolean {
-    return actorId !== targetId
+export function isOffboarding({
+    actorId,
+    targetId,
+    requested,
+}: {
+    actorId: string
+    targetId: string
+    requested: boolean
+}): boolean {
+    return requested && actorId !== targetId
 }

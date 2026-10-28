@@ -50,6 +50,8 @@ interface StudentInfo {
     calendar_status: string | null
     /** Reuniones futuras que tiene asignadas: las conserva aunque se le retire la autorización. */
     future_meetings: number
+    /** Leads asignados no descartados: al quitarle el rol de closer dejaría de verlos. */
+    assigned_leads: number
     welcome_video_bunny_id: string | null
     welcome_video_status: string | null
     welcome_video_uploaded_at: string | null
@@ -247,6 +249,9 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                 setCloserEnabled(next)
                 setCloserType(desiredType)
                 if (!next) setLeadBooking(false) // el servidor retira la autorización junto con el rol
+                // El estado de su calendario y sus reuniones solo se cargan si ya era closer: al
+                // activarlo aquí, el interruptor "Recibe leads" los mostraría vacíos sin recargar.
+                router.refresh()
                 showToast(
                     next
                         ? {
@@ -1434,6 +1439,19 @@ export function StudentDetailClient({ student, stats, timeline, courses, payment
                         <>
                             <strong style={{ color: '#dee2f2' }}>{fullName}</strong> dejará de ver el CRM de ventas.
                             Sus ventas registradas se conservan, pero no podrá editarlas ni añadir nuevas.
+                            {student.assigned_leads > 0 && (
+                                <>
+                                    {' '}
+                                    <strong style={{ color: '#fbbf24' }}>
+                                        Tiene {student.assigned_leads}{' '}
+                                        {student.assigned_leads === 1 ? 'lead asignado' : 'leads asignados'}
+                                        {student.future_meetings > 0 &&
+                                            ` (${student.future_meetings} con reunión pendiente)`}
+                                    </strong>
+                                    : dejará de verlos y se quedarán sin nadie que los atienda. Reasígnalos antes desde
+                                    cada lead.
+                                </>
+                            )}
                         </>
                     }
                     confirmLabel="Desactivar"
