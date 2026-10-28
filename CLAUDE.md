@@ -125,17 +125,19 @@ event creation) — the landing is stateless.
 |---|---|
 | `Lead` | Landing-form lead + its booked meeting (`meeting_at`, `meeting_tz_iana`, `meeting_link`, `google_event_id`, `assigned_to`, `status`) |
 | `CalendarConnection` | Per-member Google OAuth tokens — **refresh/access encrypted at rest** (AES-256-GCM) |
-| `User` (new fields) | `lead_booking_enabled`, `booking_timezone`, `working_hours` — defines the bookable pool |
+| `User` (new fields) | `lead_booking_enabled` (calendar offered to the pool), `lead_booking_authorized` (admin allowed this closer to receive leads), `booking_timezone`, `working_hours` |
 
 ### Landing → LMS contract (auth: header `x-api-key: $LEADS_API_KEY`)
 - `POST /api/leads` — create the lead (status `NUEVO`). Honeypot + enum validation.
 - `GET  /api/leads/availability?from&days&tz_iana&duration` — real free/busy slots (RFC3339 in the lead's tz).
 - `POST /api/leads/[id]/book {start_at, tz_iana, duration}` — round-robin assign + create the Google event (Meet, lead invited) → `AGENDADO`.
-- `PATCH /api/leads/[id]` — manual CRM edit (status / assignment). **Auth = NextAuth session + `canAccessCRM`**, NOT x-api-key.
+- `PATCH /api/leads/[id]` — manual CRM edit (status / assignment). **Auth = NextAuth session + `canAccessCRM`**, NOT x-api-key. A closer can only change the **status** of **their own** leads; reassigning (here, `/reassign` or `/leads/transfer`) is admin-only.
 
 ### How the Google connection works
-1. An admin goes to `/admin/leads` → **"Conectar Google Calendar"** → `GET /api/integrations/google/connect` (HMAC-signed `state`, anti-CSRF) → Google consent.
-2. `GET /api/integrations/google/callback` exchanges the code, **encrypts** the refresh token with `CALENDAR_TOKEN_ENC_KEY`, upserts the `CalendarConnection`, and sets `lead_booking_enabled = true` (connecting = joining the pool). The post-OAuth redirect base is **`NEXTAUTH_URL`** (behind Caddy, `req.url` is the container's internal `0.0.0.0:3000`).
+1. An admin connects from `/admin/leads`; a closer from **`/dashboard/agenda`** ("Mi agenda") → **"Conectar Google Calendar"** → `GET /api/integrations/google/connect` (HMAC-signed `state`, anti-CSRF) → Google consent.
+2. `GET /api/integrations/google/callback` exchanges the code, **encrypts** the refresh token with `CALENDAR_TOKEN_ENC_KEY`, upserts the `CalendarConnection`, and sets `lead_booking_enabled = true`. It redirects each role to its own screen (`/admin/leads` or `/dashboard/agenda`), taken from the browser session. The post-OAuth redirect base is **`NEXTAUTH_URL`** (behind Caddy, `req.url` is the container's internal `0.0.0.0:3000`).
+
+**Who receives leads (`src/lib/calendar/pool.ts`).** Pool = active calendar **and** `lead_booking_enabled` **and** not `blocked` **and** (admin **or** closer with `lead_booking_authorized`). For an **admin**, connecting is enough. For a **closer**, connecting only shows their agenda: an admin must turn on **"Recibe leads"** in the closer's student page. `lead_booking_authorized` starts at `false` for everyone, so after deploying it no closer receives leads until an admin activates them. Removing the closer role, or an admin disconnecting someone else's calendar (offboarding), clears the authorization. Every pool query uses `POOL_MEMBER_WHERE`; never rewrite the condition inline.
 3. **Scopes:** `calendar.events` (create events) **+** `calendar.freebusy` (availability) + `openid email`. `calendar.events` alone does NOT permit `freebusy.query`.
 4. **GCP:** OAuth **Web application** client; consent screen in **Testing** with the members as test users (no verification — note: Testing refresh tokens expire after 7 days; publish the app or use a Workspace "Internal" app for permanence). Authorized redirect URI = `https://growthsalessacademy.com/api/integrations/google/callback`.
 
@@ -146,7 +148,10 @@ event creation) — the landing is stateless.
 - Layer: `crypto` (token AES-256-GCM), `tz`, `google` (OAuth + events + freebusy), `tokens` (load/refresh/persist), `assignment`, `availability`, `state` (CSRF), `types`.
 
 ### Admin CRM
-`/admin/leads` (gated `ADMIN`): leads table with status badges, **filter by assignee**, Meet links, and the per-member Google connect card. Sidebar shows a badge with the count of `NUEVO` leads.
+`/admin/leads` (gated `ADMIN`): leads table with status badges, **filter by assignee**, Meet links, the per-member Google connect card, the team's calendars and the **closers connected but not yet authorized** (link to their student page to activate them). Sidebar shows a badge with the count of `NUEVO` leads.
+
+### Closer CRM
+Closers (`closer_enabled` + `closer_type`) get, under VENTAS: **Ventas** (their sales), **Mi agenda** (`/dashboard/agenda`: connect Google, weekly agenda, working hours) and **Mis leads** (`/dashboard/leads`: only their assigned leads, status changes). "Mis leads" shows only if they are authorized or already have leads. `CRM_ONLY` closers are confined by `src/middleware.ts` to the paths in `src/lib/access-paths.ts`, which is also where the closer menu takes its links from — add new closer screens there.
 
 ---
 

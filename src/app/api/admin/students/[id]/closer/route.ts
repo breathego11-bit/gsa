@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // El rol de closer es de estudiantes. Sin esta comprobación, la API dejaba "quitarle el rol"
     // a un admin y tocar sus datos de reparto.
-    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true, closer_enabled: true } })
     if (!target) return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
     if (target.role !== 'STUDENT') {
         return NextResponse.json({ error: 'Solo se puede hacer closer a un estudiante' }, { status: 400 })
@@ -57,14 +57,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 ? body.closer_type
                 : 'CRM_AND_COURSES' // sensible default when admin flips on without choosing
     } else {
-        // closer_enabled not provided — only updating type.
-        // Read current value to keep enabled = true (otherwise the type change makes no sense).
-        const current = await prisma.user.findUnique({
-            where: { id },
-            select: { closer_enabled: true },
-        })
-        if (!current) return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
-        if (!current.closer_enabled) {
+        // closer_enabled not provided — only updating type. It must already be a closer
+        // (otherwise the type change makes no sense); `target` was read above.
+        if (!target.closer_enabled) {
             return NextResponse.json(
                 { error: 'No se puede asignar tipo a un usuario sin closer habilitado' },
                 { status: 400 },

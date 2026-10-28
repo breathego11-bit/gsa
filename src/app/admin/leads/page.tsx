@@ -27,7 +27,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
     const session = await getServerSession(authOptions)
     const myUserId = session?.user?.id
 
-    const [leads, members, pendingClosers] = await Promise.all([
+    const [leads, members, pendingClosers, assignees] = await Promise.all([
         prisma.lead.findMany({
             where: assigneeFilter ? { assigned_to: assigneeFilter } : {},
             orderBy: { created_at: 'desc' },
@@ -84,6 +84,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
         prisma.user.findMany({
             where: {
                 ...CLOSER_WHERE,
+                blocked: false,
                 lead_booking_authorized: false,
                 calendars: { some: { provider: 'GOOGLE' } },
             },
@@ -95,7 +96,23 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
             },
             orderBy: { name: 'asc' },
         }),
+        /*
+         * Todos los que tienen algún lead a su nombre, para el filtro por responsable. No vale con el
+         * pool: a un closer sin autorización (o con ella retirada) le siguen quedando leads, y sin
+         * esto desaparecía del filtro y no había forma de ver los suyos.
+         */
+        prisma.lead.findMany({
+            where: { assigned_to: { not: null } },
+            distinct: ['assigned_to'],
+            select: { assignee: { select: { id: true, name: true, last_name: true } } },
+        }),
     ])
+
+    // Opciones del filtro: el pool más cualquiera con leads asignados, sin repetir.
+    const filterPeople = new Map<string, { id: string; name: string; last_name: string }>()
+    for (const m of members) filterPeople.set(m.id, m)
+    for (const a of assignees) if (a.assignee) filterPeople.set(a.assignee.id, a.assignee)
+    const filterOptions = [...filterPeople.values()].sort((a, b) => a.name.localeCompare(b.name))
 
     // En el pool del round-robin pero sin calendario activo: no pueden recibir reuniones.
     const sinCalendario = members.filter((m) => m.calendars[0]?.status !== 'active').length
@@ -248,10 +265,10 @@ export default async function AdminLeadsPage({ searchParams }: PageProps) {
             </Card>
 
             {/* Filtro por asignado */}
-            {members.length > 0 && (
+            {filterOptions.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
                     <FilterChip label="Todos" href="/admin/leads" active={!assigneeFilter} />
-                    {members.map((m) => (
+                    {filterOptions.map((m) => (
                         <FilterChip
                             key={m.id}
                             label={m.id === myUserId ? `${m.name} (yo)` : `${m.name} ${m.last_name}`.trim()}

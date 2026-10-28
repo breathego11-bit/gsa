@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canAccessCRM } from '@/lib/access'
-import { SELF_SERVICE_TARGET_WHERE, disconnectRevokesAuthorization } from '@/lib/calendar/pool'
+import { SELF_SERVICE_TARGET_WHERE, isOffboarding } from '@/lib/calendar/pool'
 import { revokeToken } from '@/lib/calendar/google'
 import { decryptToken } from '@/lib/calendar/crypto'
 import { transferAllMeetings } from '@/lib/calendar/transfer'
@@ -66,12 +66,18 @@ export async function POST(req: NextRequest) {
     })
     if (!conn) return NextResponse.json({ error: 'No hay ninguna conexión que desconectar' }, { status: 404 })
 
+    // Baja del equipo (un admin desconecta a otra persona) o desconexión propia: ver `isOffboarding`.
+    const offboarding = isOffboarding(session.user.id, targetUserId)
+
     // 1. Transferir PRIMERO, mientras los tokens del origen siguen vivos.
     let transferred = 0
     let pastReassigned = 0
     let warnings: { leadId: string; warning: string }[] = []
     if (transferTo) {
-        const { results, pastReassigned: past } = await transferAllMeetings(targetUserId, transferTo)
+        // En una baja se pasa la cartera entera; si se desconecta él mismo, solo las reuniones.
+        const { results, pastReassigned: past } = await transferAllMeetings(targetUserId, transferTo, {
+            wholePortfolio: offboarding,
+        })
         const failed = results.filter((r) => !r.ok)
         if (failed.length > 0) {
             /*
@@ -117,15 +123,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Borrar la conexión y sacar al miembro del round-robin (como siempre, para todos los roles).
-    //    Si es un admin quien desconecta a OTRA persona, es una baja del equipo: se le retira también
-    //    la autorización de closer, porque si no podría volver a conectar y seguir recibiendo leads.
-    //    Si se desconecta él mismo, la conserva y al reconectar vuelve a recibir sin pedir permiso.
-    const revoke = disconnectRevokesAuthorization(session.user.id, targetUserId)
+    //    En una baja se le retira también la autorización de closer, porque si no podría volver a
+    //    conectar y seguir recibiendo leads. Si se desconecta él mismo, la conserva y al reconectar
+    //    vuelve a recibir sin pedir permiso.
     await prisma.$transaction([
         prisma.calendarConnection.delete({ where: { id: conn.id } }),
         prisma.user.update({
             where: { id: targetUserId },
-            data: { lead_booking_enabled: false, ...(revoke ? { lead_booking_authorized: false } : {}) },
+            data: { lead_booking_enabled: false, ...(offboarding ? { lead_booking_authorized: false } : {}) },
         }),
     ])
 

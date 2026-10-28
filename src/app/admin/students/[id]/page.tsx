@@ -13,7 +13,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     const { id } = await params
 
-    const [student, enrollments, progressRecords, payments, salesCount, recentSales, paidInvitations, calendar, futureMeetings] = await Promise.all([
+    const [student, enrollments, progressRecords, payments, salesCount, recentSales, paidInvitations] = await Promise.all([
         prisma.user.findUnique({
             where: { id, role: 'STUDENT' },
             select: {
@@ -98,15 +98,21 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             take: 5,
         }),
         prisma.invitation.count({ where: { used_by: id, is_free: false } }),
-        // Para el interruptor "Recibe leads": autorizado no sirve de nada sin calendario conectado.
-        prisma.calendarConnection.findUnique({
-            where: { user_id_provider: { user_id: id, provider: 'GOOGLE' } },
-            select: { status: true },
-        }),
-        countFutureMeetings(id),
     ])
 
     if (!student) notFound()
+
+    // Para el interruptor "Recibe leads", que solo se enseña a los closers: autorizado no sirve de
+    // nada sin calendario conectado. A los demás alumnos (la mayoría) no se les hacen estas consultas.
+    const [calendar, futureMeetings] = student.closer_enabled
+        ? await Promise.all([
+              prisma.calendarConnection.findUnique({
+                  where: { user_id_provider: { user_id: id, provider: 'GOOGLE' } },
+                  select: { status: true },
+              }),
+              countFutureMeetings(id),
+          ])
+        : [null, 0]
 
     const progressMap = new Map(progressRecords.map((p) => [p.lesson_id, p]))
 

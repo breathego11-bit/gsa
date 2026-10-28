@@ -26,14 +26,19 @@ export const CLOSER_WHERE = {
     closer_type: { not: null },
 } satisfies Prisma.UserWhereInput
 
-/** Miembros del equipo: admins y closers. Es quien puede tener un lead a su nombre. */
+/**
+ * Miembros del equipo: admins y closers, **no bloqueados**. Es quien puede tener un lead a su
+ * nombre. Un bloqueado no puede ni iniciar sesión, así que darle leads es dárselos a nadie.
+ */
 export const TEAM_MEMBER_WHERE = {
+    blocked: false,
     OR: [{ role: 'ADMIN' }, CLOSER_WHERE],
 } satisfies Prisma.UserWhereInput
 
 /** Condición de Prisma sobre `User` para estar en el reparto (sin la parte del calendario). */
 export const POOL_MEMBER_WHERE = {
     lead_booking_enabled: true,
+    blocked: false,
     OR: [{ role: 'ADMIN' }, { ...CLOSER_WHERE, lead_booking_authorized: true }],
 } satisfies Prisma.UserWhereInput
 
@@ -48,26 +53,21 @@ export const SELF_SERVICE_TARGET_WHERE = {
     calendars: { some: { provider: 'GOOGLE', status: 'active' } },
 } satisfies Prisma.UserWhereInput
 
-export interface PoolCandidate {
+export interface LeadAuthCandidate {
     role: string
     closer_enabled: boolean
     closer_type: CloserType | null
-    lead_booking_enabled: boolean
     lead_booking_authorized: boolean
 }
 
 /**
  * ¿Puede recibir leads? Los admins siempre; un closer, solo si un admin lo autorizó. No mira el
- * calendario: es lo que decide si se le enseña "Mis leads" y qué dice su tarjeta de conexión.
+ * calendario: decide si se le enseña "Mis leads" y qué dice su fila de conexión. Quién entra de
+ * verdad al reparto lo decide `POOL_MEMBER_WHERE`, que es la consulta que se ejecuta.
  */
-export function isLeadAuthorized(u: Omit<PoolCandidate, 'lead_booking_enabled'>): boolean {
+export function isLeadAuthorized(u: LeadAuthCandidate): boolean {
     if (u.role === 'ADMIN') return true
     return isCloser(u) && u.lead_booking_authorized === true
-}
-
-/** Versión pura de `POOL_MEMBER_WHERE`: autorizado y con el calendario puesto a disposición. */
-export function canReceiveLeads(u: PoolCandidate): boolean {
-    return isLeadAuthorized(u) && u.lead_booking_enabled === true
 }
 
 /**
@@ -80,12 +80,15 @@ export function showsOwnLeads(authorized: boolean, assignedLeads: number): boole
 }
 
 /**
- * Al desconectar un calendario, ¿se retira también la autorización del closer?
+ * ¿Esta desconexión es una **baja** del equipo? Lo es si un admin desconecta el calendario de otra
+ * persona; si alguien se desconecta a sí mismo (cambia de cuenta, se va de vacaciones), no.
  *
- * Solo si lo desconecta **un admin a otra persona**: es la baja de alguien del equipo, y sin esto
- * el closer podía volver a conectar y seguir recibiendo leads. Si se desconecta él mismo (cambia de
- * cuenta, se va de vacaciones), la conserva y al reconectar vuelve a recibir sin pedir permiso.
+ * Decide dos cosas en `/google/disconnect`:
+ *   - Se retira la autorización del closer. Sin esto podía volver a conectar y seguir recibiendo.
+ *   - Se le pasa **toda la cartera** al destinatario, no solo las reuniones futuras. A quien se
+ *     desconecta él mismo solo se le mueven las reuniones (es lo que le promete el diálogo): sus
+ *     demás leads siguen siendo suyos.
  */
-export function disconnectRevokesAuthorization(actorId: string, targetId: string): boolean {
+export function isOffboarding(actorId: string, targetId: string): boolean {
     return actorId !== targetId
 }

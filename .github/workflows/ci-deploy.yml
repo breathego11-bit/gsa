@@ -40,8 +40,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Sin `prisma generate`: los tests solo importan tipos de @prisma/client, que Node elimina
+      # al ejecutar TypeScript, así que el cliente generado no hace falta.
       - run: npm ci
-      - run: npx prisma generate
       - run: npm test
 
   deploy:

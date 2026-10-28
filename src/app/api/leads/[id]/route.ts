@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canAccessCRM } from '@/lib/access'
 import { decideLeadPatch } from '@/lib/leads/permissions'
+import { TEAM_MEMBER_WHERE } from '@/lib/calendar/pool'
 import type { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     )
     if (!decision.ok) {
         return NextResponse.json({ error: decision.error }, { status: decision.code })
+    }
+
+    // El responsable tiene que ser del equipo (admin o closer, no bloqueado), igual que en /reassign
+    // y en el selector de la ficha. Sin esto valía cualquier usuario existente, incluido un alumno
+    // que no ve el CRM: el lead salía de la cola de todos.
+    if (decision.assignedTo) {
+        const isTeam = await prisma.user.count({ where: { ...TEAM_MEMBER_WHERE, id: decision.assignedTo } })
+        if (isTeam === 0) {
+            return NextResponse.json({ error: 'El responsable tiene que ser del equipo (admin o closer)' }, { status: 400 })
+        }
     }
 
     // Escalares a propósito (no `assignee: { connect }`): el UPDATE va por `updateMany`, que solo

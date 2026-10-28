@@ -213,9 +213,16 @@ export async function transferLeadMeeting(leadId: string, toUserId: string): Pro
  * aporta nada y dispara correos de invitación a destiempo. Los leads pasados sí cambian de asignado
  * —para que el registro quede coherente— pero su evento no se toca.
  */
+/**
+ * `wholePortfolio`: además de las reuniones futuras, pasa el resto de sus leads (sin cita, pasados y
+ * descartados). Es lo que corresponde a una baja del equipo y a la transferencia en bloque del admin.
+ * Cuando alguien se desconecta a sí mismo, `false`: el diálogo solo le promete mover "esas
+ * reuniones", y quitarle en silencio la cartera que está trabajando lo dejaba con "Mis leads" vacío.
+ */
 export async function transferAllMeetings(
     fromUserId: string,
     toUserId: string,
+    { wholePortfolio = true }: { wholePortfolio?: boolean } = {},
 ): Promise<{ results: TransferResult[]; pastReassigned: number }> {
     const now = new Date()
 
@@ -239,7 +246,7 @@ export async function transferAllMeetings(
      * desconexión para poder reintentar, y mover aquí los leads pasados dejaría al miembro sin sus
      * leads pero con la conexión puesta: un estado a medias más difícil de deshacer.
      */
-    if (results.some((r) => !r.ok)) {
+    if (results.some((r) => !r.ok) || !wholePortfolio) {
         return { results, pastReassigned: 0 }
     }
 
