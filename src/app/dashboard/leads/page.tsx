@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { isCloser } from '@/lib/access'
 import { Card } from '@/components/ui/Card'
 import { situationLabel, urgencyLabel, investmentLabel, sourceLabel } from '@/lib/leads/options'
-import { LEAD_STATUS_META, fmtLeadDate, fmtMeetingShort, igHandle } from '@/lib/leads/display'
+import { LEAD_STATUS_META, fmtLeadDate, fmtMeetingShort, igHandle, sortOwnLeads } from '@/lib/leads/display'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Mis leads · GSA' }
@@ -26,7 +26,6 @@ export default async function CloserLeadsPage() {
     const [leads, connection] = await Promise.all([
         prisma.lead.findMany({
             where: { assigned_to: session.user.id },
-            // Primero lo que tiene cita (lo más urgente de preparar), luego lo recién llegado.
             orderBy: [{ meeting_at: 'asc' }, { created_at: 'desc' }],
             select: {
                 id: true,
@@ -50,6 +49,8 @@ export default async function CloserLeadsPage() {
             select: { status: true },
         }),
     ])
+
+    const sorted = sortOwnLeads(leads)
 
     const nuevos = leads.filter((l) => l.status === 'NUEVO').length
     const connected = connection?.status === 'active'
@@ -115,7 +116,7 @@ export default async function CloserLeadsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {leads.map((lead) => {
+                                {sorted.map((lead) => {
                                     const st = LEAD_STATUS_META[lead.status]
                                     return (
                                         <tr key={lead.id} className="table-row-base">

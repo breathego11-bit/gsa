@@ -21,12 +21,15 @@ export async function CalendarConnectionCard({ userId }: { userId: string }) {
         // las que quedarían atrapadas en el calendario si se suelta la conexión sin traspasarlas.
         countFutureMeetings(userId),
         /*
-         * A quién se le puede traspasar una reunión: solo miembros con el calendario ACTIVO. Sin
-         * conexión activa no hay dónde crear el evento, así que ofrecerlos sería ofrecer un error.
+         * A quién se le puede traspasar una reunión: miembros del pool (`lead_booking_enabled`)
+         * con el calendario ACTIVO. Sin conexión activa no hay dónde crear el evento, y a quien
+         * se sacó del reparto no se le deben meter reuniones por la puerta de atrás. Es el mismo
+         * criterio que usa `/admin/leads`.
          */
         prisma.user.findMany({
             where: {
                 id: { not: userId },
+                lead_booking_enabled: true,
                 calendars: { some: { provider: 'GOOGLE', status: 'active' } },
             },
             select: { id: true, name: true, last_name: true },

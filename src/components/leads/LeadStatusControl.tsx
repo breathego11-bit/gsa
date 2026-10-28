@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, CircleDot } from 'lucide-react'
 import type { LeadStatus } from '@prisma/client'
-import { LEAD_STATUSES, LEAD_STATUS_META } from '@/lib/leads/display'
+import { LEAD_STATUS_META } from '@/lib/leads/display'
+import { LEAD_STATUSES } from '@/lib/leads/permissions'
 
 /**
  * Cambia el estado de un lead con `PATCH /api/leads/[id]`.

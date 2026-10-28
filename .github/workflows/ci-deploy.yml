@@ -26,8 +26,26 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run build
 
+  # Los tests son lógica pura (permisos del CRM, acceso por rol y reglas de cobro) y corren con
+  # el runner de Node, sin dependencias. Van en su propio job con Node 22 porque ejecutar
+  # TypeScript directamente necesita >= 22.6, mientras el build se queda en 20 para calcar la
+  # imagen de Docker.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test
+
   deploy:
-    needs: build
+    needs: [build, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:

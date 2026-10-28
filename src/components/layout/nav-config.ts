@@ -18,6 +18,7 @@ import {
     type LucideIcon,
 } from 'lucide-react'
 import type { CloserType } from '@prisma/client'
+import { CLOSER_NAV } from '@/lib/access-paths'
 
 /*
  * Fuente única de la navegación lateral.
@@ -173,7 +174,7 @@ export function buildStudentGroups(
             label: 'VENTAS',
             items: [
                 {
-                    href: '/dashboard/sales',
+                    href: CLOSER_NAV.sales,
                     label: 'Ventas',
                     Icon: TrendingUp,
                     badge:
@@ -182,7 +183,7 @@ export function buildStudentGroups(
                             : undefined,
                 },
                 {
-                    href: '/dashboard/leads',
+                    href: CLOSER_NAV.leads,
                     label: 'Mis leads',
                     Icon: UserCheck,
                     badge:
@@ -191,7 +192,7 @@ export function buildStudentGroups(
                             : undefined,
                 },
                 // Donde el closer conecta su Google Calendar: sin eso, el reparto no le asigna leads.
-                { href: '/dashboard/agenda', label: 'Mi agenda', Icon: CalendarDays },
+                { href: CLOSER_NAV.agenda, label: 'Mi agenda', Icon: CalendarDays },
             ],
         })
     }

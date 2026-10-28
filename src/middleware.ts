@@ -1,16 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedForCrmOnly } from "@/lib/access-paths";
 
-// Paths under /dashboard/* that a CRM_ONLY closer IS allowed to access.
-// Everything else under /dashboard, /lesson, and /course is denied for them.
-function isAllowedForCrmOnly(pathname: string): boolean {
-    return (
-        pathname.startsWith("/dashboard/sales") ||
-        pathname.startsWith("/dashboard/method") ||
-        pathname.startsWith("/dashboard/coach") ||
-        pathname.startsWith("/dashboard/profile")
-    );
-}
 
 export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
